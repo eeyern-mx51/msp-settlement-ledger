@@ -91,55 +91,213 @@ function PayoutStatusBadge({ status }) {
 const ROLES = { FINOPS_T1: "FinOps Tier 1", FINOPS_T2: "FinOps Tier 2", ADMIN: "Administrator" };
 
 // ═══════════════════════════════════════════════════════════
-// MOCK DATA
+// MOCK DATA — Expanded
 // ═══════════════════════════════════════════════════════════
 const mockPayouts = [
-  { id: "PO-2026-0223-001", date: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0223-002", date: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0222-001", date: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", transferCount: 1, status: "Ready for Transfer" },
-  { id: "PO-2026-0222-002", date: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", transferCount: 1, status: "Transferring" },
+  // 24 Feb — today
+  { id: "PO-2026-0224-001", date: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-002", date: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-003", date: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", transferCount: 1, status: "Ready for Review" },
+  // 23 Feb
+  { id: "PO-2026-0223-001", date: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", transferCount: 1, status: "Ready for Transfer" },
+  { id: "PO-2026-0223-002", date: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", transferCount: 2, status: "Ready for Transfer" },
+  { id: "PO-2026-0223-003", date: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", transferCount: 1, status: "Transferring" },
+  // 22 Feb
+  { id: "PO-2026-0222-001", date: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-002", date: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-003", date: "22 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$2,640.15", transferCount: 1, status: "Completed" },
+  // 21 Feb
   { id: "PO-2026-0221-001", date: "21 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$15,204.60", transferCount: 2, status: "Completed" },
   { id: "PO-2026-0221-002", date: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0221-003", date: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
+  // 20 Feb — failures and issues
   { id: "PO-2026-0220-001", date: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
   { id: "PO-2026-0220-002", date: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Paused" },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
+  // 19 Feb
   { id: "PO-2026-0219-001", date: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
+  { id: "PO-2026-0219-002", date: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
+  // 18 Feb
+  { id: "PO-2026-0218-001", date: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", transferCount: 3, status: "Completed" },
+  { id: "PO-2026-0218-002", date: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0218-003", date: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", transferCount: 2, status: "Completed" },
+  // 17 Feb
+  { id: "PO-2026-0217-001", date: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Abandoned" },
 ];
-const mockAuditLog = [
-  { ts: "23 Feb 2026, 9:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
-  { ts: "23 Feb 2026, 9:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-];
-const mockAuditLogComplete = [
-  { ts: "21 Feb 2026, 9:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 22 transactions included." },
-  { ts: "21 Feb 2026, 9:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-  { ts: "21 Feb 2026, 10:15 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-  { ts: "21 Feb 2026, 11:00 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
-  { ts: "21 Feb 2026, 11:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
-  { ts: "21 Feb 2026, 2:30 PM", action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0221-001." },
-  { ts: "21 Feb 2026, 2:30 PM", action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
-];
-const mockAuditLogFailed = [
-  { ts: "20 Feb 2026, 9:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
-  { ts: "20 Feb 2026, 9:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-  { ts: "20 Feb 2026, 10:30 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-  { ts: "20 Feb 2026, 11:15 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated." },
-  { ts: "20 Feb 2026, 11:15 AM", action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
-  { ts: "20 Feb 2026, 11:15 AM", action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
-];
-const mockTransfersComplete = [{ id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$15,204.60", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null }];
-const mockTransfersFailed = [{ id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit", retryable: false }];
 
+// ─── Per-payout audit logs ───
+const auditLogs = {
+  // Ready for Review — just prepared
+  "PO-2026-0224-001": [
+    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $5,112.40." },
+    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+  ],
+  "PO-2026-0224-002": [
+    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 11 transactions included, totalling $3,480.90." },
+    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+  ],
+  "PO-2026-0224-003": [
+    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 8 transactions included, totalling $1,875.20." },
+    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+  ],
+  // Ready for Transfer — approved but not executed
+  "PO-2026-0223-001": [
+    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 9:45 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+  ],
+  "PO-2026-0223-002": [
+    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 10:20 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+  ],
+  // Transferring — in progress
+  "PO-2026-0223-003": [
+    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 8:30 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:00 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 11:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
+  ],
+  // Completed — full lifecycle
+  "PO-2026-0222-001": [
+    { ts: "22 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
+    { ts: "22 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "22 Feb 2026, 9:10 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "22 Feb 2026, 10:00 AM", action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "22 Feb 2026, 10:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
+    { ts: "22 Feb 2026, 1:45 PM", action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
+    { ts: "22 Feb 2026, 1:45 PM", action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
+  ],
+  "PO-2026-0221-001": [
+    { ts: "21 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
+    { ts: "21 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "21 Feb 2026, 10:15 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
+    { ts: "21 Feb 2026, 11:00 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "2 transfers initiated (split by account)." },
+    { ts: "21 Feb 2026, 11:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
+    { ts: "21 Feb 2026, 2:30 PM", action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
+    { ts: "21 Feb 2026, 2:35 PM", action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
+    { ts: "21 Feb 2026, 2:35 PM", action: "Status changed to Completed", user: "System", detail: "All transfers confirmed. Payout finalised." },
+  ],
+  // Failed — with error detail
+  "PO-2026-0220-001": [
+    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 10:30 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 11:15 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
+    { ts: "20 Feb 2026, 11:15 AM", action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
+    { ts: "20 Feb 2026, 11:15 AM", action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
+  ],
+  "PO-2026-0220-003": [
+    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 11:00 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:30 PM", action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 12:35 PM", action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
+    { ts: "20 Feb 2026, 12:35 PM", action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
+  ],
+  // Paused
+  "PO-2026-0220-002": [
+    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 9:00 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 9:45 AM", action: "Paused", user: "Sarah Chen (FinOps T1)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:45 AM", action: "Status changed to Paused", user: "System", detail: "Payout held pending review." },
+  ],
+  // Abandoned
+  "PO-2026-0219-001": [
+    { ts: "19 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
+    { ts: "19 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "19 Feb 2026, 11:00 AM", action: "Abandoned", user: "Tom Wright (FinOps T1)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
+  ],
+  "PO-2026-0217-001": [
+    { ts: "17 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
+    { ts: "17 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "17 Feb 2026, 3:00 PM", action: "Abandoned", user: "Sarah Chen (FinOps T1)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
+  ],
+};
+
+// Fallback audit log for payouts without a specific log
+const defaultAuditLog = (payout) => [
+  { ts: payout.date + ", 6:00 AM", action: "Payout prepared", user: "System", detail: `Merchant balance swept. Payout of ${payout.amount} created.` },
+  { ts: payout.date + ", 6:01 AM", action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
+];
+
+// ─── Per-payout transfers ───
+const transfersByPayout = {
+  "PO-2026-0222-001": [
+    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0222-002": [
+    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0222-003": [
+    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0221-001": [
+    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null, retryable: null },
+    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0221-002": [
+    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0221-003": [
+    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0223-003": [
+    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0220-001": [
+    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit", retryable: false },
+  ],
+  "PO-2026-0220-003": [
+    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA", retryable: true },
+  ],
+  "PO-2026-0219-002": [
+    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0218-001": [
+    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0218-002": [
+    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+  ],
+  "PO-2026-0218-003": [
+    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null, retryable: null },
+  ],
+};
+
+// ─── Adjustments — expanded ───
 const mockAdjustments = [
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", type: "Manual", reason: "Customer goodwill credit", payoutId: "PO-2026-0223-001", status: "Pending approval", internalNote: "Customer complained about delayed settlement on 3 transactions.", externalDesc: "Goodwill adjustment for service delay." },
-  { id: "ADJ-2026-0222-001", date: "22 Feb 2026", amount: "-$45.50", type: "Auto", reason: "Fee correction", payoutId: "PO-2026-0222-001", status: "Approved", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2%.", externalDesc: "Fee correction for surcharge miscalculation." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", type: "Manual", reason: "Promotional credit", payoutId: "PO-2026-0221-002", status: "Approved", internalNote: "Part of Feb 2026 onboarding promotion.", externalDesc: "Promotional credit — onboarding campaign." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", type: "Manual", reason: "Chargeback recovery", payoutId: "PO-2026-0224-001", status: "Pending approval", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount.", externalDesc: "Chargeback reversal — dispute resolved in your favour." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", type: "Manual", reason: "Customer goodwill credit", payoutId: "PO-2026-0223-001", status: "Pending approval", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager.", externalDesc: "Goodwill adjustment for service delay." },
+  { id: "ADJ-2026-0223-002", date: "23 Feb 2026", amount: "-$82.30", type: "Auto", reason: "Scheme fee rebate", payoutId: "PO-2026-0223-002", status: "Approved", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012.", externalDesc: "Visa scheme fee rebate — Q4 2025." },
+  { id: "ADJ-2026-0222-001", date: "22 Feb 2026", amount: "-$45.50", type: "Auto", reason: "Fee correction", payoutId: "PO-2026-0222-001", status: "Approved", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions.", externalDesc: "Fee correction for surcharge miscalculation." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", type: "Manual", reason: "Settlement discrepancy", payoutId: "PO-2026-0222-002", status: "Rejected", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions.", externalDesc: "Settlement discrepancy investigation." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", type: "Manual", reason: "Promotional credit", payoutId: "PO-2026-0221-002", status: "Approved", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE.", externalDesc: "Promotional credit — onboarding campaign." },
+  { id: "ADJ-2026-0220-001", date: "20 Feb 2026", amount: "-$1,200.00", type: "Manual", reason: "Chargeback recovery", payoutId: "PO-2026-0220-001", status: "Approved", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout.", externalDesc: "Chargeback deduction — dispute CB-77104." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", type: "Auto", reason: "Fee correction", payoutId: "PO-2026-0218-001", status: "Approved", internalNote: "Terminal rental fee was double-charged in January billing cycle.", externalDesc: "Terminal rental fee correction — January double charge." },
 ];
 
+// ─── Transactions — expanded ───
 const mockTransactions = [
   { id: "txn_001", date: "Monday, February 23 2026, 10:34 AM", status: "Approved", tid: "50112233", channel: "In-store", method: "mastercard", last4: "4829", type: "Purchase", amount: "$142.50", settlementValue: "$140.38", rrn: "401234567890", authCode: "082451", expectedSettlement: "25 Feb 2026" },
   { id: "txn_002", date: "Monday, February 23 2026, 10:12 AM", status: "Approved", tid: "50112233", channel: "In-store", method: "visa", last4: "1677", type: "Purchase", amount: "$89.95", settlementValue: "$88.62", rrn: "401234567891", authCode: "082452", expectedSettlement: "25 Feb 2026" },
   { id: "txn_003", date: "Monday, February 23 2026, 9:48 AM", status: "Declined", tid: "50112234", channel: "In-store", method: "mastercard", last4: "3201", type: "Purchase", amount: "$256.00", settlementValue: "-", rrn: "401234567892", authCode: "-", expectedSettlement: "-" },
   { id: "txn_004", date: "Monday, February 23 2026, 9:15 AM", status: "Approved", tid: "50112233", channel: "Online", method: "visa", last4: "8844", type: "Refund", amount: "-$45.00", settlementValue: "-$44.33", rrn: "401234567893", authCode: "082453", expectedSettlement: "25 Feb 2026" },
   { id: "txn_005", date: "Monday, February 23 2026, 8:52 AM", status: "Approved", tid: "50112234", channel: "In-store", method: "mastercard", last4: "5512", type: "Purchase", amount: "$312.80", settlementValue: "$308.12", rrn: "401234567894", authCode: "082454", expectedSettlement: "25 Feb 2026" },
+  { id: "txn_006", date: "Monday, February 23 2026, 8:30 AM", status: "Approved", tid: "50112233", channel: "In-store", method: "visa", last4: "9021", type: "Pre-auth", amount: "$500.00", settlementValue: "-", rrn: "401234567895", authCode: "082455", expectedSettlement: "-" },
+  { id: "txn_007", date: "Monday, February 23 2026, 8:15 AM", status: "Approved", tid: "50112233", channel: "In-store", method: "visa", last4: "9021", type: "Pre-auth completion", amount: "$487.50", settlementValue: "$480.19", rrn: "401234567896", authCode: "082456", expectedSettlement: "25 Feb 2026" },
+  { id: "txn_008", date: "Sunday, February 22 2026, 5:45 PM", status: "Approved", tid: "50112234", channel: "Online", method: "mastercard", last4: "7788", type: "Purchase", amount: "$67.20", settlementValue: "$66.21", rrn: "401234567897", authCode: "082457", expectedSettlement: "25 Feb 2026" },
+  { id: "txn_009", date: "Sunday, February 22 2026, 4:20 PM", status: "Declined", tid: "50112233", channel: "In-store", method: "visa", last4: "0044", type: "Purchase", amount: "$1,200.00", settlementValue: "-", rrn: "401234567898", authCode: "-", expectedSettlement: "-" },
+  { id: "txn_010", date: "Sunday, February 22 2026, 3:10 PM", status: "Approved", tid: "50112234", channel: "In-store", method: "mastercard", last4: "6633", type: "Purchase", amount: "$28.50", settlementValue: "$28.08", rrn: "401234567899", authCode: "082458", expectedSettlement: "25 Feb 2026" },
+  { id: "txn_011", date: "Sunday, February 22 2026, 1:55 PM", status: "Approved", tid: "50112233", channel: "MOTO", method: "visa", last4: "2200", type: "Purchase", amount: "$199.00", settlementValue: "$196.01", rrn: "401234567900", authCode: "082459", expectedSettlement: "25 Feb 2026" },
+  { id: "txn_012", date: "Sunday, February 22 2026, 11:30 AM", status: "Approved", tid: "50112234", channel: "In-store", method: "mastercard", last4: "4411", type: "Void", amount: "$0.00", settlementValue: "-", rrn: "401234567901", authCode: "082460", expectedSettlement: "-" },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -156,8 +314,9 @@ function PayoutDetailView({ payout, onBack, role }) {
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
-  const auditLog = isCompleted ? mockAuditLogComplete : isFailed ? mockAuditLogFailed : mockAuditLog;
-  const transfers = isCompleted ? mockTransfersComplete : isFailed ? mockTransfersFailed : [];
+  const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
+  const transfers = transfersByPayout[payout.id] || [];
+  const failedTransfer = transfers.find(t => t.status === "Failed");
 
   const allActions = {
     "Ready for Review": [{ label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand" }, { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral" }, { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error" }],
@@ -171,7 +330,8 @@ function PayoutDetailView({ payout, onBack, role }) {
     <div className="p-6 space-y-5">
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      {isFailed && (<Alert type="error" title="Transfer failed — Non-retryable">Invalid BSB (062-999). The merchant's bank details need to be corrected before this payout can be retried. Contact the merchant to verify their BSB and account number.</Alert>)}
+      {isFailed && failedTransfer && (<Alert type="error" title={`Transfer failed — ${failedTransfer.retryable ? "Retryable" : "Non-retryable"}`}>{failedTransfer.failureReason}{!failedTransfer.retryable ? ". The merchant's bank details need to be corrected before this payout can be retried." : ". This transfer can be automatically retried."}</Alert>)}
+      {isFailed && !failedTransfer && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Tier 1 user to perform actions.</span></div>)}
 
