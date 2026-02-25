@@ -1,4 +1,8 @@
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import PayoutLifecycle from "./flows/PayoutLifecycle";
+import E2EPayoutJourney from "./flows/E2EPayoutJourney";
+import FinOpsActionFlows from "./flows/FinOpsActionFlows";
+import PermissionsMatrix from "./flows/PermissionsMatrix";
 
 // ─── Icon Components ───
 const Icons = {
@@ -988,15 +992,17 @@ function DebuggingToolsPage({ onResetData, payouts }) {
 // ═══════════════════════════════════════════════════════════
 // UX ARTEFACTS PAGE
 // ═══════════════════════════════════════════════════════════
-const uxArtefacts = [
-  { id: "ux-flows", title: "UX Flow Diagrams", description: "Interactive payout lifecycle, end-to-end journey, FinOps action flows, and permissions matrix", file: "ux-flows.html", type: "Standalone HTML", icon: "flow" },
-  { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", file: "src/flows/PayoutLifecycle.jsx", type: "React Component", icon: "state" },
-  { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", file: "src/flows/E2EPayoutJourney.jsx", type: "React Component", icon: "journey" },
-  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", file: "src/flows/FinOpsActionFlows.jsx", type: "React Component", icon: "actions" },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps T1, FinOps T2, and Administrator across 20+ actions", file: "src/flows/PermissionsMatrix.jsx", type: "React Component", icon: "roles" },
+const uxArtefactsList = [
+  { id: "ux-flows", title: "UX Flow Diagrams (All-in-One)", description: "Standalone HTML with all 4 flow diagrams — opens in a new tab", type: "Standalone HTML", icon: "flow", component: null },
+  { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
+  { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
+  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps T1, FinOps T2, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
 ];
 
 function UXArtefactsPage() {
+  const [activeArtefact, setActiveArtefact] = useState(null);
+
   const iconMap = {
     flow: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="3" width="6" height="6" rx="1" /><rect x="9" y="15" width="6" height="6" rx="1" /><path d="M9 6h6M6 9v3a3 3 0 003 3M18 9v3a3 3 0 01-3 3" /></svg>),
     state: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>),
@@ -1005,6 +1011,26 @@ function UXArtefactsPage() {
     roles: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="21" /></svg>),
   };
 
+  // If an artefact is selected, render it full-page with a back button
+  if (activeArtefact) {
+    const artefact = uxArtefactsList.find((a) => a.id === activeArtefact);
+    const ArtefactComponent = artefact?.component;
+    return (
+      <div className="flex flex-col h-full">
+        <div className="px-6 py-3 border-b border-gray-200 bg-white flex items-center gap-3 flex-shrink-0">
+          <button onClick={() => setActiveArtefact(null)} className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
+            <Icons.ChevronLeft /><span>Back to artefacts</span>
+          </button>
+          <div className="w-px h-5 bg-gray-200" />
+          <h3 className="text-sm font-semibold text-gray-800">{artefact.title}</h3>
+        </div>
+        <div className="flex-1 overflow-y-auto p-6">
+          {ArtefactComponent && <ArtefactComponent />}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 max-w-4xl">
       <div className="mb-6">
@@ -1012,7 +1038,7 @@ function UXArtefactsPage() {
         <p className="text-sm text-gray-500">Design documentation and interactive flow diagrams built for the MSP Support Dashboard.</p>
       </div>
       <div className="space-y-3">
-        {uxArtefacts.map((artefact) => {
+        {uxArtefactsList.map((artefact) => {
           const IconComponent = iconMap[artefact.icon];
           const isStandalone = artefact.type === "Standalone HTML";
           return (
@@ -1024,17 +1050,20 @@ function UXArtefactsPage() {
                     <div className="flex items-center gap-2 mb-1">
                       <h3 className="text-sm font-semibold text-gray-800">{artefact.title}</h3>
                       <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${isStandalone ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>{artefact.type}</span>
-                      {isStandalone && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Recommended</span>}
                     </div>
                     <p className="text-sm text-gray-500 mb-2">{artefact.description}</p>
                     <div className="flex items-center gap-3">
-                      {isStandalone && (
+                      {isStandalone ? (
                         <button onClick={() => window.open("ux-flows.html", "_blank")} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15,3 21,3 21,9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
                           Open in new tab
                         </button>
+                      ) : (
+                        <button onClick={() => setActiveArtefact(artefact.id)} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-gray-800 text-white hover:bg-gray-900 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>
+                          View artefact
+                        </button>
                       )}
-                      <span className="text-xs text-gray-400 font-mono">{artefact.file}</span>
                     </div>
                   </div>
                 </div>
