@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback, createContext, useContext } from "react";
 
 // ─── Icon Components ───
 const Icons = {
@@ -79,6 +79,151 @@ const TH = ({ children, right }) => <th className={`text-xs font-semibold text-g
 function Modal({ open, onClose, title, children, width = "max-w-lg" }) {
   if (!open) return null;
   return (<div className="fixed inset-0 z-50 flex items-center justify-center"><div className="absolute inset-0 bg-black/40" onClick={onClose} /><div className={`relative bg-white rounded-xl shadow-xl ${width} w-full mx-4 max-h-[85vh] flex flex-col`}><div className="flex items-center justify-between px-6 py-4 border-b border-gray-200"><h2 className="text-lg font-semibold text-gray-800">{title}</h2><button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400"><Icons.X /></button></div><div className="px-6 py-5 overflow-y-auto flex-1">{children}</div></div></div>);
+}
+
+// ─── Toast System ───
+const ToastContext = createContext({ addToast: () => {} });
+function useToast() { return useContext(ToastContext); }
+function ToastProvider({ children }) {
+  const [toasts, setToasts] = useState([]);
+  const addToast = useCallback((toast) => {
+    const id = Date.now() + Math.random();
+    setToasts((prev) => [...prev, { ...toast, id }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
+  return (
+    <ToastContext.Provider value={{ addToast }}>
+      {children}
+      <div className="fixed bottom-6 right-6 z-[60] flex flex-col gap-2 max-w-sm">
+        {toasts.map((t) => (
+          <div key={t.id} className={`flex items-start gap-3 px-4 py-3 rounded-xl shadow-lg border animate-slide-up ${
+            t.type === "success" ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+            t.type === "error" ? "bg-red-50 border-red-200 text-red-800" :
+            t.type === "warning" ? "bg-amber-50 border-amber-200 text-amber-800" :
+            "bg-white border-gray-200 text-gray-800"
+          }`}>
+            <span className="mt-0.5 flex-shrink-0">{t.type === "success" ? <Icons.Check /> : t.type === "error" ? <Icons.Ban /> : t.type === "warning" ? <Icons.Pause /> : <Icons.Info />}</span>
+            <div className="flex-1 min-w-0"><div className="text-sm font-semibold">{t.title}</div>{t.message && <div className="text-xs mt-0.5 opacity-80">{t.message}</div>}</div>
+            <button onClick={() => setToasts((prev) => prev.filter((x) => x.id !== t.id))} className="text-gray-400 hover:text-gray-600 flex-shrink-0"><Icons.X /></button>
+          </div>
+        ))}
+      </div>
+    </ToastContext.Provider>
+  );
+}
+
+// ─── Confirmation Dialogs for Payout Actions ───
+function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
+  const [loading, setLoading] = useState(false);
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1200);
+  };
+  if (!payout) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Approve payout">
+      <div className="space-y-5">
+        <Alert type="info" title="Review before approving">Once approved, this payout will move to "Ready for Transfer" and can be executed. Ensure the amounts and merchant details are correct.</Alert>
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount], ["Transfers", payout.transferCount]].map(([label, value]) => (
+            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Check />}>{loading ? "Approving..." : "Approve payout"}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function PausePayoutDialog({ open, onClose, payout, onConfirm }) {
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm(reason, note); onClose(); setReason(""); setNote(""); }, 1000);
+  };
+  if (!payout) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Pause payout">
+      <div className="space-y-5">
+        <Alert type="warning" title="This payout will be held">The payout will remain in a paused state until a FinOps Tier 1 user resumes or abandons it. No transfers will be initiated while paused.</Alert>
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
+            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
+          ))}
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for pausing</label>
+          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+            <option value="">Select a reason...</option>
+            <option>Pending merchant verification</option>
+            <option>Suspicious activity review</option>
+            <option>Bank details under review</option>
+            <option>Regulatory hold</option>
+            <option>Internal audit</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Pausing..." : "Pause payout"}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
+  const [confirmText, setConfirmText] = useState("");
+  const [reason, setReason] = useState("");
+  const [loading, setLoading] = useState(false);
+  const isConfirmed = confirmText === "ABANDON";
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm(reason); onClose(); setConfirmText(""); setReason(""); }, 1500);
+  };
+  if (!payout) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Abandon payout">
+      <div className="space-y-5">
+        <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently cancel it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
+        <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount], ["Transfers affected", payout.transferCount]].map(([label, value]) => (
+            <div key={label} className="flex justify-between text-sm"><span className="text-red-600 font-medium">{label}</span><span className="text-red-800 font-semibold">{value}</span></div>
+          ))}
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for abandoning</label>
+          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+            <option value="">Select a reason...</option>
+            <option>Duplicate payout</option>
+            <option>Merchant account closed</option>
+            <option>Fraudulent activity confirmed</option>
+            <option>Incorrect settlement calculation</option>
+            <option>Merchant requested cancellation</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Type ABANDON to confirm</label>
+          <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value.toUpperCase())} placeholder="ABANDON" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 font-mono tracking-wider focus:ring-2 focus:ring-red-200 focus:border-red-400" />
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed || !reason} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
 }
 
 // ─── Payout Status ───
@@ -310,35 +455,74 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW (with transfer failure reporting)
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
+  const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
+  const isAbandoned = payout.status === "Abandoned";
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
   const transfers = transfersByPayout[payout.id] || [];
   const failedTransfer = transfers.find(t => t.status === "Failed");
 
+  // Dialog states
+  const [showApprove, setShowApprove] = useState(false);
+  const [showPause, setShowPause] = useState(false);
+  const [showAbandon, setShowAbandon] = useState(false);
+
   const allActions = {
-    "Ready for Review": [{ label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand" }, { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral" }, { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error" }],
-    "Ready for Transfer": [{ label: "Execute", icon: Icons.Play, variant: "solid", colorScheme: "brand" }, { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral" }, { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error" }],
-    "Paused": [{ label: "Resume", icon: Icons.Play, variant: "solid", colorScheme: "brand" }, { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error" }],
-    "Failed": [{ label: "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand" }, { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error" }],
+    "Ready for Review": [
+      { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
+      { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+    ],
+    "Ready for Transfer": [
+      { label: "Execute", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
+      { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+    ],
+    "Paused": [
+      { label: "Resume", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resumed", message: `Payout ${payout.id} has been moved back to Ready for Review.` }); onStatusChange(payout.id, "Ready for Review"); } },
+      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+    ],
+    "Failed": [
+      { label: "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Transferring"); } },
+      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+    ],
   };
   const currentActions = allActions[payout.status] || [];
 
+  const handleApprove = () => {
+    addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
+    onStatusChange(payout.id, "Ready for Transfer");
+  };
+  const handlePause = (reason, note) => {
+    addToast({ type: "warning", title: "Payout paused", message: `${payout.id} — ${reason}` });
+    onStatusChange(payout.id, "Paused");
+  };
+  const handleAbandon = (reason) => {
+    addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been permanently cancelled.` });
+    onStatusChange(payout.id, "Abandoned");
+  };
+
   return (
     <div className="p-6 space-y-5">
+      <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
+      <PausePayoutDialog open={showPause} onClose={() => setShowPause(false)} payout={payout} onConfirm={handlePause} />
+      <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
+
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
       {isFailed && failedTransfer && (<Alert type="error" title={`Transfer failed — ${failedTransfer.retryable ? "Retryable" : "Non-retryable"}`}>{failedTransfer.failureReason}{!failedTransfer.retryable ? ". The merchant's bank details need to be corrected before this payout can be retried." : ". This transfer can be automatically retried."}</Alert>)}
       {isFailed && !failedTransfer && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
+      {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Tier 1 user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} /></div>
-          {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />}>{a.label}</Button>))}</div>)}
+          {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
         <Divider />
@@ -508,7 +692,7 @@ function MerchantAdjustmentsTab({ role }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("week");
   const [killSwitch, setKillSwitch] = useState(false);
@@ -533,9 +717,11 @@ function FleetPayoutsPage({ role, featureEnabled }) {
     </CardBody></Card></div>
   );
 
-  if (selectedPayout) return <PayoutDetailView payout={selectedPayout} onBack={() => setSelectedPayout(null)} role={role} />;
+  // Keep selectedPayout in sync with latest state
+  const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus) => { onPayoutStatusChange(id, newStatus); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
-  const filteredPayouts = statusFilter === "all" ? mockPayouts : mockPayouts.filter((p) => p.status === statusFilter);
+  const filteredPayouts = statusFilter === "all" ? payouts : payouts.filter((p) => p.status === statusFilter);
 
   return (
     <div className="p-6 space-y-5">
@@ -593,15 +779,16 @@ function FleetPayoutsPage({ role, featureEnabled }) {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [disableMerchant, setDisableMerchant] = useState(false);
   const canWrite = role === ROLES.FINOPS_T1;
-  const merchantPayouts = mockPayouts.filter((p) => p.mid === "POSPAY00012345");
+  const merchantPayouts = payouts.filter((p) => p.mid === "POSPAY00012345");
   const filtered = statusFilter === "all" ? merchantPayouts : merchantPayouts.filter((p) => p.status === statusFilter);
 
-  if (selectedPayout) return <PayoutDetailView payout={selectedPayout} onBack={() => setSelectedPayout(null)} role={role} />;
+  const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus) => { onPayoutStatusChange(id, newStatus); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -688,7 +875,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange }) {
   const [activeTab, setActiveTab] = useState("transactions");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const bc = { org: "POS Pay Pty Ltd", facility: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", status: "Active" };
@@ -701,7 +888,7 @@ function MerchantFacilityDetailPage({ role }) {
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -766,23 +953,30 @@ export default function MSPSupportDashboard() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [role, setRole] = useState(ROLES.FINOPS_T1);
   const [featureEnabled, setFeatureEnabled] = useState(true);
+  const [payouts, setPayouts] = useState(mockPayouts);
+
+  const handlePayoutStatusChange = useCallback((payoutId, newStatus) => {
+    setPayouts((prev) => prev.map((p) => p.id === payoutId ? { ...p, status: newStatus } : p));
+  }, []);
 
   const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" } };
   const currentHeading = headings[activePage] || headings["merchant-facilities"];
   const handleNav = (id) => { setActivePage(id); setMerchantDetailView(false); };
 
   return (
-    <div className="flex h-screen w-full bg-[#F9FAFB] font-sans text-gray-900 overflow-hidden">
-      <Sidebar activeItem={activePage} onNavigate={handleNav} collapsed={sidebarCollapsed} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
-        <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-          {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} />}
-          {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} />}
-          {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
-          {!["payouts", "merchant-facilities"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
-        </main>
+    <ToastProvider>
+      <div className="flex h-screen w-full bg-[#F9FAFB] font-sans text-gray-900 overflow-hidden">
+        <Sidebar activeItem={activePage} onNavigate={handleNav} collapsed={sidebarCollapsed} />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
+          <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
+            {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
+            {!["payouts", "merchant-facilities"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
+          </main>
+        </div>
       </div>
-    </div>
+    </ToastProvider>
   );
 }
