@@ -31,6 +31,8 @@ const Icons = {
   Refresh: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" /></svg>),
   Ban: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>),
   Check: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20,6 9,17 4,12" /></svg>),
+  Beaker: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v5.172a2 2 0 01-.586 1.414l-4.828 4.828A4 4 0 007.414 21h9.172a4 4 0 002.828-6.828l-4.828-4.828A2 2 0 0114 8.172V3" /><path d="M7 17h10" /></svg>),
+  Layers: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12,2 2,7 12,12 22,7" /><polyline points="2,17 12,22 22,17" /><polyline points="2,12 12,17 22,12" /></svg>),
   Shield: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>),
   DollarSign: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" /></svg>),
   Plus: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>),
@@ -906,13 +908,154 @@ function MerchantFacilitiesListPage({ onSelectMerchant }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// DEBUGGING TOOLS PAGE
+// ═══════════════════════════════════════════════════════════
+function DebuggingToolsPage({ onResetData, payouts }) {
+  const { addToast } = useToast();
+  const changedPayouts = payouts.filter((p) => {
+    const original = mockPayouts.find((o) => o.id === p.id);
+    return original && original.status !== p.status;
+  });
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleReset = () => {
+    onResetData();
+    setShowConfirm(false);
+    addToast({ type: "success", title: "Data reset", message: "All payout statuses restored to defaults." });
+  };
+
+  return (
+    <div className="p-6 max-w-3xl">
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">Debugging Tools</h2>
+        <p className="text-sm text-gray-500">Tools for testing and prototyping. Reset mock data to re-test payout flows.</p>
+      </div>
+      <Card>
+        <CardBody>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-amber-600"><Icons.Refresh /></span></div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">Reset Payout Data</h3>
+              <p className="text-sm text-gray-500 mb-3">Restores all payout statuses to their original mock values. Use this after testing Approve, Pause, or Abandon flows to start fresh.</p>
+              {changedPayouts.length > 0 ? (
+                <div className="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                  <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
+                  <div className="space-y-1">{changedPayouts.map((p) => {
+                    const original = mockPayouts.find((o) => o.id === p.id);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} /></div>);
+                  })}</div>
+                </div>
+              ) : (
+                <div className="mb-3 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
+                  <p className="text-xs text-emerald-700">All payouts are at their default values. No reset needed.</p>
+                </div>
+              )}
+              {!showConfirm ? (
+                <button onClick={() => setShowConfirm(true)} disabled={changedPayouts.length === 0} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${changedPayouts.length > 0 ? "bg-amber-500 text-white hover:bg-amber-600" : "bg-gray-100 text-gray-400 cursor-not-allowed"}`}>Reset to defaults</button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <button onClick={handleReset} className="px-4 py-2 text-sm font-medium rounded-lg bg-amber-500 text-white hover:bg-amber-600">Confirm reset</button>
+                  <button onClick={() => setShowConfirm(false)} className="px-4 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200">Cancel</button>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+      <div className="mt-4">
+        <Card>
+          <CardBody>
+            <div className="flex items-start gap-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-blue-600"><Icons.Info /></span></div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-800 mb-1">Current Data Summary</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">{
+                  ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Paused", "Abandoned"].map((status) => {
+                    const count = payouts.filter((p) => p.status === status).length;
+                    return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
+                  }).filter(Boolean)
+                }</div>
+                <p className="text-xs text-gray-400 mt-3">{payouts.length} total payouts in mock data</p>
+              </div>
+            </div>
+          </CardBody>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// UX ARTEFACTS PAGE
+// ═══════════════════════════════════════════════════════════
+const uxArtefacts = [
+  { id: "ux-flows", title: "UX Flow Diagrams", description: "Interactive payout lifecycle, end-to-end journey, FinOps action flows, and permissions matrix", file: "ux-flows.html", type: "Standalone HTML", icon: "flow" },
+  { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", file: "src/flows/PayoutLifecycle.jsx", type: "React Component", icon: "state" },
+  { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", file: "src/flows/E2EPayoutJourney.jsx", type: "React Component", icon: "journey" },
+  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", file: "src/flows/FinOpsActionFlows.jsx", type: "React Component", icon: "actions" },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps T1, FinOps T2, and Administrator across 20+ actions", file: "src/flows/PermissionsMatrix.jsx", type: "React Component", icon: "roles" },
+];
+
+function UXArtefactsPage() {
+  const iconMap = {
+    flow: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="6" height="6" rx="1" /><rect x="15" y="3" width="6" height="6" rx="1" /><rect x="9" y="15" width="6" height="6" rx="1" /><path d="M9 6h6M6 9v3a3 3 0 003 3M18 9v3a3 3 0 01-3 3" /></svg>),
+    state: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="3" /><path d="M12 3v3M12 18v3M3 12h3M18 12h3" /></svg>),
+    journey: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>),
+    actions: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>),
+    roles: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="21" /></svg>),
+  };
+
+  return (
+    <div className="p-6 max-w-4xl">
+      <div className="mb-6">
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">UX Artefacts</h2>
+        <p className="text-sm text-gray-500">Design documentation and interactive flow diagrams built for the MSP Support Dashboard.</p>
+      </div>
+      <div className="space-y-3">
+        {uxArtefacts.map((artefact) => {
+          const IconComponent = iconMap[artefact.icon];
+          const isStandalone = artefact.type === "Standalone HTML";
+          return (
+            <Card key={artefact.id}>
+              <CardBody>
+                <div className="flex items-start gap-4">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${isStandalone ? "bg-indigo-50" : "bg-gray-50"}`}><span className={isStandalone ? "text-indigo-600" : "text-gray-500"}><IconComponent /></span></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="text-sm font-semibold text-gray-800">{artefact.title}</h3>
+                      <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${isStandalone ? "bg-indigo-100 text-indigo-700" : "bg-gray-100 text-gray-500"}`}>{artefact.type}</span>
+                      {isStandalone && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700">Recommended</span>}
+                    </div>
+                    <p className="text-sm text-gray-500 mb-2">{artefact.description}</p>
+                    <div className="flex items-center gap-3">
+                      {isStandalone && (
+                        <button onClick={() => window.open("ux-flows.html", "_blank")} className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition-colors">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15,3 21,3 21,9" /><line x1="10" y1="14" x2="21" y2="3" /></svg>
+                          Open in new tab
+                        </button>
+                      )}
+                      <span className="text-xs text-gray-400 font-mono">{artefact.file}</span>
+                    </div>
+                  </div>
+                </div>
+              </CardBody>
+            </Card>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // SIDEBAR + HEADER + MAIN APP
 // ═══════════════════════════════════════════════════════════
-function Sidebar({ activeItem, onNavigate, collapsed }) {
+function Sidebar({ activeItem, onNavigate, collapsed, onResetData }) {
   const navGroups = [
     { label: "MONITORING", items: [{ id: "organisations", label: "Organisations", icon: Icons.Buildings }, { id: "merchant-facilities", label: "Merchant facilities", icon: Icons.Shop }, { id: "terminals", label: "Terminals", icon: Icons.Terminal }, { id: "merchant-applications", label: "Merchant applications", icon: Icons.DocumentText }, { id: "users", label: "Users", icon: Icons.Profile }] },
     { label: "SETTLEMENTS", items: [{ id: "payouts", label: "Payouts", icon: Icons.Wallet }] },
     { label: "UTILITIES", items: [{ id: "support", label: "Support", icon: Icons.Lifebuoy }, { id: "developer", label: "Developer", icon: Icons.Code }, { id: "api-keys", label: "API keys", icon: Icons.Key }, { id: "alerts", label: "Alerts", icon: Icons.Danger, badge: 3 }] },
+    { label: "PRODUCT DEVELOPMENT", items: [{ id: "debugging-tools", label: "Debugging Tools", icon: Icons.Beaker }, { id: "ux-artefacts", label: "UX Artefacts", icon: Icons.Layers }] },
   ];
   return (<aside className={`flex flex-col h-full bg-[#FAFAFD] border-r border-gray-200 transition-all flex-shrink-0 ${collapsed ? "w-0 overflow-hidden" : "w-[225px]"}`}>
     <div className="py-4 px-4 min-h-[70px] flex items-center"><a href="#" className="flex items-center gap-2" onClick={(e) => { e.preventDefault(); onNavigate("merchant-facilities"); }}><Icons.Logo /><span className="font-bold text-lg text-gray-800">mx51</span></a></div>
@@ -959,21 +1102,27 @@ export default function MSPSupportDashboard() {
     setPayouts((prev) => prev.map((p) => p.id === payoutId ? { ...p, status: newStatus } : p));
   }, []);
 
-  const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" } };
+  const handleResetData = useCallback(() => {
+    setPayouts([...mockPayouts]);
+  }, []);
+
+  const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
   const currentHeading = headings[activePage] || headings["merchant-facilities"];
   const handleNav = (id) => { setActivePage(id); setMerchantDetailView(false); };
 
   return (
     <ToastProvider>
       <div className="flex h-screen w-full bg-[#F9FAFB] font-sans text-gray-900 overflow-hidden">
-        <Sidebar activeItem={activePage} onNavigate={handleNav} collapsed={sidebarCollapsed} />
+        <Sidebar activeItem={activePage} onNavigate={handleNav} collapsed={sidebarCollapsed} onResetData={handleResetData} />
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
             {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
             {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
-            {!["payouts", "merchant-facilities"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
+            {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
+            {activePage === "ux-artefacts" && <UXArtefactsPage />}
+            {!["payouts", "merchant-facilities", "debugging-tools", "ux-artefacts"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
           </main>
         </div>
       </div>
