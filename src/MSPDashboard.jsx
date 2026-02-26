@@ -573,23 +573,236 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 // ═══════════════════════════════════════════════════════════
 // PREPARE PAYOUT DIALOG
 // ═══════════════════════════════════════════════════════════
-function PreparePayoutDialog({ open, onClose }) {
-  const [fromDate, setFromDate] = useState("2026-02-17");
-  const [toDate, setToDate] = useState("2026-02-23");
+// Mock unassigned balance transactions for the prepare payout flow
+const mockUnassignedBTs = [
+  { id: "BT-40001", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 142.50, card: "MC •••4829" },
+  { id: "BT-40002", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 89.95, card: "Visa •••1677" },
+  { id: "BT-40003", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Refund", amount: -45.00, card: "Visa •••8844" },
+  { id: "BT-40004", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 312.80, card: "MC •••5512" },
+  { id: "BT-40005", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 487.50, card: "Visa •••9021" },
+  { id: "BT-40006", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 1245.00, card: "Visa •••3301" },
+  { id: "BT-40007", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 899.50, card: "MC •••7788" },
+  { id: "BT-40008", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Refund", amount: -120.00, card: "Visa •••3301" },
+  { id: "BT-40009", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 567.25, card: "MC •••6633" },
+  { id: "BT-40010", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 67.20, card: "MC •••7788" },
+  { id: "BT-40011", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 234.80, card: "Visa •••2200" },
+  { id: "BT-40012", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 158.40, card: "MC •••4411" },
+  { id: "BT-40013", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 76.30, card: "MC •••2109" },
+  { id: "BT-40014", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 520.00, card: "Visa •••8102" },
+  { id: "BT-40015", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 189.75, card: "MC •••5544" },
+  { id: "BT-40016", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Refund", amount: -35.00, card: "Visa •••8102" },
+  { id: "BT-40017", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 342.90, card: "Visa •••7711" },
+  { id: "BT-40018", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 128.60, card: "MC •••9900" },
+  { id: "BT-40019", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 445.10, card: "Visa •••0044" },
+  { id: "BT-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
+];
+
+function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: btPool }) {
+  const allBTs = btPool || mockUnassignedBTs;
+  const [step, setStep] = useState(1); // 1=date select, 2=sweep animation, 3=confirm
+  const [fromDate, setFromDate] = useState("2026-02-24");
+  const [toDate, setToDate] = useState("2026-02-25");
+  const [sweepPhase, setSweepPhase] = useState("idle"); // idle, scanning, grouping, done
+  const [scannedCount, setScannedCount] = useState(0);
+  const [movedBTs, setMovedBTs] = useState(new Set());
   const [confirmed, setConfirmed] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const { addToast } = useToast();
+
+  // Filter BTs by selected date range
+  const filteredBTs = allBTs.filter((bt) => bt.date >= fromDate && bt.date <= toDate);
+  // Group by merchant
+  const merchantGroups = {};
+  filteredBTs.forEach((bt) => {
+    if (!merchantGroups[bt.mid]) merchantGroups[bt.mid] = { merchant: bt.merchant, mid: bt.mid, bts: [], total: 0 };
+    merchantGroups[bt.mid].bts.push(bt);
+    merchantGroups[bt.mid].total += bt.amount;
+  });
+  const groups = Object.values(merchantGroups);
+
+  // Reset on close/open
+  useEffect(() => {
+    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedBTs(new Set()); setConfirmed(false); setCreating(false); }
+  }, [open]);
+
+  // Sweep animation controller
+  const startSweep = () => {
+    setStep(2);
+    setSweepPhase("scanning");
+    setScannedCount(0);
+    setMovedBTs(new Set());
+
+    // Phase 1: Scanning — count up
+    let count = 0;
+    const scanInterval = setInterval(() => {
+      count++;
+      setScannedCount(count);
+      if (count >= filteredBTs.length) {
+        clearInterval(scanInterval);
+        setSweepPhase("grouping");
+        // Phase 2: Group — move BTs one-by-one to the right
+        let moveIdx = 0;
+        const moveInterval = setInterval(() => {
+          if (moveIdx < filteredBTs.length) {
+            setMovedBTs((prev) => new Set([...prev, filteredBTs[moveIdx].id]));
+            moveIdx++;
+          } else {
+            clearInterval(moveInterval);
+            setTimeout(() => setSweepPhase("done"), 400);
+          }
+        }, 120);
+      }
+    }, 80);
+  };
+
+  const handleCreate = () => {
+    setCreating(true);
+    setTimeout(() => {
+      const today = new Date();
+      const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const newPayouts = groups.map((g, i) => ({
+        id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
+        date: dateStr,
+        merchantName: g.merchant,
+        mid: g.mid,
+        amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
+        transferCount: 1,
+        status: g.total <= 0 ? "Completed" : "Ready for Review",
+      }));
+      onCreatePayouts(newPayouts);
+      addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared for review.` });
+      onClose();
+    }, 1500);
+  };
+
+  if (!open) return null;
+
   return (
-    <Modal open={open} onClose={onClose} title="Prepare payout">
-      <div className="space-y-5">
-        <Alert type="warning" title="This action will sweep merchant balances">All unsettled transactions in the selected date range will be included in new payout records. Merchant balances will be set to zero.</Alert>
-        <div className="grid grid-cols-2 gap-4">
-          <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-          <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-        </div>
-        <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to prepare payouts for all merchants in this date range. This action cannot be undone.</span></label>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!confirmed} leftIcon={<Icons.DollarSign />}>Prepare payout</Button>
-        </div>
+    <Modal open={open} onClose={onClose} title={step === 1 ? "Prepare payout — Select date range" : step === 2 ? "Prepare payout — Sweeping balances" : "Prepare payout — Confirm"}>
+      <div className="space-y-4">
+        {/* ── Step 1: Date range ── */}
+        {step === 1 && (<>
+          <Alert type="warning" title="This action will sweep merchant balances">All unsettled balance transactions in the selected date range will be grouped into new payout records per merchant.</Alert>
+          <div className="grid grid-cols-2 gap-4">
+            <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+          </div>
+          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
+            <p className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{filteredBTs.length}</span> unassigned balance transaction{filteredBTs.length !== 1 ? "s" : ""} found across <span className="font-semibold text-gray-700">{groups.length}</span> merchant{groups.length !== 1 ? "s" : ""}</p>
+          </div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+            <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
+            <Button variant="solid" colorScheme="brand" size="md" disabled={filteredBTs.length === 0} onClick={startSweep} leftIcon={<Icons.ArrowSend />}>Sweep balances</Button>
+          </div>
+        </>)}
+
+        {/* ── Step 2: Sweep animation ── */}
+        {step === 2 && (<>
+          {/* Progress bar */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs text-gray-500">
+              <span>{sweepPhase === "scanning" ? "Scanning transactions..." : sweepPhase === "grouping" ? "Grouping into payouts..." : "Sweep complete"}</span>
+              <span className="font-mono">{movedBTs.size}/{filteredBTs.length}</span>
+            </div>
+            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${(movedBTs.size / filteredBTs.length) * 100}%` }} />
+            </div>
+          </div>
+
+          {/* Two-column layout: Left = unassigned, Right = grouped */}
+          <div className="grid grid-cols-2 gap-4 min-h-[320px]">
+            {/* Left: Unassigned BTs */}
+            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Unassigned BTs</span>
+              </div>
+              <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto">
+                {filteredBTs.map((bt) => {
+                  const isMoved = movedBTs.has(bt.id);
+                  return (
+                    <div key={bt.id} className={`flex items-center justify-between px-2 py-1.5 rounded text-xs transition-all duration-300 ${isMoved ? "opacity-0 translate-x-8 h-0 py-0 overflow-hidden" : "opacity-100 bg-white"}`}>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="font-mono text-gray-400 text-[10px] w-16 flex-shrink-0">{bt.id}</span>
+                        <span className="truncate text-gray-600">{bt.merchant.split(" - ")[0]}</span>
+                      </div>
+                      <span className={`font-mono flex-shrink-0 ${bt.amount < 0 ? "text-red-600" : "text-gray-800"}`}>{bt.amount < 0 ? "-" : ""}${Math.abs(bt.amount).toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+                {movedBTs.size === filteredBTs.length && (
+                  <div className="py-6 text-center text-xs text-gray-400 animate-slide-up">No unassigned transactions remaining</div>
+                )}
+              </div>
+            </div>
+
+            {/* Right: Merchant payout groups */}
+            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Payout Groups</span>
+              </div>
+              <div className="p-2 space-y-2 max-h-[280px] overflow-y-auto">
+                {groups.map((g) => {
+                  const assignedBTs = g.bts.filter((bt) => movedBTs.has(bt.id));
+                  if (assignedBTs.length === 0) return null;
+                  const groupTotal = assignedBTs.reduce((s, bt) => s + bt.amount, 0);
+                  return (
+                    <div key={g.mid} className="border border-emerald-200 rounded-lg bg-emerald-50 p-2 animate-slide-up">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-gray-800 truncate">{g.merchant}</span>
+                        <span className="text-xs font-mono font-bold text-emerald-700">${groupTotal.toFixed(2)}</span>
+                      </div>
+                      <div className="space-y-0.5">
+                        {assignedBTs.map((bt) => (
+                          <div key={bt.id} className="flex items-center justify-between text-[10px] text-gray-500 animate-slide-up">
+                            <span className="flex items-center gap-1"><span className="font-mono">{bt.id}</span><span className="text-gray-400">{bt.type}</span></span>
+                            <span className={`font-mono ${bt.amount < 0 ? "text-red-500" : ""}`}>{bt.amount < 0 ? "-" : ""}${Math.abs(bt.amount).toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="mt-1 pt-1 border-t border-emerald-200 flex items-center justify-between text-[10px]">
+                        <span className="text-gray-400">{assignedBTs.length} transaction{assignedBTs.length > 1 ? "s" : ""}</span>
+                        <span className={`font-medium ${groupTotal <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{groupTotal <= 0 ? "Zero/negative — auto-complete" : "Ready for Review"}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+            <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
+            <Button variant="solid" colorScheme="brand" size="md" disabled={sweepPhase !== "done"} onClick={() => setStep(3)} leftIcon={<Icons.ChevronRight />}>Continue</Button>
+          </div>
+        </>)}
+
+        {/* ── Step 3: Confirmation ── */}
+        {step === 3 && (<>
+          <Alert type="info" title={`${groups.length} payout${groups.length > 1 ? "s" : ""} will be created`}>Review the summary below before confirming. This action cannot be undone.</Alert>
+          <div className="space-y-2">
+            {groups.map((g) => (
+              <div key={g.mid} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-gray-800 truncate">{g.merchant}</div>
+                  <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.bts.length} txn{g.bts.length > 1 ? "s" : ""}</div>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
+                  <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Auto-complete (zero balance)" : "→ Ready for Review"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to create these payouts. Merchant balances will be swept to zero.</span></label>
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => { setStep(2); setConfirmed(false); }}>Back</Button>
+            <Button variant="solid" colorScheme="brand" size="md" disabled={!confirmed || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
+              {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating payouts...</span>) : "Create payouts"}
+            </Button>
+          </div>
+        </>)}
       </div>
     </Modal>
   );
@@ -698,7 +911,7 @@ function MerchantAdjustmentsTab({ role }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedBTs }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("week");
   const [killSwitch, setKillSwitch] = useState(false);
@@ -731,7 +944,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange 
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} />
+      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedBTs={unassignedBTs || mockUnassignedBTs} />
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
@@ -1077,6 +1290,748 @@ function UXArtefactsPage() {
 }
 
 // ═══════════════════════════════════════════════════════════
+// DTE GENERATOR PAGE
+// ═══════════════════════════════════════════════════════════
+// MSF (Merchant Service Fee) rates by card scheme — used for DTE enrichment
+const MSF_RATES = {
+  "Visa": { rate: 0.01, label: "Visa Debit @ 1.00%" },
+  "Mastercard": { rate: 0.02, label: "Mastercard Debit @ 2.00%" },
+  "Visa Credit": { rate: 0.015, label: "Visa Credit @ 1.50%" },
+  "MC Credit": { rate: 0.022, label: "MC Credit @ 2.20%" },
+  "Visa International": { rate: 0.025, label: "Visa Intl @ 2.50%" },
+  "eftpos": { rate: 0.008, label: "eftpos @ 0.80%" },
+  "Unknown": { rate: 0.012, label: "Default @ 1.20%" },
+};
+
+const DTE_PRESETS = {
+  purchase: { label: "Purchase (In-store)", messageType: "0200", processingCode: "000000", posEntryMode: "071", posCondition: "00", deviceType: "POS", responseCode: "00" },
+  purchaseCashout: { label: "Purchase + Cashout", messageType: "0200", processingCode: "090000", posEntryMode: "071", posCondition: "00", deviceType: "POS", responseCode: "00" },
+  refund: { label: "Refund", messageType: "0200", processingCode: "200000", posEntryMode: "071", posCondition: "00", deviceType: "POS", responseCode: "00" },
+  onlinePurchase: { label: "Purchase (Online/ECM)", messageType: "0200", processingCode: "000000", posEntryMode: "820", posCondition: "01", deviceType: "ECM", responseCode: "00" },
+  declined: { label: "Declined Purchase", messageType: "0200", processingCode: "000000", posEntryMode: "071", posCondition: "00", deviceType: "POS", responseCode: "05" },
+  reversal: { label: "Reversal", messageType: "0400", processingCode: "000000", posEntryMode: "071", posCondition: "00", deviceType: "POS", responseCode: "00" },
+  preauth: { label: "Pre-Auth", messageType: "0200", processingCode: "300000", posEntryMode: "071", posCondition: "06", deviceType: "POS", responseCode: "00" },
+  mobilePurchase: { label: "Mobile (Tap to Pay)", messageType: "0200", processingCode: "000000", posEntryMode: "071", posCondition: "00", deviceType: "MOB", responseCode: "00" },
+};
+
+const DTE_SCHEMES = [
+  { label: "Visa", prefix: "4111222233334", cardType: "D", domestic: "D" },
+  { label: "Mastercard", prefix: "5432100000001", cardType: "D", domestic: "D" },
+  { label: "Visa Credit", prefix: "4000111122223", cardType: "C", domestic: "D" },
+  { label: "MC Credit", prefix: "5200222233334", cardType: "C", domestic: "D" },
+  { label: "Visa International", prefix: "4444333322221", cardType: "C", domestic: "I" },
+  { label: "eftpos", prefix: "6277001122334", cardType: "D", domestic: "D" },
+];
+
+const DTE_MERCHANTS = [
+  { name: "JOE'S COFFEE SYDNEY AU", mid: "POSPAY000012345", tid: "50112233", mcc: "5411" },
+  { name: "MIKE'S ELECTRONICS AU", mid: "POSPAY000012346", tid: "50112234", mcc: "5732" },
+  { name: "FRESH MART BRISBANE AU", mid: "POSPAY000012347", tid: "50112235", mcc: "5411" },
+  { name: "BELLA'S BOUTIQUE MELB AU", mid: "POSPAY000012348", tid: "50112236", mcc: "5651" },
+  { name: "COASTAL SURF GOLDCOAST AU", mid: "POSPAY000012349", tid: "50112237", mcc: "5941" },
+];
+
+// DTE file parser — reads fixed-width 700-byte records back into transaction objects
+function parseDTEFile(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.length >= 700 || l.startsWith("00000000") || l.startsWith("88888888") || l.startsWith("99999999"));
+  const result = { header: null, transactions: [], trailer: null, clientName: "", businessDate: "" };
+
+  for (const line of lines) {
+    const padded = line.padEnd(700, " ");
+    const recNum = padded.substring(0, 8).trim();
+
+    // Header
+    if (recNum === "00000000" && padded.substring(8, 16).trim() === "DAILYTXN") {
+      result.clientName = padded.substring(16, 24).trim();
+      result.businessDate = padded.substring(25, 33).trim();
+      result.header = true;
+      continue;
+    }
+    // Trailer
+    if (recNum === "88888888") { result.trailer = true; continue; }
+    // Filler
+    if (recNum === "99999999") continue;
+    // Must be a detail record
+    if (padded.length < 700) continue;
+
+    const seq = parseInt(recNum) || result.transactions.length + 1;
+    const msgType = padded.substring(8, 12).trim();
+    const origMsgType = padded.substring(12, 16).trim();
+    const panLen = parseInt(padded.substring(16, 18)) || 0;
+    const pan = padded.substring(18, 37).trim();
+    const procCode = padded.substring(37, 43).trim();
+    const amtAud = parseInt(padded.substring(43, 55)) || 0;
+    const amtOrig = parseInt(padded.substring(55, 67)) || 0;
+    const amtCard = parseInt(padded.substring(67, 79)) || 0;
+    const transDT = padded.substring(79, 89).trim();
+    const sysTrace = padded.substring(89, 95).trim();
+    const localTime = padded.substring(95, 101).trim();
+    const localDate = padded.substring(101, 105).trim();
+    const expiry = padded.substring(105, 109).trim();
+    const settlDate = padded.substring(109, 113).trim();
+    const mcc = padded.substring(113, 117).trim();
+    const posEntry = padded.substring(120, 123).trim();
+    const posCondition = padded.substring(126, 128).trim();
+    const acquirerId = padded.substring(128, 139).trim();
+    const rrn = padded.substring(139, 151).trim();
+    const authId = padded.substring(151, 157).trim();
+    const respCode = padded.substring(157, 159).trim();
+    const termId = padded.substring(159, 167).trim();
+    const cardAccId = padded.substring(167, 182).trim();
+    const cardAccName = padded.substring(182, 222).trim();
+    const cashComp = parseInt(padded.substring(228, 240)) || 0;
+    const deviceType = padded.substring(366, 369).trim();
+    const acquirerName = padded.substring(369, 401).trim();
+    const issuerName = padded.substring(401, 433).trim();
+    const settlInst = padded.substring(433, 441).trim();
+    const surchFee = parseInt(padded.substring(442, 450)) || 0;
+    const walletProv = padded.substring(553, 573).trim();
+    const cardType = padded.substring(573, 574).trim();
+    const domesticInd = padded.substring(574, 575).trim();
+    const eftposR = padded.substring(575, 576).trim();
+
+    // Determine preset label from msgType + procCode
+    let presetLabel = "Purchase (In-store)";
+    if (msgType === "0400" || msgType === "0420") presetLabel = "Reversal";
+    else if (procCode.startsWith("20")) presetLabel = "Refund";
+    else if (procCode.startsWith("09")) presetLabel = "Purchase + Cashout";
+    else if (procCode.startsWith("30")) presetLabel = "Pre-Auth";
+    else if (msgType === "0100") presetLabel = "Pre-Auth";
+    else if (respCode !== "00") presetLabel = "Declined Purchase";
+    else if (deviceType === "ECM") presetLabel = "Purchase (Online/ECM)";
+    else if (deviceType === "MOB") presetLabel = "Mobile (Tap to Pay)";
+
+    // Determine scheme from PAN prefix
+    let schemeName = "Unknown";
+    if (pan.startsWith("4")) schemeName = cardType === "C" ? (domesticInd === "I" ? "Visa International" : "Visa Credit") : "Visa";
+    else if (pan.startsWith("5")) schemeName = cardType === "C" ? "MC Credit" : "Mastercard";
+    else if (pan.startsWith("6")) schemeName = "eftpos";
+
+    result.transactions.push({
+      id: seq,
+      preset: presetLabel,
+      schemeName,
+      merchantName: cardAccName.split(" ").slice(0, 2).join(" "),
+      amountDisplay: `$${(amtAud / 100).toFixed(2)}`,
+      messageType: msgType,
+      processingCode: procCode,
+      pan,
+      amountCents: amtAud,
+      cashCents: cashComp,
+      surchCents: surchFee,
+      transmissionDT: transDT,
+      systemTrace: sysTrace,
+      localTime,
+      localDate,
+      settlementDate: settlDate,
+      expiryDate: expiry,
+      mcc,
+      posEntryMode: posEntry,
+      posCondition,
+      acquirerId,
+      rrn,
+      authId,
+      responseCode: respCode,
+      terminalId: termId,
+      cardAcceptorId: cardAccId,
+      cardAcceptorName: cardAccName,
+      deviceType: deviceType || "POS",
+      settlementInst: settlInst,
+      walletProvider: walletProv,
+      cardType,
+      domestic: domesticInd,
+      eftposRouted: eftposR,
+    });
+  }
+  return result;
+}
+
+// CSV parser for DTE template format
+function parseDTECsv(text) {
+  const lines = text.split(/\r?\n/).filter((l) => l.trim());
+  if (lines.length < 2) return { transactions: [], clientName: "", businessDate: "" };
+  const headers = lines[0].split(",").map((h) => h.trim());
+  const result = { transactions: [], clientName: "MX51", businessDate: "" };
+
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(",");
+    const row = {};
+    headers.forEach((h, j) => { row[h] = (vals[j] || "").trim(); });
+    const amtCents = parseInt(row.amount_aud_cents || row.amountCents || "0") || 0;
+    const cashCents = parseInt(row.cash_component_cents || row.cashCents || "0") || 0;
+    const surchCents = parseInt(row.surcharge_fee_cents || row.surchCents || "0") || 0;
+    const msgType = row.message_type || row.messageType || "0200";
+    const procCode = row.processing_code || row.processingCode || "000000";
+    const pan = row.pan || "";
+    const respCode = row.response_code || row.responseCode || "00";
+    const devType = row.device_type || row.deviceType || "POS";
+
+    let presetLabel = "Purchase (In-store)";
+    if (msgType === "0400" || msgType === "0420") presetLabel = "Reversal";
+    else if (procCode.startsWith("20")) presetLabel = "Refund";
+    else if (procCode.startsWith("09")) presetLabel = "Purchase + Cashout";
+    else if (procCode.startsWith("30")) presetLabel = "Pre-Auth";
+    else if (respCode !== "00") presetLabel = "Declined Purchase";
+    else if (devType === "ECM") presetLabel = "Purchase (Online/ECM)";
+    else if (devType === "MOB") presetLabel = "Mobile (Tap to Pay)";
+
+    let schemeName = "Unknown";
+    const cardType = row.card_type || row.cardType || "";
+    const domesticInd = row.domestic_indicator || row.domestic || "";
+    if (pan.startsWith("4")) schemeName = cardType === "C" ? (domesticInd === "I" ? "Visa International" : "Visa Credit") : "Visa";
+    else if (pan.startsWith("5")) schemeName = cardType === "C" ? "MC Credit" : "Mastercard";
+    else if (pan.startsWith("6")) schemeName = "eftpos";
+
+    const cardAccName = row.card_acceptor_name || row.cardAcceptorName || "";
+    result.transactions.push({
+      id: i,
+      preset: presetLabel,
+      schemeName,
+      merchantName: cardAccName.split(" ").slice(0, 2).join(" ") || "Imported",
+      amountDisplay: `$${(amtCents / 100).toFixed(2)}`,
+      messageType: msgType,
+      processingCode: procCode,
+      pan,
+      amountCents: amtCents,
+      cashCents,
+      surchCents,
+      transmissionDT: row.transmission_datetime || row.transmissionDT || "",
+      systemTrace: row.system_trace || row.systemTrace || String(100000 + i),
+      localTime: row.local_time || row.localTime || "",
+      localDate: row.local_date || row.localDate || "",
+      settlementDate: row.settlement_date || row.settlementDate || "",
+      expiryDate: row.expiry_date || row.expiryDate || "2712",
+      mcc: row.merchant_category_code || row.mcc || "5411",
+      posEntryMode: row.pos_entry_mode || row.posEntryMode || "071",
+      posCondition: row.pos_condition_code || row.posCondition || "00",
+      acquirerId: row.acquirer_id || row.acquirerId || "",
+      rrn: row.retrieval_ref_number || row.rrn || "",
+      authId: row.auth_id_response || row.authId || "",
+      responseCode: respCode,
+      terminalId: row.terminal_id || row.terminalId || "",
+      cardAcceptorId: row.card_acceptor_id || row.cardAcceptorId || "",
+      cardAcceptorName: cardAccName,
+      deviceType: devType,
+      settlementInst: row.settlement_institution || row.settlementInst || "CBA",
+      walletProvider: row.wallet_provider || row.walletProvider || "",
+      cardType,
+      domestic: domesticInd,
+      eftposRouted: row.eftpos_routed || row.eftposRouted || "0",
+    });
+  }
+  return result;
+}
+
+function DTEGeneratorPage({ onIngestBTs, onNavigate }) {
+  const { addToast } = useToast();
+  const [transactions, setTransactions] = useState([]);
+  const [clientName, setClientName] = useState("MX51");
+  const [businessDate, setBusinessDate] = useState("2026-02-25");
+  const [generatedFile, setGeneratedFile] = useState(null);
+  const [importInfo, setImportInfo] = useState(null);
+  const [enrichmentResult, setEnrichmentResult] = useState(null);
+  const [enriching, setEnriching] = useState(false);
+
+  // Quick-add form
+  const [preset, setPreset] = useState("purchase");
+  const [scheme, setScheme] = useState(0);
+  const [merchant, setMerchant] = useState(0);
+  const [amountDollars, setAmountDollars] = useState("50.00");
+  const [cashoutDollars, setCashoutDollars] = useState("0.00");
+  const [surcharge, setSurcharge] = useState("0.00");
+  const [walletProvider, setWalletProvider] = useState("");
+  const [eftposRouted, setEftposRouted] = useState("0");
+
+  const addTransaction = () => {
+    const p = DTE_PRESETS[preset];
+    const s = DTE_SCHEMES[scheme];
+    const m = DTE_MERCHANTS[merchant];
+    const amtCents = Math.round(parseFloat(amountDollars || "0") * 100);
+    const cashCents = Math.round(parseFloat(cashoutDollars || "0") * 100);
+    const surchCents = Math.round(parseFloat(surcharge || "0") * 100);
+    const seq = transactions.length + 1;
+    const bd = businessDate.replace(/-/g, "").slice(4); // MMDD
+    const pan = s.prefix + String(seq).padStart(6, "0");
+    const rrn = "4" + String(Date.now()).slice(-11);
+    const authId = String(80000 + seq).padStart(6, "0");
+    const trace = String(100000 + seq);
+    const time = `${String(8 + (seq % 10)).padStart(2, "0")}${String(15 + seq * 7).padStart(2, "0").slice(0, 2)}${String(seq * 13 % 60).padStart(2, "0")}`;
+
+    setTransactions((prev) => [...prev, {
+      id: seq,
+      preset: p.label,
+      schemeName: s.label,
+      merchantName: m.name.split(" ").slice(0, 2).join(" "),
+      amountDisplay: `$${(amtCents / 100).toFixed(2)}`,
+      // DTE fields
+      messageType: p.messageType,
+      processingCode: p.processingCode,
+      pan: pan.slice(0, 19),
+      amountCents: amtCents,
+      cashCents,
+      surchCents,
+      transmissionDT: `${bd}${time}`,
+      systemTrace: trace,
+      localTime: time,
+      localDate: bd,
+      settlementDate: bd,
+      expiryDate: "2712",
+      mcc: m.mcc,
+      posEntryMode: p.posEntryMode,
+      posCondition: p.posCondition,
+      acquirerId: m.mid.slice(0, 11),
+      rrn,
+      authId,
+      responseCode: p.responseCode,
+      terminalId: m.tid,
+      cardAcceptorId: m.mid,
+      cardAcceptorName: m.name,
+      deviceType: p.deviceType,
+      settlementInst: "CBA",
+      walletProvider,
+      cardType: s.cardType,
+      domestic: s.domestic,
+      eftposRouted,
+    }]);
+    setAmountDollars(String((Math.random() * 400 + 10).toFixed(2)));
+    addToast({ type: "success", title: "Transaction added", message: `${p.label} — ${s.label} — $${(amtCents / 100).toFixed(2)}` });
+  };
+
+  const removeTransaction = (id) => setTransactions((prev) => prev.filter((t) => t.id !== id));
+
+  // File import handler
+  const handleFileImport = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target.result;
+      let parsed;
+      let formatDetected;
+
+      // Auto-detect format: DTE fixed-width vs CSV
+      const firstLine = text.split(/\r?\n/)[0] || "";
+      if (firstLine.startsWith("00000000DAILYTXN") || (firstLine.length >= 600 && !firstLine.includes(","))) {
+        // DTE fixed-width file
+        parsed = parseDTEFile(text);
+        formatDetected = "DTE (fixed-width)";
+      } else if (firstLine.includes(",")) {
+        // CSV file
+        parsed = parseDTECsv(text);
+        formatDetected = "CSV";
+      } else {
+        addToast({ type: "warning", title: "Unrecognised format", message: "File doesn't appear to be a DTE or CSV file. Supported formats: .dte, .txt (DTE fixed-width), .csv (DTE template)" });
+        e.target.value = "";
+        return;
+      }
+
+      if (parsed.transactions.length === 0) {
+        addToast({ type: "warning", title: "No transactions found", message: "The file was parsed but contained no detail records." });
+        e.target.value = "";
+        return;
+      }
+
+      // Re-number transaction IDs relative to existing list
+      const startId = transactions.length > 0 ? Math.max(...transactions.map((t) => t.id)) + 1 : 1;
+      const imported = parsed.transactions.map((t, i) => ({ ...t, id: startId + i }));
+
+      setTransactions((prev) => [...prev, ...imported]);
+      if (parsed.clientName) setClientName(parsed.clientName);
+      if (parsed.businessDate) {
+        const bd = parsed.businessDate;
+        if (bd.length === 8) setBusinessDate(`${bd.slice(0, 4)}-${bd.slice(4, 6)}-${bd.slice(6, 8)}`);
+      }
+      setImportInfo({ filename: file.name, format: formatDetected, count: imported.length });
+      addToast({ type: "success", title: `Imported ${imported.length} transactions`, message: `${file.name} (${formatDetected})` });
+      e.target.value = "";
+    };
+    reader.readAsText(file);
+  };
+
+  // Ingest & Enrich — apply MSF fees and push to payout ledger as BTs
+  const handleIngest = () => {
+    if (transactions.length === 0) return;
+    setEnriching(true);
+    setEnrichmentResult(null);
+
+    setTimeout(() => {
+      const bd = businessDate.replace(/-/g, "");
+      const dateFormatted = `${bd.slice(0, 4)}-${bd.slice(4, 6)}-${bd.slice(6, 8)}`;
+      const enriched = [];
+
+      transactions.forEach((t, i) => {
+        const grossCents = t.amountCents;
+        const scheme = t.schemeName || "Unknown";
+        const msfInfo = MSF_RATES[scheme] || MSF_RATES["Unknown"];
+        const isRefund = t.processingCode.startsWith("20") || t.messageType === "0400";
+        const msfCents = Math.round(grossCents * msfInfo.rate);
+        const netCents = isRefund ? -(grossCents - msfCents) : (grossCents - msfCents);
+
+        // Determine merchant name — use cardAcceptorName or find matching DTE_MERCHANT
+        const merchantMatch = DTE_MERCHANTS.find((m) => m.mid === t.cardAcceptorId);
+        const merchantLabel = merchantMatch
+          ? merchantMatch.name.split(" ").slice(0, 2).join(" ").replace(/'/g, "'")
+          : (t.cardAcceptorName || "Unknown Merchant").split(" ").slice(0, 3).join(" ");
+
+        const pan = t.pan || "";
+        const maskedCard = `${scheme.split(" ")[0]} •••${pan.slice(-4)}`;
+
+        enriched.push({
+          id: `BT-DTE-${Date.now()}-${i + 1}`,
+          date: dateFormatted,
+          merchant: merchantLabel,
+          mid: t.cardAcceptorId || t.acquirerId || `MID-${i}`,
+          type: isRefund ? "Refund" : "Purchase",
+          amount: netCents / 100,
+          card: maskedCard,
+          // Enrichment metadata
+          grossCents,
+          msfCents,
+          netCents,
+          msfLabel: msfInfo.label,
+          scheme,
+          source: "DTE Generator",
+        });
+      });
+
+      setEnrichmentResult({ enriched, totalGross: enriched.reduce((s, e) => s + e.grossCents, 0), totalMsf: enriched.reduce((s, e) => s + e.msfCents, 0), totalNet: enriched.reduce((s, e) => s + e.netCents, 0), merchantCount: new Set(enriched.map((e) => e.mid)).size });
+      setEnriching(false);
+    }, 1200);
+  };
+
+  const pushToLedger = () => {
+    if (!enrichmentResult || !onIngestBTs) return;
+    onIngestBTs(enrichmentResult.enriched);
+    addToast({ type: "success", title: `${enrichmentResult.enriched.length} BTs sent to payout ledger`, message: `Net amount: $${(enrichmentResult.totalNet / 100).toFixed(2)} across ${enrichmentResult.merchantCount} merchant(s)` });
+    setEnrichmentResult(null);
+    if (onNavigate) {
+      setTimeout(() => onNavigate("payouts"), 600);
+    }
+  };
+
+  const generateDTE = () => {
+    if (transactions.length === 0) return;
+    const RLEN = 700;
+    const padN = (v, l) => String(parseInt(v || 0)).padStart(l, "0").slice(0, l);
+    const padA = (v, l) => String(v || "").padEnd(l, " ").slice(0, l);
+    const lines = [];
+
+    // Header
+    const bd = businessDate.replace(/-/g, "");
+    lines.push(padN(0, 8) + padA("DAILYTXN", 8) + padA(clientName, 8) + padA("A", 1) + padA(bd, 8) + padA(bd, 8) + padA("", 659));
+
+    // Details
+    let totalAud = 0;
+    transactions.forEach((t, i) => {
+      let r = "";
+      r += padN(i + 1, 8);                          // F1
+      r += padA(t.messageType, 4);                   // F2
+      r += padA(t.messageType === "0400" ? "0200" : "", 4); // F3
+      r += padN(t.pan.length, 2);                    // F4
+      r += padA(t.pan, 19);                          // F5
+      r += padA(t.processingCode, 6);                // F6
+      r += padN(t.amountCents, 12);                  // F7
+      totalAud += t.amountCents;
+      r += padN(t.amountCents, 12);                  // F8
+      r += padN(t.amountCents, 12);                  // F9
+      r += padA(t.transmissionDT, 10);               // F10
+      r += padN(t.systemTrace, 6);                   // F11
+      r += padA(t.localTime, 6);                     // F12
+      r += padA(t.localDate, 4);                     // F13
+      r += padA(t.expiryDate, 4);                    // F14
+      r += padA(t.settlementDate, 4);                // F15
+      r += padN(t.mcc, 4);                           // F16
+      r += padN(36, 3);                              // F17
+      r += padN(t.posEntryMode, 3);                  // F18
+      r += padN(0, 3);                               // F19
+      r += padN(t.posCondition, 2);                  // F20
+      r += padA(t.acquirerId, 11);                   // F21
+      r += padA(t.rrn, 12);                          // F22
+      r += padA(t.authId, 6);                        // F23
+      r += padA(t.responseCode, 2);                  // F24
+      r += padA(t.terminalId, 8);                    // F25
+      r += padA(t.cardAcceptorId, 15);               // F26
+      r += padA(t.cardAcceptorName, 40);             // F27
+      r += padN(36, 3);                              // F28
+      r += padN(36, 3);                              // F29
+      r += padN(t.cashCents, 12);                    // F30
+      r += padA("", 42);                             // F31
+      r += padA("", 28);                             // F32
+      r += padA("", 28);                             // F33
+      r += padA("", 11);                             // F34
+      r += padA("1", 1);                             // F35
+      r += padA(t.cardAcceptorId, 16);               // F36
+      r += padA(t.deviceType, 3);                    // F37
+      r += padA("mx51", 32);                         // F38
+      r += padA("", 32);                             // F39
+      r += padA(t.settlementInst, 8);                // F40
+      r += padA("S", 1);                             // F41
+      r += padN(t.surchCents, 8);                    // F42
+      r += padA("", 40);                             // F43
+      r += padA("NAD", 3);                           // F44
+      r += padN(0, 12);                              // F45
+      r += padN(0, 12);                              // F46
+      r += padN(0, 1);                               // F47
+      r += padN(0, 15);                              // F48
+      r += padN(0, 3);                               // F49
+      r += padN(0, 6);                               // F50
+      r += padN(0, 4);                               // F51
+      r += padN(0, 6);                               // F52
+      r += padA(" ", 1);                             // F53
+      r += padA(t.walletProvider, 20);               // F54
+      r += padA(t.cardType, 1);                      // F55
+      r += padA(t.domestic, 1);                      // F56
+      r += padA(t.eftposRouted, 1);                  // F57
+      r += padA("", 29);                             // F58
+      const remaining = RLEN - r.length;
+      r += padA("", remaining > 0 ? remaining : 0); // F59: Filler
+      if (r.length > RLEN) r = r.slice(0, RLEN);
+      lines.push(r);
+    });
+
+    // Trailer
+    lines.push(padA("88888888", 8) + padN(transactions.length, 8) + padN(totalAud, 12) + padN(0, 12) + padA("", 660));
+
+    // Filler
+    lines.push("99999999" + "9".repeat(692));
+
+    const content = lines.map((l) => l + "\r\n").join("");
+    const blob = new Blob([content], { type: "text/plain;charset=ascii" });
+    const url = URL.createObjectURL(blob);
+    const filename = `DTE_${clientName}_${bd}.dte`;
+    setGeneratedFile({ url, filename, recordCount: transactions.length, totalAud, size: content.length });
+    addToast({ type: "success", title: "DTE file generated", message: `${transactions.length} records, ${(content.length / 1024).toFixed(1)} KB` });
+  };
+
+  return (
+    <div className="p-6 space-y-5 max-w-5xl">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-800 mb-1">DTE File Generator</h2>
+        <p className="text-sm text-gray-500">Generate Cuscal DTE v6.0 files for testing. Build transactions using presets, then export a spec-compliant fixed-width file for S3 upload.</p>
+      </div>
+
+      {/* File settings */}
+      <Card>
+        <CardBody>
+          <div className="flex items-center gap-4 flex-wrap">
+            <div><label className="block text-xs font-semibold text-gray-500 mb-1">Client Name</label><input type="text" value={clientName} onChange={(e) => setClientName(e.target.value)} maxLength={8} className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 w-28 font-mono focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+            <div><label className="block text-xs font-semibold text-gray-500 mb-1">Business Date</label><input type="date" value={businessDate} onChange={(e) => setBusinessDate(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+            <div className="flex-1" />
+            <div className="text-right">
+              <span className="text-xs text-gray-400">Format: DTE v6.0 · 700 bytes/record · ASCII · CR+LF</span>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Import file */}
+      <Card>
+        <CardBody>
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center flex-shrink-0">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="text-indigo-600"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="17,8 12,3 7,8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-800">Import File</h3>
+              <p className="text-xs text-gray-500">Load transactions from an existing DTE file (.txt/.dte) or CSV template. Format is auto-detected.</p>
+            </div>
+            <label className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 bg-white hover:bg-gray-50 cursor-pointer transition-colors">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14,2 14,8 20,8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
+              Browse file
+              <input type="file" accept=".dte,.txt,.csv,.DTE,.TXT,.CSV" onChange={handleFileImport} className="hidden" />
+            </label>
+          </div>
+          {importInfo && (
+            <div className="mt-3 flex items-center gap-2 text-xs">
+              <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded font-medium">{importInfo.format}</span>
+              <span className="text-gray-500">Loaded {importInfo.count} transactions from</span>
+              <span className="font-mono text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded">{importInfo.filename}</span>
+            </div>
+          )}
+        </CardBody>
+      </Card>
+
+      {/* Quick-add form */}
+      <Card>
+        <CardHeader><span className="text-sm font-semibold text-gray-800">Add Transaction</span></CardHeader>
+        <Divider />
+        <CardBody>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Transaction Type</label>
+              <select value={preset} onChange={(e) => setPreset(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-indigo-200">
+                {Object.entries(DTE_PRESETS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Card Scheme</label>
+              <select value={scheme} onChange={(e) => setScheme(Number(e.target.value))} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-indigo-200">
+                {DTE_SCHEMES.map((s, i) => <option key={i} value={i}>{s.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Merchant</label>
+              <select value={merchant} onChange={(e) => setMerchant(Number(e.target.value))} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-indigo-200">
+                {DTE_MERCHANTS.map((m, i) => <option key={i} value={i}>{m.name.split(" ").slice(0, 2).join(" ")}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">Amount (AUD)</label>
+              <input type="text" value={amountDollars} onChange={(e) => setAmountDollars(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 font-mono focus:ring-2 focus:ring-indigo-200" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+            {preset === "purchaseCashout" && (
+              <div><label className="block text-xs font-semibold text-gray-500 mb-1">Cashout Amount</label><input type="text" value={cashoutDollars} onChange={(e) => setCashoutDollars(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 font-mono focus:ring-2 focus:ring-indigo-200" /></div>
+            )}
+            <div><label className="block text-xs font-semibold text-gray-500 mb-1">Surcharge</label><input type="text" value={surcharge} onChange={(e) => setSurcharge(e.target.value)} placeholder="0.00" className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 font-mono focus:ring-2 focus:ring-indigo-200" /></div>
+            <div><label className="block text-xs font-semibold text-gray-500 mb-1">Wallet</label><select value={walletProvider} onChange={(e) => setWalletProvider(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-indigo-200"><option value="">None</option><option value="Apple Pay">Apple Pay</option><option value="Google Pay">Google Pay</option><option value="Samsung Pay">Samsung Pay</option></select></div>
+            <div><label className="block text-xs font-semibold text-gray-500 mb-1">eftpos Routed</label><select value={eftposRouted} onChange={(e) => setEftposRouted(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-2 py-1.5 bg-white focus:ring-2 focus:ring-indigo-200"><option value="0">No</option><option value="1">Yes</option></select></div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="solid" colorScheme="brand" size="sm" onClick={addTransaction} leftIcon={<Icons.Plus />}>Add transaction</Button>
+            <span className="text-xs text-gray-400">Message: {DTE_PRESETS[preset].messageType} · Processing: {DTE_PRESETS[preset].processingCode} · POS Entry: {DTE_PRESETS[preset].posEntryMode} · Response: {DTE_PRESETS[preset].responseCode}</span>
+          </div>
+        </CardBody>
+      </Card>
+
+      {/* Transaction list */}
+      <Card>
+        <CardHeader>
+          <span className="text-sm font-semibold text-gray-800">Transactions ({transactions.length})</span>
+          <div className="flex items-center gap-2">
+            {transactions.length > 0 && <Button variant="outline" colorScheme="neutral" size="sm" onClick={() => { setTransactions([]); setEnrichmentResult(null); }}>Clear all</Button>}
+            <Button variant="solid" colorScheme="brand" size="sm" disabled={transactions.length === 0} onClick={generateDTE} leftIcon={<Icons.ArrowSend />}>Generate DTE</Button>
+            <Button variant="solid" colorScheme="neutral" size="sm" disabled={transactions.length === 0 || enriching} onClick={handleIngest} leftIcon={<Icons.DollarSign />}>{enriching ? "Enriching..." : "Ingest & Enrich"}</Button>
+          </div>
+        </CardHeader>
+        <Divider />
+        {transactions.length === 0 ? (
+          <CardBody className="py-12 text-center"><p className="text-sm text-gray-400">No transactions yet. Use the form above to add transactions to the DTE file.</p></CardBody>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead><tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                <th className="py-2 px-3">#</th><th className="py-2 px-3">Type</th><th className="py-2 px-3">Scheme</th><th className="py-2 px-3">Merchant</th><th className="py-2 px-3">MsgType</th><th className="py-2 px-3">ProcCode</th><th className="py-2 px-3">Amount</th><th className="py-2 px-3">Response</th><th className="py-2 px-3">Device</th><th className="py-2 px-3"></th>
+              </tr></thead>
+              <tbody>{transactions.map((t, i) => (
+                <tr key={t.id} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
+                  <td className="py-2 px-3 font-mono text-gray-400">{i + 1}</td>
+                  <td className="py-2 px-3 font-medium text-gray-700">{t.preset}</td>
+                  <td className="py-2 px-3 text-gray-600">{t.schemeName}</td>
+                  <td className="py-2 px-3 text-gray-600">{t.merchantName}</td>
+                  <td className="py-2 px-3 font-mono text-gray-500">{t.messageType}</td>
+                  <td className="py-2 px-3 font-mono text-gray-500">{t.processingCode}</td>
+                  <td className="py-2 px-3 font-mono font-medium text-gray-800">{t.amountDisplay}</td>
+                  <td className="py-2 px-3"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${t.responseCode === "00" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}>{t.responseCode}</span></td>
+                  <td className="py-2 px-3 font-mono text-gray-500">{t.deviceType}</td>
+                  <td className="py-2 px-3"><button onClick={() => removeTransaction(t.id)} className="text-gray-400 hover:text-red-500 transition-colors"><Icons.Cross /></button></td>
+                </tr>
+              ))}</tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Enrichment result */}
+      {enrichmentResult && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center flex-shrink-0"><span className="text-purple-600"><Icons.DollarSign /></span></div>
+              <div>
+                <span className="text-sm font-semibold text-gray-800">MSF Enrichment Complete</span>
+                <p className="text-xs text-gray-500">{enrichmentResult.enriched.length} transactions enriched across {enrichmentResult.merchantCount} merchant(s)</p>
+              </div>
+            </div>
+            <Button variant="solid" colorScheme="brand" size="sm" onClick={pushToLedger} leftIcon={<Icons.ArrowSend />}>Send to Payout Ledger</Button>
+          </CardHeader>
+          <Divider />
+          <CardBody>
+            {/* Summary metrics */}
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="bg-gray-50 rounded-lg p-3 text-center">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Gross Amount</p>
+                <p className="text-lg font-bold text-gray-800">${(enrichmentResult.totalGross / 100).toFixed(2)}</p>
+              </div>
+              <div className="bg-red-50 rounded-lg p-3 text-center">
+                <p className="text-[10px] font-semibold text-red-500 uppercase tracking-wider mb-1">Total MSF</p>
+                <p className="text-lg font-bold text-red-600">-${(enrichmentResult.totalMsf / 100).toFixed(2)}</p>
+              </div>
+              <div className="bg-emerald-50 rounded-lg p-3 text-center">
+                <p className="text-[10px] font-semibold text-emerald-500 uppercase tracking-wider mb-1">Net to Merchant</p>
+                <p className="text-lg font-bold text-emerald-700">${(enrichmentResult.totalNet / 100).toFixed(2)}</p>
+              </div>
+            </div>
+
+            {/* Enriched transaction table */}
+            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+              <table className="w-full text-left">
+                <thead><tr className="bg-gray-50 border-b border-gray-200 text-[10px] font-semibold text-gray-500 uppercase tracking-wider">
+                  <th className="py-2 px-3">#</th><th className="py-2 px-3">Merchant</th><th className="py-2 px-3">Scheme</th><th className="py-2 px-3">Type</th><th className="py-2 px-3 text-right">Gross</th><th className="py-2 px-3 text-right">MSF</th><th className="py-2 px-3 text-right">Net</th><th className="py-2 px-3">Rate</th>
+                </tr></thead>
+                <tbody>{enrichmentResult.enriched.map((e, i) => (
+                  <tr key={i} className="border-b border-gray-100 hover:bg-gray-50 text-xs">
+                    <td className="py-2 px-3 font-mono text-gray-400">{i + 1}</td>
+                    <td className="py-2 px-3 text-gray-700 font-medium">{e.merchant}</td>
+                    <td className="py-2 px-3 text-gray-600">{e.scheme}</td>
+                    <td className="py-2 px-3"><span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${e.type === "Refund" ? "bg-red-100 text-red-700" : "bg-emerald-100 text-emerald-700"}`}>{e.type}</span></td>
+                    <td className="py-2 px-3 text-right font-mono text-gray-800">${(e.grossCents / 100).toFixed(2)}</td>
+                    <td className="py-2 px-3 text-right font-mono text-red-600">-${(e.msfCents / 100).toFixed(2)}</td>
+                    <td className="py-2 px-3 text-right font-mono font-semibold text-emerald-700">${(e.netCents / 100).toFixed(2)}</td>
+                    <td className="py-2 px-3 text-gray-500 text-[10px]">{e.msfLabel}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+
+            <p className="text-xs text-gray-400 mt-3">Clicking "Send to Payout Ledger" will add these as unassigned balance transactions. Navigate to Payouts → Prepare Payout to sweep them into payout groups.</p>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* Generated file download */}
+      {generatedFile && (
+        <Card>
+          <CardBody>
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0"><span className="text-emerald-600"><Icons.Check /></span></div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-semibold text-gray-800">{generatedFile.filename}</h3>
+                <p className="text-xs text-gray-500">{generatedFile.recordCount} records · ${(generatedFile.totalAud / 100).toFixed(2)} AUD total · {(generatedFile.size / 1024).toFixed(1)} KB</p>
+              </div>
+              <a href={generatedFile.url} download={generatedFile.filename} className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 transition-colors">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7,10 12,15 17,10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                Download .dte
+              </a>
+            </div>
+          </CardBody>
+        </Card>
+      )}
+
+      {/* CLI reference */}
+      <Card>
+        <CardBody>
+          <div className="flex items-start gap-4">
+            <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-gray-500"><Icons.Code /></span></div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm font-semibold text-gray-800 mb-1">CLI Tool (for CI/CD)</h3>
+              <p className="text-sm text-gray-500 mb-2">For batch generation, use the Python converter in <span className="font-mono text-xs bg-gray-100 px-1 py-0.5 rounded">tools/dte-generator/</span></p>
+              <div className="bg-gray-900 text-gray-100 rounded-lg p-3 font-mono text-xs overflow-x-auto">
+                <div className="text-gray-500"># Convert CSV template → DTE file</div>
+                <div>python3 csv_to_dte.py my_test_data.csv -o output.dte --client MX51 --business-date 20260225</div>
+                <div className="mt-2 text-gray-500"># Upload to S3 for ingestion</div>
+                <div>aws s3 cp output.dte s3://cuscal-dte-inbox/</div>
+              </div>
+            </div>
+          </div>
+        </CardBody>
+      </Card>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // SIDEBAR + HEADER + MAIN APP
 // ═══════════════════════════════════════════════════════════
 function Sidebar({ activeItem, onNavigate, collapsed, onResetData }) {
@@ -1084,7 +2039,7 @@ function Sidebar({ activeItem, onNavigate, collapsed, onResetData }) {
     { label: "MONITORING", items: [{ id: "organisations", label: "Organisations", icon: Icons.Buildings }, { id: "merchant-facilities", label: "Merchant facilities", icon: Icons.Shop }, { id: "terminals", label: "Terminals", icon: Icons.Terminal }, { id: "merchant-applications", label: "Merchant applications", icon: Icons.DocumentText }, { id: "users", label: "Users", icon: Icons.Profile }] },
     { label: "SETTLEMENTS", items: [{ id: "payouts", label: "Payouts", icon: Icons.Wallet }] },
     { label: "UTILITIES", items: [{ id: "support", label: "Support", icon: Icons.Lifebuoy }, { id: "developer", label: "Developer", icon: Icons.Code }, { id: "api-keys", label: "API keys", icon: Icons.Key }, { id: "alerts", label: "Alerts", icon: Icons.Danger, badge: 3 }] },
-    { label: "PRODUCT DEVELOPMENT", items: [{ id: "debugging-tools", label: "Debugging Tools", icon: Icons.Beaker }, { id: "ux-artefacts", label: "UX Artefacts", icon: Icons.Layers }] },
+    { label: "PRODUCT DEVELOPMENT", items: [{ id: "debugging-tools", label: "Debugging Tools", icon: Icons.Beaker }, { id: "dte-generator", label: "DTE Generator", icon: Icons.DocumentText }, { id: "ux-artefacts", label: "UX Artefacts", icon: Icons.Layers }] },
   ];
   return (<aside className={`flex flex-col h-full bg-[#FAFAFD] border-r border-gray-200 transition-all flex-shrink-0 ${collapsed ? "w-0 overflow-hidden" : "w-[225px]"}`}>
     <div className="py-4 px-4 min-h-[70px] flex items-center"><a href="#" className="flex items-center gap-2" onClick={(e) => { e.preventDefault(); onNavigate("merchant-facilities"); }}><Icons.Logo /><span className="font-bold text-lg text-gray-800">mx51</span></a></div>
@@ -1126,16 +2081,29 @@ export default function MSPSupportDashboard() {
   const [role, setRole] = useState(ROLES.FINOPS_T1);
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
+  const [unassignedBTs, setUnassignedBTs] = useState([...mockUnassignedBTs]);
 
-  const handlePayoutStatusChange = useCallback((payoutId, newStatus) => {
-    setPayouts((prev) => prev.map((p) => p.id === payoutId ? { ...p, status: newStatus } : p));
+  const handlePayoutStatusChange = useCallback((payoutId, newStatus, newPayoutData) => {
+    setPayouts((prev) => {
+      // If it's a new payout (not found in existing list), add it
+      if (newPayoutData && !prev.find((p) => p.id === payoutId)) {
+        return [newPayoutData, ...prev];
+      }
+      return prev.map((p) => p.id === payoutId ? { ...p, status: newStatus } : p);
+    });
   }, []);
 
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
+    setUnassignedBTs([...mockUnassignedBTs]);
   }, []);
 
-  const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
+  // Ingest enriched BTs from DTE Generator
+  const handleIngestBTs = useCallback((newBTs) => {
+    setUnassignedBTs((prev) => [...prev, ...newBTs]);
+  }, []);
+
+  const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "dte-generator": { icon: Icons.DocumentText, label: "DTE Generator" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
   const currentHeading = headings[activePage] || headings["merchant-facilities"];
   const handleNav = (id) => { setActivePage(id); setMerchantDetailView(false); };
 
@@ -1146,12 +2114,13 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedBTs={unassignedBTs} />}
             {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
+            {activePage === "dte-generator" && <DTEGeneratorPage onIngestBTs={handleIngestBTs} onNavigate={handleNav} />}
             {activePage === "ux-artefacts" && <UXArtefactsPage />}
-            {!["payouts", "merchant-facilities", "debugging-tools", "ux-artefacts"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
+            {!["payouts", "merchant-facilities", "debugging-tools", "dte-generator", "ux-artefacts"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
           </main>
         </div>
       </div>
