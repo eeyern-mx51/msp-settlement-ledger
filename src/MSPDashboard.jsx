@@ -3,6 +3,7 @@ import PayoutLifecycle from "./flows/PayoutLifecycle";
 import E2EPayoutJourney from "./flows/E2EPayoutJourney";
 import FinOpsActionFlows from "./flows/FinOpsActionFlows";
 import PermissionsMatrix from "./flows/PermissionsMatrix";
+import DTEtoPayoutWireframes from "./flows/DTEtoPayoutWireframes";
 
 // ─── Icon Components ───
 const Icons = {
@@ -1211,6 +1212,7 @@ const uxArtefactsList = [
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
   { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps T1, FinOps T2, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
 ];
 
 function UXArtefactsPage() {
@@ -1222,6 +1224,7 @@ function UXArtefactsPage() {
     journey: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12h4l3-9 4 18 3-9h4" /></svg>),
     actions: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>),
     roles: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="21" /></svg>),
+    wireframe: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2" /><line x1="2" y1="8" x2="22" y2="8" /><line x1="8" y1="8" x2="8" y2="21" /><rect x="10" y="10" width="5" height="4" rx="0.5" strokeDasharray="2 1" /><rect x="10" y="16" width="10" height="3" rx="0.5" strokeDasharray="2 1" /></svg>),
   };
 
   // If an artefact is selected, render it full-page with a back button
