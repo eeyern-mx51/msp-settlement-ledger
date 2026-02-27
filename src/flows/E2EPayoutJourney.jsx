@@ -29,10 +29,10 @@ const STEPS = [
     title: "Merchant balance updated",
     actor: "MSP (automatic)",
     type: "auto",
-    description: "The merchant balance (transaction ledger) is updated with the DTE data. Each transaction creates a Balance Transaction (BT) entry — an immutable record of the liability change.",
+    description: "The merchant balance (transaction ledger) is updated with the DTE data. Each transaction creates a Merchant Ledger Entry (MLE) entry — an immutable record of the liability change.",
     uiReq: false,
     dataFlow: "Cuscal Service → Merchant Ledger Service",
-    details: ["Balance Transaction (BT) is immutable", "Sum of all BT entries = amount mx51 owes merchant", "BT types: transaction, adjustment, payout_transfer"],
+    details: ["Merchant Ledger Entry (MLE) is immutable", "Sum of all MLE entries = amount mx51 owes merchant", "MLE types: transaction, adjustment, payout_transfer"],
   },
   {
     id: 4,
@@ -44,7 +44,7 @@ const STEPS = [
     uiReq: true,
     reqLabel: "Create adjustment, Approve adjustment",
     dataFlow: "Support Dashboard → Payout Service → Merchant Ledger Service",
-    details: ["Manual: created by FinOps, requires 2nd approval", "Auto: system corrections (e.g. scheme fee rebates)", "Both types create corresponding BT entries", "Internal note + external (merchant-visible) description"],
+    details: ["Manual: created by FinOps, requires 2nd approval", "Auto: system corrections (e.g. scheme fee rebates)", "Both types create corresponding MLE entries", "Internal note + external (merchant-visible) description"],
   },
   {
     id: 5,
@@ -56,7 +56,7 @@ const STEPS = [
     uiReq: true,
     reqLabel: "Prepare payout (date range)",
     dataFlow: "Payout Prep Cron → Payout Service → Merchant Ledger Service",
-    details: ["Sweeps merchant balance to zero", "Assigns payout_id to all unassigned BT entries", "Creates payout record with sum of assigned BTs", "Zero/negative balance → auto-completed (debt deferred)"],
+    details: ["Sweeps merchant balance to zero", "Assigns payout_id to all unassigned MLE entries", "Creates payout record with sum of assigned MLEs", "Zero/negative balance → auto-completed (debt deferred)"],
   },
   {
     id: 6,
@@ -92,7 +92,7 @@ const STEPS = [
     uiReq: true,
     reqLabel: "View transfer status, failure reporting",
     dataFlow: "Cuscal NPP Webhooks → Payout Service → Merchant Ledger Service",
-    details: ["Success: payout → Completed, BT entry created", "Transient failure: auto-retry → Ready for Transfer", "Persistent failure: payout → Failed, alert raised", "Bank return from Completed → Failed (edge case)"],
+    details: ["Success: payout → Completed, MLE entry created", "Transient failure: auto-retry → Ready for Transfer", "Persistent failure: payout → Failed, alert raised", "Bank return from Completed → Failed (edge case)"],
   },
 ];
 

@@ -93,7 +93,7 @@ const FLOWS = {
       { actor: "System", action: "Set status to Transferring", detail: "Status MUST be set before the NPP request is made. Audit log: \"Transfer initiated\"." },
       { actor: "System", action: "Send payment via NPP", detail: "Payout Service → Cuscal Payment API → NPP. Creates payout transfer record." },
       { actor: "System", action: "Await NPP webhook", detail: "Cuscal sends webhook with transfer outcome. Recover NPP Status endpoint as backup." },
-      { actor: "System", action: "Record transfer outcome", detail: "Success → Completed + BT entry. Transient failure → Ready for Transfer (auto-retry). Persistent failure → Failed + alert." },
+      { actor: "System", action: "Record transfer outcome", detail: "Success → Completed + MLE entry. Transient failure → Ready for Transfer (auto-retry). Persistent failure → Failed + alert." },
       { actor: "UI", action: "Success toast", detail: "\"Transfer initiated — PO-XXXX is now transferring to the merchant's bank.\"" },
     ],
     edgeCases: [

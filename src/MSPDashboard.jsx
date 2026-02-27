@@ -574,56 +574,56 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 // ═══════════════════════════════════════════════════════════
 // PREPARE PAYOUT DIALOG
 // ═══════════════════════════════════════════════════════════
-// Mock unassigned balance transactions for the prepare payout flow
-const mockUnassignedBTs = [
-  { id: "BT-40001", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 142.50, card: "MC •••4829" },
-  { id: "BT-40002", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 89.95, card: "Visa •••1677" },
-  { id: "BT-40003", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Refund", amount: -45.00, card: "Visa •••8844" },
-  { id: "BT-40004", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 312.80, card: "MC •••5512" },
-  { id: "BT-40005", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 487.50, card: "Visa •••9021" },
-  { id: "BT-40006", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 1245.00, card: "Visa •••3301" },
-  { id: "BT-40007", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 899.50, card: "MC •••7788" },
-  { id: "BT-40008", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Refund", amount: -120.00, card: "Visa •••3301" },
-  { id: "BT-40009", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 567.25, card: "MC •••6633" },
-  { id: "BT-40010", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 67.20, card: "MC •••7788" },
-  { id: "BT-40011", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 234.80, card: "Visa •••2200" },
-  { id: "BT-40012", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 158.40, card: "MC •••4411" },
-  { id: "BT-40013", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 76.30, card: "MC •••2109" },
-  { id: "BT-40014", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 520.00, card: "Visa •••8102" },
-  { id: "BT-40015", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 189.75, card: "MC •••5544" },
-  { id: "BT-40016", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Refund", amount: -35.00, card: "Visa •••8102" },
-  { id: "BT-40017", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 342.90, card: "Visa •••7711" },
-  { id: "BT-40018", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 128.60, card: "MC •••9900" },
-  { id: "BT-40019", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 445.10, card: "Visa •••0044" },
-  { id: "BT-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
+// Mock unassigned merchant ledger entries for the prepare payout flow
+const mockUnassignedMLEs = [
+  { id: "MLE-40001", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 142.50, card: "MC •••4829" },
+  { id: "MLE-40002", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 89.95, card: "Visa •••1677" },
+  { id: "MLE-40003", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Refund", amount: -45.00, card: "Visa •••8844" },
+  { id: "MLE-40004", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 312.80, card: "MC •••5512" },
+  { id: "MLE-40005", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 487.50, card: "Visa •••9021" },
+  { id: "MLE-40006", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 1245.00, card: "Visa •••3301" },
+  { id: "MLE-40007", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 899.50, card: "MC •••7788" },
+  { id: "MLE-40008", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Refund", amount: -120.00, card: "Visa •••3301" },
+  { id: "MLE-40009", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 567.25, card: "MC •••6633" },
+  { id: "MLE-40010", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 67.20, card: "MC •••7788" },
+  { id: "MLE-40011", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 234.80, card: "Visa •••2200" },
+  { id: "MLE-40012", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 158.40, card: "MC •••4411" },
+  { id: "MLE-40013", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 76.30, card: "MC •••2109" },
+  { id: "MLE-40014", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 520.00, card: "Visa •••8102" },
+  { id: "MLE-40015", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 189.75, card: "MC •••5544" },
+  { id: "MLE-40016", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Refund", amount: -35.00, card: "Visa •••8102" },
+  { id: "MLE-40017", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 342.90, card: "Visa •••7711" },
+  { id: "MLE-40018", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 128.60, card: "MC •••9900" },
+  { id: "MLE-40019", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 445.10, card: "Visa •••0044" },
+  { id: "MLE-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
 ];
 
-function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: btPool }) {
-  const allBTs = btPool || mockUnassignedBTs;
+function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
+  const allMLEs = mlePool || mockUnassignedMLEs;
   const [step, setStep] = useState(1); // 1=date select, 2=sweep animation, 3=confirm
   const [fromDate, setFromDate] = useState("2026-02-24");
   const [toDate, setToDate] = useState("2026-02-25");
   const [sweepPhase, setSweepPhase] = useState("idle"); // idle, scanning, grouping, done
   const [scannedCount, setScannedCount] = useState(0);
-  const [movedBTs, setMovedBTs] = useState(new Set());
+  const [movedMLEs, setMovedMLEs] = useState(new Set());
   const [confirmed, setConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Filter BTs by selected date range
-  const filteredBTs = allBTs.filter((bt) => bt.date >= fromDate && bt.date <= toDate);
+  // Filter MLEs by selected date range
+  const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate);
   // Group by merchant
   const merchantGroups = {};
-  filteredBTs.forEach((bt) => {
-    if (!merchantGroups[bt.mid]) merchantGroups[bt.mid] = { merchant: bt.merchant, mid: bt.mid, bts: [], total: 0 };
-    merchantGroups[bt.mid].bts.push(bt);
-    merchantGroups[bt.mid].total += bt.amount;
+  filteredMLEs.forEach((mle) => {
+    if (!merchantGroups[mle.mid]) merchantGroups[mle.mid] = { merchant: mle.merchant, mid: mle.mid, mles: [], total: 0 };
+    merchantGroups[mle.mid].mles.push(mle);
+    merchantGroups[mle.mid].total += mle.amount;
   });
   const groups = Object.values(merchantGroups);
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedBTs(new Set()); setConfirmed(false); setCreating(false); }
+    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedMLEs(new Set()); setConfirmed(false); setCreating(false); }
   }, [open]);
 
   // Sweep animation controller
@@ -631,21 +631,21 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
     setStep(2);
     setSweepPhase("scanning");
     setScannedCount(0);
-    setMovedBTs(new Set());
+    setMovedMLEs(new Set());
 
     // Phase 1: Scanning — count up
     let count = 0;
     const scanInterval = setInterval(() => {
       count++;
       setScannedCount(count);
-      if (count >= filteredBTs.length) {
+      if (count >= filteredMLEs.length) {
         clearInterval(scanInterval);
         setSweepPhase("grouping");
-        // Phase 2: Group — move BTs one-by-one to the right
+        // Phase 2: Group — move MLEs one-by-one to the right
         let moveIdx = 0;
         const moveInterval = setInterval(() => {
-          if (moveIdx < filteredBTs.length) {
-            setMovedBTs((prev) => new Set([...prev, filteredBTs[moveIdx].id]));
+          if (moveIdx < filteredMLEs.length) {
+            setMovedMLEs((prev) => new Set([...prev, filteredMLEs[moveIdx].id]));
             moveIdx++;
           } else {
             clearInterval(moveInterval);
@@ -683,17 +683,17 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
       <div className="space-y-4">
         {/* ── Step 1: Date range ── */}
         {step === 1 && (<>
-          <Alert type="warning" title="This action will sweep merchant balances">All unsettled balance transactions in the selected date range will be grouped into new payout records per merchant.</Alert>
+          <Alert type="warning" title="This action will sweep merchant balances">All unsettled merchant ledger entries in the selected date range will be grouped into new payout records per merchant.</Alert>
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
             <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-            <p className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{filteredBTs.length}</span> unassigned balance transaction{filteredBTs.length !== 1 ? "s" : ""} found across <span className="font-semibold text-gray-700">{groups.length}</span> merchant{groups.length !== 1 ? "s" : ""}</p>
+            <p className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{filteredMLEs.length}</span> unassigned merchant ledger entr{filteredMLEs.length !== 1 ? "ies" : "y"} found across <span className="font-semibold text-gray-700">{groups.length}</span> merchant{groups.length !== 1 ? "s" : ""}</p>
           </div>
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
             <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={filteredBTs.length === 0} onClick={startSweep} leftIcon={<Icons.ArrowSend />}>Sweep balances</Button>
+            <Button variant="solid" colorScheme="brand" size="md" disabled={filteredMLEs.length === 0} onClick={startSweep} leftIcon={<Icons.ArrowSend />}>Sweep balances</Button>
           </div>
         </>)}
 
@@ -703,35 +703,35 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
           <div className="space-y-2">
             <div className="flex items-center justify-between text-xs text-gray-500">
               <span>{sweepPhase === "scanning" ? "Scanning transactions..." : sweepPhase === "grouping" ? "Grouping into payouts..." : "Sweep complete"}</span>
-              <span className="font-mono">{movedBTs.size}/{filteredBTs.length}</span>
+              <span className="font-mono">{movedMLEs.size}/{filteredMLEs.length}</span>
             </div>
             <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${(movedBTs.size / filteredBTs.length) * 100}%` }} />
+              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${(movedMLEs.size / filteredMLEs.length) * 100}%` }} />
             </div>
           </div>
 
           {/* Two-column layout: Left = unassigned, Right = grouped */}
           <div className="grid grid-cols-2 gap-4 min-h-[320px]">
-            {/* Left: Unassigned BTs */}
+            {/* Left: Unassigned MLEs */}
             <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
               <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Unassigned BTs</span>
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Unassigned MLEs</span>
               </div>
               <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto">
-                {filteredBTs.map((bt) => {
-                  const isMoved = movedBTs.has(bt.id);
+                {filteredMLEs.map((mle) => {
+                  const isMoved = movedMLEs.has(mle.id);
                   return (
-                    <div key={bt.id} className={`flex items-center justify-between px-2 py-1.5 rounded text-xs transition-all duration-300 ${isMoved ? "opacity-0 translate-x-8 h-0 py-0 overflow-hidden" : "opacity-100 bg-white"}`}>
+                    <div key={mle.id} className={`flex items-center justify-between px-2 py-1.5 rounded text-xs transition-all duration-300 ${isMoved ? "opacity-0 translate-x-8 h-0 py-0 overflow-hidden" : "opacity-100 bg-white"}`}>
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-gray-400 text-[10px] w-16 flex-shrink-0">{bt.id}</span>
-                        <span className="truncate text-gray-600">{bt.merchant.split(" - ")[0]}</span>
+                        <span className="font-mono text-gray-400 text-[10px] w-16 flex-shrink-0">{mle.id}</span>
+                        <span className="truncate text-gray-600">{mle.merchant.split(" - ")[0]}</span>
                       </div>
-                      <span className={`font-mono flex-shrink-0 ${bt.amount < 0 ? "text-red-600" : "text-gray-800"}`}>{bt.amount < 0 ? "-" : ""}${Math.abs(bt.amount).toFixed(2)}</span>
+                      <span className={`font-mono flex-shrink-0 ${mle.amount < 0 ? "text-red-600" : "text-gray-800"}`}>{mle.amount < 0 ? "-" : ""}${Math.abs(mle.amount).toFixed(2)}</span>
                     </div>
                   );
                 })}
-                {movedBTs.size === filteredBTs.length && (
+                {movedMLEs.size === filteredMLEs.length && (
                   <div className="py-6 text-center text-xs text-gray-400 animate-slide-up">No unassigned transactions remaining</div>
                 )}
               </div>
@@ -745,9 +745,9 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
               </div>
               <div className="p-2 space-y-2 max-h-[280px] overflow-y-auto">
                 {groups.map((g) => {
-                  const assignedBTs = g.bts.filter((bt) => movedBTs.has(bt.id));
-                  if (assignedBTs.length === 0) return null;
-                  const groupTotal = assignedBTs.reduce((s, bt) => s + bt.amount, 0);
+                  const assignedMLEs = g.mles.filter((mle) => movedMLEs.has(mle.id));
+                  if (assignedMLEs.length === 0) return null;
+                  const groupTotal = assignedMLEs.reduce((s, mle) => s + mle.amount, 0);
                   return (
                     <div key={g.mid} className="border border-emerald-200 rounded-lg bg-emerald-50 p-2 animate-slide-up">
                       <div className="flex items-center justify-between mb-1">
@@ -755,15 +755,15 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
                         <span className="text-xs font-mono font-bold text-emerald-700">${groupTotal.toFixed(2)}</span>
                       </div>
                       <div className="space-y-0.5">
-                        {assignedBTs.map((bt) => (
-                          <div key={bt.id} className="flex items-center justify-between text-[10px] text-gray-500 animate-slide-up">
-                            <span className="flex items-center gap-1"><span className="font-mono">{bt.id}</span><span className="text-gray-400">{bt.type}</span></span>
-                            <span className={`font-mono ${bt.amount < 0 ? "text-red-500" : ""}`}>{bt.amount < 0 ? "-" : ""}${Math.abs(bt.amount).toFixed(2)}</span>
+                        {assignedMLEs.map((mle) => (
+                          <div key={mle.id} className="flex items-center justify-between text-[10px] text-gray-500 animate-slide-up">
+                            <span className="flex items-center gap-1"><span className="font-mono">{mle.id}</span><span className="text-gray-400">{mle.type}</span></span>
+                            <span className={`font-mono ${mle.amount < 0 ? "text-red-500" : ""}`}>{mle.amount < 0 ? "-" : ""}${Math.abs(mle.amount).toFixed(2)}</span>
                           </div>
                         ))}
                       </div>
                       <div className="mt-1 pt-1 border-t border-emerald-200 flex items-center justify-between text-[10px]">
-                        <span className="text-gray-400">{assignedBTs.length} transaction{assignedBTs.length > 1 ? "s" : ""}</span>
+                        <span className="text-gray-400">{assignedMLEs.length} transaction{assignedMLEs.length > 1 ? "s" : ""}</span>
                         <span className={`font-medium ${groupTotal <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{groupTotal <= 0 ? "Zero/negative — auto-complete" : "Ready for Review"}</span>
                       </div>
                     </div>
@@ -787,7 +787,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedBTs: bt
               <div key={g.mid} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
                 <div className="min-w-0">
                   <div className="text-sm font-semibold text-gray-800 truncate">{g.merchant}</div>
-                  <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.bts.length} txn{g.bts.length > 1 ? "s" : ""}</div>
+                  <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
@@ -912,7 +912,7 @@ function MerchantAdjustmentsTab({ role }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedBTs }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("week");
   const [killSwitch, setKillSwitch] = useState(false);
@@ -945,7 +945,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedBTs={unassignedBTs || mockUnassignedBTs} />
+      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} />
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
@@ -1525,7 +1525,7 @@ function parseDTECsv(text) {
   return result;
 }
 
-function DTEGeneratorPage({ onIngestBTs, onNavigate }) {
+function DTEGeneratorPage({ onIngestMLEs, onNavigate }) {
   const { addToast } = useToast();
   const [transactions, setTransactions] = useState([]);
   const [clientName, setClientName] = useState("MX51");
@@ -1680,7 +1680,7 @@ function DTEGeneratorPage({ onIngestBTs, onNavigate }) {
         const maskedCard = `${scheme.split(" ")[0]} •••${pan.slice(-4)}`;
 
         enriched.push({
-          id: `BT-DTE-${Date.now()}-${i + 1}`,
+          id: `MLE-DTE-${Date.now()}-${i + 1}`,
           date: dateFormatted,
           merchant: merchantLabel,
           mid: t.cardAcceptorId || t.acquirerId || `MID-${i}`,
@@ -1703,9 +1703,9 @@ function DTEGeneratorPage({ onIngestBTs, onNavigate }) {
   };
 
   const pushToLedger = () => {
-    if (!enrichmentResult || !onIngestBTs) return;
-    onIngestBTs(enrichmentResult.enriched);
-    addToast({ type: "success", title: `${enrichmentResult.enriched.length} BTs sent to payout ledger`, message: `Net amount: $${(enrichmentResult.totalNet / 100).toFixed(2)} across ${enrichmentResult.merchantCount} merchant(s)` });
+    if (!enrichmentResult || !onIngestMLEs) return;
+    onIngestMLEs(enrichmentResult.enriched);
+    addToast({ type: "success", title: `${enrichmentResult.enriched.length} MLEs sent to payout ledger`, message: `Net amount: $${(enrichmentResult.totalNet / 100).toFixed(2)} across ${enrichmentResult.merchantCount} merchant(s)` });
     setEnrichmentResult(null);
     if (onNavigate) {
       setTimeout(() => onNavigate("payouts"), 600);
@@ -1988,7 +1988,7 @@ function DTEGeneratorPage({ onIngestBTs, onNavigate }) {
               </table>
             </div>
 
-            <p className="text-xs text-gray-400 mt-3">Clicking "Send to Payout Ledger" will add these as unassigned balance transactions. Navigate to Payouts → Prepare Payout to sweep them into payout groups.</p>
+            <p className="text-xs text-gray-400 mt-3">Clicking "Send to Payout Ledger" will add these as unassigned merchant ledger entries. Navigate to Payouts → Prepare Payout to sweep them into payout groups.</p>
           </CardBody>
         </Card>
       )}
@@ -2084,7 +2084,7 @@ export default function MSPSupportDashboard() {
   const [role, setRole] = useState(ROLES.FINOPS_T1);
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
-  const [unassignedBTs, setUnassignedBTs] = useState([...mockUnassignedBTs]);
+  const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
 
   const handlePayoutStatusChange = useCallback((payoutId, newStatus, newPayoutData) => {
     setPayouts((prev) => {
@@ -2098,12 +2098,12 @@ export default function MSPSupportDashboard() {
 
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
-    setUnassignedBTs([...mockUnassignedBTs]);
+    setUnassignedMLEs([...mockUnassignedMLEs]);
   }, []);
 
-  // Ingest enriched BTs from DTE Generator
-  const handleIngestBTs = useCallback((newBTs) => {
-    setUnassignedBTs((prev) => [...prev, ...newBTs]);
+  // Ingest enriched MLEs from DTE Generator
+  const handleIngestMLEs = useCallback((newMLEs) => {
+    setUnassignedMLEs((prev) => [...prev, ...newMLEs]);
   }, []);
 
   const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "dte-generator": { icon: Icons.DocumentText, label: "DTE Generator" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
@@ -2117,11 +2117,11 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedBTs={unassignedBTs} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} />}
             {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
-            {activePage === "dte-generator" && <DTEGeneratorPage onIngestBTs={handleIngestBTs} onNavigate={handleNav} />}
+            {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
             {activePage === "ux-artefacts" && <UXArtefactsPage />}
             {!["payouts", "merchant-facilities", "debugging-tools", "dte-generator", "ux-artefacts"].includes(activePage) && (<div className="p-6"><Card><CardBody className="py-16 text-center"><p className="text-gray-400 text-sm">{currentHeading.label} page content</p></CardBody></Card></div>)}
           </main>

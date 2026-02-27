@@ -175,10 +175,10 @@ function WireframeBalanceLedger() {
       {/* Merchant cards */}
       <div className="grid grid-cols-2 gap-2">
         {[
-          { m: "Joe's Coffee", bts: 4, bal: "$987.75" },
-          { m: "Mike's Electronics", bts: 3, bal: "$2,591.75" },
-          { m: "Fresh Mart", bts: 2, bal: "$460.40" },
-          { m: "Bella's Boutique", bts: 2, bal: "$674.75" },
+          { m: "Joe's Coffee", mles: 4, bal: "$987.75" },
+          { m: "Mike's Electronics", mles: 3, bal: "$2,591.75" },
+          { m: "Fresh Mart", mles: 2, bal: "$460.40" },
+          { m: "Bella's Boutique", mles: 2, bal: "$674.75" },
         ].map((mc) => (
           <div key={mc.m} className="bg-white rounded border border-gray-200 px-3 py-2">
             <div className="flex items-center justify-between mb-1">
@@ -186,7 +186,7 @@ function WireframeBalanceLedger() {
               <span className="text-[9px] font-bold text-emerald-500">{mc.bal}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[8px] text-gray-400">{mc.bts} BTs</span>
+              <span className="text-[8px] text-gray-400">{mc.mles} MLEs</span>
               <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
                 <div className="h-full bg-emerald-300 rounded-full" style={{ width: "70%" }} />
               </div>
@@ -195,15 +195,15 @@ function WireframeBalanceLedger() {
           </div>
         ))}
       </div>
-      {/* BT list */}
+      {/* MLE list */}
       <div className="bg-white rounded border border-gray-200 overflow-hidden">
         <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-          <span className="text-[9px] font-bold text-gray-400">BALANCE TRANSACTIONS (11)</span>
+          <span className="text-[9px] font-bold text-gray-400">MERCHANT LEDGER ENTRIES (11)</span>
           <span className="text-[8px] px-1.5 py-0.5 bg-amber-100 text-amber-600 rounded font-bold">All unassigned</span>
         </div>
         {[1, 2, 3, 4, 5].map((n) => (
           <div key={n} className="flex items-center px-3 py-1 border-b border-gray-100">
-            <span className="w-12 text-[9px] text-gray-300">BT-{40000 + n}</span>
+            <span className="w-12 text-[9px] text-gray-300">MLE-{40000 + n}</span>
             <div className="w-20 h-3 bg-gray-100 rounded mx-1" />
             <div className="flex-1" />
             <span className="text-[9px] text-emerald-500 font-bold">+$XX.XX</span>
@@ -229,7 +229,7 @@ function WireframePreparePayout() {
           <div className="h-6 bg-gray-100 rounded border border-gray-200 flex items-center px-2 text-[9px] text-gray-400">From: 2026-02-24</div>
           <div className="h-6 bg-gray-100 rounded border border-gray-200 flex items-center px-2 text-[9px] text-gray-400">To: 2026-02-25</div>
         </div>
-        <div className="bg-gray-100 rounded px-2 py-1 text-[9px]"><b className="text-gray-600">11</b> BTs across <b className="text-gray-600">4</b> merchants</div>
+        <div className="bg-gray-100 rounded px-2 py-1 text-[9px]"><b className="text-gray-600">11</b> MLEs across <b className="text-gray-600">4</b> merchants</div>
       </div>
       {/* Two-column sweep */}
       <div className="grid grid-cols-2 gap-3">
@@ -237,12 +237,12 @@ function WireframePreparePayout() {
         <div className="bg-white rounded border border-gray-200 overflow-hidden">
           <div className="px-2 py-1 bg-gray-50 border-b border-gray-200 flex items-center gap-1">
             <div className="w-2 h-2 rounded-full bg-amber-400" />
-            <span className="text-[8px] font-bold text-gray-400 uppercase">Unassigned BTs</span>
+            <span className="text-[8px] font-bold text-gray-400 uppercase">Unassigned MLEs</span>
           </div>
           <div className="p-1.5 space-y-0.5">
             {[1, 2, 3].map((n) => (
               <div key={n} className="flex items-center px-1 py-0.5 text-[8px]">
-                <span className="text-gray-300 w-10">BT-{n}</span>
+                <span className="text-gray-300 w-10">MLE-{n}</span>
                 <div className="flex-1 h-2 bg-gray-100 rounded" />
               </div>
             ))}
@@ -422,28 +422,28 @@ const STEPS = [
   {
     id: 4, phase: "Ledger", title: "Balance transactions created",
     actor: "MSP (automatic)", type: "auto",
-    description: "Enriched transactions are written to the merchant ledger as Balance Transactions (BTs). Each BT is an immutable record of liability change. The sum of all BTs = total amount mx51 owes the merchant. BTs start in 'unassigned' state, waiting to be swept into a payout.",
+    description: "Enriched transactions are written to the merchant ledger as Merchant Ledger Entries (MLEs). Each MLE is an immutable record of liability change. The sum of all MLEs = total amount mx51 owes the merchant. MLEs start in 'unassigned' state, waiting to be swept into a payout.",
     wireframe: WireframeBalanceLedger,
-    uiReq: true, reqLabel: "Merchant balance view, BT listing",
-    dataFlow: "MSF Engine → Merchant Ledger Service → Balance Transaction table",
+    uiReq: true, reqLabel: "Merchant balance view, MLE listing",
+    dataFlow: "MSF Engine → Merchant Ledger Service → Merchant Ledger Entry table",
     details: [
-      "Each enriched transaction → 1 Balance Transaction (immutable)",
-      "BT types: transaction, adjustment, payout_transfer",
+      "Each enriched transaction → 1 Merchant Ledger Entry (immutable)",
+      "MLE types: transaction, adjustment, payout_transfer",
       "Status: unassigned → assigned (to payout) → settled",
       "Grouped by MID — each merchant has their own running balance",
-      "Sum of unassigned BTs = amount available for next payout",
+      "Sum of unassigned MLEs = amount available for next payout",
     ],
   },
   {
     id: 5, phase: "Prepare", title: "Prepare payout — sweep balances",
     actor: "System (cron) / FinOps (manual)", type: "both",
-    description: "At the scheduled time (or manually via 'Prepare Payout'), all unassigned BTs within the date range are swept and grouped by MID into payout records. The animated sweep shows BTs moving from unassigned (left) to payout groups (right). Each group becomes a payout record with status 'Ready for Review'.",
+    description: "At the scheduled time (or manually via 'Prepare Payout'), all unassigned MLEs within the date range are swept and grouped by MID into payout records. The animated sweep shows MLEs moving from unassigned (left) to payout groups (right). Each group becomes a payout record with status 'Ready for Review'.",
     wireframe: WireframePreparePayout,
     uiReq: true, reqLabel: "Prepare Payout dialog (date range + sweep animation)",
     dataFlow: "Prepare Payout Cron/Dialog → Payout Service → Merchant Ledger Service",
     details: [
-      "Date range selection filters which BTs to include",
-      "BTs grouped by MID → one payout per merchant",
+      "Date range selection filters which MLEs to include",
+      "MLEs grouped by MID → one payout per merchant",
       "Animated sweep: left column (unassigned) → right column (grouped)",
       "Zero/negative balance merchants → auto-completed (debt deferred)",
       "Each payout gets status: Ready for Review",
@@ -452,7 +452,7 @@ const STEPS = [
   {
     id: 6, phase: "Review", title: "FinOps reviews & approves payouts",
     actor: "FinOps T1 (manual)", type: "manual",
-    description: "FinOps reviews the prepared payouts — validating amounts against expected DTE totals, checking for anomalies. They can Approve (→ Ready for Transfer), Pause (→ investigation), or Abandon (→ cancel). Expandable payout detail shows the constituent BTs.",
+    description: "FinOps reviews the prepared payouts — validating amounts against expected DTE totals, checking for anomalies. They can Approve (→ Ready for Transfer), Pause (→ investigation), or Abandon (→ cancel). Expandable payout detail shows the constituent MLEs.",
     wireframe: WireframePayoutReview,
     uiReq: true, reqLabel: "Payout list, Approve/Pause/Abandon actions, Detail panel",
     dataFlow: "Support Dashboard → Payout Service → status update",
@@ -460,7 +460,7 @@ const STEPS = [
       "Approve: status → Ready for Transfer (requires FinOps T1+)",
       "Pause: status → Paused (investigation, requires reason)",
       "Abandon: status → Abandoned (requires reason + T2 confirmation if >$10k)",
-      "Payout detail: expandable BT list, merchant info, audit trail",
+      "Payout detail: expandable MLE list, merchant info, audit trail",
       "Bulk actions available for batch approve",
     ],
   },
@@ -596,7 +596,7 @@ export default function DTEtoPayoutWireframes() {
               <ul className="space-y-0.5 text-gray-500">
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Steps 1 + 3 are combined (Generate → Ingest & Enrich button)</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Step 2 (S3 upload) is skipped — enrichment runs in-browser</li>
-                <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Step 4 (BTs) → pushed directly to React state</li>
+                <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Step 4 (MLEs) → pushed directly to React state</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Steps 5–7 work via the existing Payouts page UI</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Data resets on page refresh (no persistence)</li>
               </ul>
@@ -607,7 +607,7 @@ export default function DTEtoPayoutWireframes() {
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>DTE file pushed by Cuscal to S3 (automated)</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Consumer service validates + ingests file</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>MSF engine applies real scheme fee rates</li>
-                <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Merchant Ledger Service writes immutable BTs</li>
+                <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Merchant Ledger Service writes immutable MLEs</li>
                 <li className="flex items-start gap-1.5"><span className="text-gray-400 flex-shrink-0">•</span>Payout Prep Cron runs daily, NPP transfers are real</li>
               </ul>
             </div>
