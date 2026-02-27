@@ -665,9 +665,13 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
     setTimeout(() => {
       const today = new Date();
       const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = today.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
+      const createdAt = `${dateStr}, ${timeStr}`;
       const newPayouts = groups.map((g, i) => ({
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
+        createdAt,
+        settlementDate: `${fromDate.split("-").reverse().join("/")}–${toDate.split("-").reverse().join("/")}`,
         merchantName: g.merchant,
         mid: g.mid,
         amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
@@ -718,7 +722,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
               <span className="font-mono">{movedMLEs.size}/{filteredMLEs.length}</span>
             </div>
             <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${(movedMLEs.size / filteredMLEs.length) * 100}%` }} />
+              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${filteredMLEs.length > 0 ? (movedMLEs.size / filteredMLEs.length) * 100 : 0}%` }} />
             </div>
           </div>
 
