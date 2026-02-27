@@ -600,13 +600,10 @@ const mockUnassignedMLEs = [
 
 function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, preselectedMid }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
-  const [step, setStep] = useState(1); // 1=date select, 2=sweep animation, 3=confirm
+  const [step, setStep] = useState(1); // 1=parameters, 2=confirm
   const [fromDate, setFromDate] = useState("2026-02-24");
   const [toDate, setToDate] = useState("2026-02-25");
   const [selectedMid, setSelectedMid] = useState(preselectedMid || "");
-  const [sweepPhase, setSweepPhase] = useState("idle"); // idle, scanning, grouping, done
-  const [scannedCount, setScannedCount] = useState(0);
-  const [movedMLEs, setMovedMLEs] = useState(new Set());
   const [confirmed, setConfirmed] = useState(false);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
@@ -616,6 +613,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 
   // Filter MLEs by selected date range + optional MID
   const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate && (!selectedMid || mle.mid === selectedMid));
+
   // Group by merchant
   const merchantGroups = {};
   filteredMLEs.forEach((mle) => {
@@ -627,38 +625,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedMLEs(new Set()); setConfirmed(false); setCreating(false); setSelectedMid(preselectedMid || ""); }
+    if (open) { setStep(1); setConfirmed(false); setCreating(false); setSelectedMid(preselectedMid || ""); }
   }, [open, preselectedMid]);
-
-  // Sweep animation controller
-  const startSweep = () => {
-    setStep(2);
-    setSweepPhase("scanning");
-    setScannedCount(0);
-    setMovedMLEs(new Set());
-
-    // Phase 1: Scanning — count up
-    let count = 0;
-    const scanInterval = setInterval(() => {
-      count++;
-      setScannedCount(count);
-      if (count >= filteredMLEs.length) {
-        clearInterval(scanInterval);
-        setSweepPhase("grouping");
-        // Phase 2: Group — move MLEs one-by-one to the right
-        let moveIdx = 0;
-        const moveInterval = setInterval(() => {
-          if (moveIdx < filteredMLEs.length) {
-            setMovedMLEs((prev) => new Set([...prev, filteredMLEs[moveIdx].id]));
-            moveIdx++;
-          } else {
-            clearInterval(moveInterval);
-            setTimeout(() => setSweepPhase("done"), 400);
-          }
-        }, 120);
-      }
-    }, 80);
-  };
 
   const handleCreate = () => {
     setCreating(true);
@@ -679,125 +647,68 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
         status: g.total <= 0 ? "Completed" : "Ready for Review",
       }));
       onCreatePayouts(newPayouts);
-      addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared for review.` });
+      addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared and set to Ready for Review.` });
       onClose();
-    }, 1500);
+    }, 800);
   };
 
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={step === 1 ? "Prepare payout — Select date range" : step === 2 ? "Prepare payout — Sweeping balances" : "Prepare payout — Confirm"}>
+    <Modal open={open} onClose={onClose} title={step === 1 ? "Prepare payout" : "Prepare payout — Confirm"} width="max-w-xl">
       <div className="space-y-4">
-        {/* ── Step 1: Date range ── */}
+        {/* ── Step 1: Parameters ── */}
         {step === 1 && (<>
-          <Alert type="warning" title="This action will sweep merchant balances">All unsettled merchant ledger entries in the selected date range will be grouped into new payout records per merchant.</Alert>
+          <Alert type="info" title="Manual payout preparation">Select the DTE date range and optionally target specific MIDs. All unsettled merchant ledger entries matching the criteria will be grouped into payout records per merchant.</Alert>
           <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date (DTE date)</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+            <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date (DTE date)</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
           </div>
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1">MID filter <span className="font-normal text-gray-400">(optional)</span></label>
             <select value={selectedMid} onChange={(e) => setSelectedMid(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
               <option value="">All merchants (where acquirer = Cuscal)</option>
-              {availableMids.map(mid => <option key={mid} value={mid}>{mid} — {allMLEs.find(m => m.mid === mid)?.merchant || mid}</option>)}
+              {availableMids.map(m => <option key={m} value={m}>{m} — {allMLEs.find(x => x.mid === m)?.merchant || m}</option>)}
             </select>
-            <p className="text-xs text-gray-400 mt-1">Leave blank to prepare payouts for all eligible merchants, or select a specific MID.</p>
+            <p className="text-xs text-gray-400 mt-1">Leave blank to prepare payouts for all eligible merchants, or select a specific MID to target.</p>
           </div>
-          <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-            <p className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{filteredMLEs.length}</span> unassigned merchant ledger entr{filteredMLEs.length !== 1 ? "ies" : "y"} found across <span className="font-semibold text-gray-700">{groups.length}</span> merchant{groups.length !== 1 ? "s" : ""}</p>
+
+          {/* Preview summary */}
+          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold text-gray-700">Preview</span>
+              <span className="text-xs text-gray-400">{filteredMLEs.length} MLE{filteredMLEs.length !== 1 ? "s" : ""} across {groups.length} merchant{groups.length !== 1 ? "s" : ""}</span>
+            </div>
+            {groups.length > 0 ? (
+              <div className="space-y-2">
+                {groups.map((g) => (
+                  <div key={g.mid} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                      <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
+                      <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Zero/negative — auto-complete" : "→ Ready for Review"}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-400 text-center py-2">No transactions found for the selected criteria.</p>
+            )}
           </div>
+
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
             <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={filteredMLEs.length === 0} onClick={startSweep} leftIcon={<Icons.ArrowSend />}>Sweep balances</Button>
+            <Button variant="solid" colorScheme="brand" size="md" disabled={groups.length === 0} onClick={() => setStep(2)} leftIcon={<Icons.ChevronRight />}>Review &amp; confirm</Button>
           </div>
         </>)}
 
-        {/* ── Step 2: Sweep animation ── */}
+        {/* ── Step 2: Confirmation ── */}
         {step === 2 && (<>
-          {/* Progress bar */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs text-gray-500">
-              <span>{sweepPhase === "scanning" ? "Scanning transactions..." : sweepPhase === "grouping" ? "Grouping into payouts..." : "Sweep complete"}</span>
-              <span className="font-mono">{movedMLEs.size}/{filteredMLEs.length}</span>
-            </div>
-            <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-indigo-500 rounded-full transition-all duration-200 ease-out" style={{ width: `${filteredMLEs.length > 0 ? (movedMLEs.size / filteredMLEs.length) * 100 : 0}%` }} />
-            </div>
-          </div>
+          <Alert type="warning" title={`${groups.length} payout${groups.length > 1 ? "s" : ""} will be created`}>Merchant ledger entries will be swept into payout records. Each payout will be set to "Ready for Review" and require FinOps approval before transfer.</Alert>
 
-          {/* Two-column layout: Left = unassigned, Right = grouped */}
-          <div className="grid grid-cols-2 gap-4 min-h-[320px]">
-            {/* Left: Unassigned MLEs */}
-            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Unassigned MLEs</span>
-              </div>
-              <div className="p-2 space-y-1 max-h-[280px] overflow-y-auto">
-                {filteredMLEs.map((mle) => {
-                  const isMoved = movedMLEs.has(mle.id);
-                  return (
-                    <div key={mle.id} className={`flex items-center justify-between px-2 py-1.5 rounded text-xs transition-all duration-300 ${isMoved ? "opacity-0 translate-x-8 h-0 py-0 overflow-hidden" : "opacity-100 bg-white"}`}>
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span className="font-mono text-gray-400 text-[10px] w-16 flex-shrink-0">{mle.id}</span>
-                        <span className="truncate text-gray-600">{mle.merchant.split(" - ")[0]}</span>
-                      </div>
-                      <span className={`font-mono flex-shrink-0 ${mle.amount < 0 ? "text-red-600" : "text-gray-800"}`}>{mle.amount < 0 ? "-" : ""}${Math.abs(mle.amount).toFixed(2)}</span>
-                    </div>
-                  );
-                })}
-                {movedMLEs.size === filteredMLEs.length && (
-                  <div className="py-6 text-center text-xs text-gray-400 animate-slide-up">No unassigned transactions remaining</div>
-                )}
-              </div>
-            </div>
-
-            {/* Right: Merchant payout groups */}
-            <div className="border border-gray-200 rounded-lg bg-white overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-emerald-400" />
-                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Payout Groups</span>
-              </div>
-              <div className="p-2 space-y-2 max-h-[280px] overflow-y-auto">
-                {groups.map((g) => {
-                  const assignedMLEs = g.mles.filter((mle) => movedMLEs.has(mle.id));
-                  if (assignedMLEs.length === 0) return null;
-                  const groupTotal = assignedMLEs.reduce((s, mle) => s + mle.amount, 0);
-                  return (
-                    <div key={g.mid} className="border border-emerald-200 rounded-lg bg-emerald-50 p-2 animate-slide-up">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-semibold text-gray-800 truncate">{g.merchant}</span>
-                        <span className="text-xs font-mono font-bold text-emerald-700">${groupTotal.toFixed(2)}</span>
-                      </div>
-                      <div className="space-y-0.5">
-                        {assignedMLEs.map((mle) => (
-                          <div key={mle.id} className="flex items-center justify-between text-[10px] text-gray-500 animate-slide-up">
-                            <span className="flex items-center gap-1"><span className="font-mono">{mle.id}</span><span className="text-gray-400">{mle.type}</span></span>
-                            <span className={`font-mono ${mle.amount < 0 ? "text-red-500" : ""}`}>{mle.amount < 0 ? "-" : ""}${Math.abs(mle.amount).toFixed(2)}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="mt-1 pt-1 border-t border-emerald-200 flex items-center justify-between text-[10px]">
-                        <span className="text-gray-400">{assignedMLEs.length} transaction{assignedMLEs.length > 1 ? "s" : ""}</span>
-                        <span className={`font-medium ${groupTotal <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{groupTotal <= 0 ? "Zero/negative — auto-complete" : "Ready for Review"}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={sweepPhase !== "done"} onClick={() => setStep(3)} leftIcon={<Icons.ChevronRight />}>Continue</Button>
-          </div>
-        </>)}
-
-        {/* ── Step 3: Confirmation ── */}
-        {step === 3 && (<>
-          <Alert type="info" title={`${groups.length} payout${groups.length > 1 ? "s" : ""} will be created`}>Review the summary below before confirming. This action cannot be undone.</Alert>
           <div className="space-y-2">
             {groups.map((g) => (
               <div key={g.mid} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
@@ -812,9 +723,15 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
               </div>
             ))}
           </div>
-          <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to create these payouts. Merchant balances will be swept to zero.</span></label>
+
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+            <p className="text-xs text-blue-700">This is a <strong>manual preparation</strong>. In production, this step can be automated (e.g. scheduled job running daily at 8:30 AM).</p>
+          </div>
+
+          <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to prepare these payouts.</span></label>
+
           <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => { setStep(2); setConfirmed(false); }}>Back</Button>
+            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => { setStep(1); setConfirmed(false); }}>Back</Button>
             <Button variant="solid" colorScheme="brand" size="md" disabled={!confirmed || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
               {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating payouts...</span>) : "Create payouts"}
             </Button>
