@@ -247,134 +247,134 @@ const ROLES = { FINOPS_T1: "FinOps Tier 1", FINOPS_T2: "FinOps Tier 2", ADMIN: "
 // ═══════════════════════════════════════════════════════════
 const mockPayouts = [
   // 24 Feb — today
-  { id: "PO-2026-0224-001", date: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0224-002", date: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0224-003", date: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-001", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-002", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-003", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", transferCount: 1, status: "Ready for Review" },
   // 23 Feb
-  { id: "PO-2026-0223-001", date: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", transferCount: 1, status: "Ready for Transfer" },
-  { id: "PO-2026-0223-002", date: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", transferCount: 2, status: "Ready for Transfer" },
-  { id: "PO-2026-0223-003", date: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", transferCount: 1, status: "Transferring" },
+  { id: "PO-2026-0223-001", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", transferCount: 1, status: "Ready for Transfer" },
+  { id: "PO-2026-0223-002", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", transferCount: 2, status: "Ready for Transfer" },
+  { id: "PO-2026-0223-003", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", transferCount: 1, status: "Transferring" },
   // 22 Feb
-  { id: "PO-2026-0222-001", date: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0222-002", date: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0222-003", date: "22 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$2,640.15", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-001", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-002", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-003", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$2,640.15", transferCount: 1, status: "Completed" },
   // 21 Feb
-  { id: "PO-2026-0221-001", date: "21 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$15,204.60", transferCount: 2, status: "Completed" },
-  { id: "PO-2026-0221-002", date: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0221-003", date: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0221-001", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$15,204.60", transferCount: 2, status: "Completed" },
+  { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
-  { id: "PO-2026-0220-002", date: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Paused" },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
+  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Paused" },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
   // 19 Feb
-  { id: "PO-2026-0219-001", date: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
-  { id: "PO-2026-0219-002", date: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
+  { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
   // 18 Feb
-  { id: "PO-2026-0218-001", date: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", transferCount: 3, status: "Completed" },
-  { id: "PO-2026-0218-002", date: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0218-003", date: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", transferCount: 2, status: "Completed" },
+  { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", transferCount: 3, status: "Completed" },
+  { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", transferCount: 2, status: "Completed" },
   // 17 Feb
-  { id: "PO-2026-0217-001", date: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Abandoned" },
+  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Abandoned" },
 ];
 
 // ─── Per-payout audit logs ───
 const auditLogs = {
   // Ready for Review — just prepared
   "PO-2026-0224-001": [
-    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $5,112.40." },
-    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $5,112.40." },
+    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
   ],
   "PO-2026-0224-002": [
-    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 11 transactions included, totalling $3,480.90." },
-    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 11 transactions included, totalling $3,480.90." },
+    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
   ],
   "PO-2026-0224-003": [
-    { ts: "24 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 8 transactions included, totalling $1,875.20." },
-    { ts: "24 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 8 transactions included, totalling $1,875.20." },
+    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
   ],
   // Ready for Transfer — approved but not executed
   "PO-2026-0223-001": [
-    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
-    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:45 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
   ],
   "PO-2026-0223-002": [
-    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
-    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 10:20 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
   ],
   // Transferring — in progress
   "PO-2026-0223-003": [
-    { ts: "23 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
-    { ts: "23 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 8:30 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
-    { ts: "23 Feb 2026, 11:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
+    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
+    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
   ],
   // Completed — full lifecycle
   "PO-2026-0222-001": [
-    { ts: "22 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
-    { ts: "22 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "22 Feb 2026, 9:10 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "22 Feb 2026, 10:00 AM", action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
-    { ts: "22 Feb 2026, 10:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
-    { ts: "22 Feb 2026, 1:45 PM", action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
-    { ts: "22 Feb 2026, 1:45 PM", action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
+    { ts: "22 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
+    { ts: "22 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "22 Feb 2026, 10:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
+    { ts: "22 Feb 2026, 1:45 PM", version: 6, action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
+    { ts: "22 Feb 2026, 1:45 PM", version: 7, action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
   ],
   "PO-2026-0221-001": [
-    { ts: "21 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
-    { ts: "21 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "21 Feb 2026, 10:15 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
-    { ts: "21 Feb 2026, 11:00 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "2 transfers initiated (split by account)." },
-    { ts: "21 Feb 2026, 11:00 AM", action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
-    { ts: "21 Feb 2026, 2:30 PM", action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
-    { ts: "21 Feb 2026, 2:35 PM", action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
-    { ts: "21 Feb 2026, 2:35 PM", action: "Status changed to Completed", user: "System", detail: "All transfers confirmed. Payout finalised." },
+    { ts: "21 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
+    { ts: "21 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
+    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "2 transfers initiated (split by account)." },
+    { ts: "21 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
+    { ts: "21 Feb 2026, 2:30 PM", version: 6, action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
+    { ts: "21 Feb 2026, 2:35 PM", version: 7, action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
+    { ts: "21 Feb 2026, 2:35 PM", version: 8, action: "Status changed to Completed", user: "System", detail: "All transfers confirmed. Payout finalised." },
   ],
   // Failed — with error detail
   "PO-2026-0220-001": [
-    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
-    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 10:30 AM", action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
-    { ts: "20 Feb 2026, 11:15 AM", action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
-    { ts: "20 Feb 2026, 11:15 AM", action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
+    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
   ],
   "PO-2026-0220-003": [
-    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
-    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 11:00 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:30 PM", action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 12:35 PM", action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
-    { ts: "20 Feb 2026, 12:35 PM", action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
+    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
   ],
   // Paused
   "PO-2026-0220-002": [
-    { ts: "20 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
-    { ts: "20 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 9:00 AM", action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", action: "Paused", user: "Sarah Chen (FinOps T1)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
-    { ts: "20 Feb 2026, 9:45 AM", action: "Status changed to Paused", user: "System", detail: "Payout held pending review." },
+    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
+    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Paused", user: "Sarah Chen (FinOps T1)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Status changed to Paused", user: "System", detail: "Payout held pending review." },
   ],
   // Abandoned
   "PO-2026-0219-001": [
-    { ts: "19 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
-    { ts: "19 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", action: "Abandoned", user: "Tom Wright (FinOps T1)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
-    { ts: "19 Feb 2026, 11:00 AM", action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
+    { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
+    { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps T1)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
   ],
   "PO-2026-0217-001": [
-    { ts: "17 Feb 2026, 6:00 AM", action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
-    { ts: "17 Feb 2026, 6:01 AM", action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", action: "Abandoned", user: "Sarah Chen (FinOps T1)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
-    { ts: "17 Feb 2026, 3:00 PM", action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
+    { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
+    { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps T1)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
   ],
 };
 
 // Fallback audit log for payouts without a specific log
 const defaultAuditLog = (payout) => [
-  { ts: payout.date + ", 6:00 AM", action: "Payout prepared", user: "System", detail: `Merchant balance swept. Payout of ${payout.amount} created.` },
-  { ts: payout.date + ", 6:01 AM", action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
+  { ts: payout.date + ", 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: `Merchant balance swept. Payout of ${payout.amount} created.` },
+  { ts: payout.date + ", 6:01 AM", version: 2, action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
 ];
 
 // ─── Per-payout transfers ───
@@ -456,7 +456,7 @@ const mockTransactions = [
 // AUDIT LOG TIMELINE (shared)
 // ═══════════════════════════════════════════════════════════
 function AuditTimeline({ entries }) {
-  return (<div className="relative">{entries.map((entry, i) => (<div key={i} className="flex gap-4 pb-6 last:pb-0"><div className="flex flex-col items-center"><div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${entry.action.includes("failed") || entry.action.includes("Failed") ? "bg-red-500" : i === entries.length - 1 ? "bg-indigo-500" : "bg-gray-300"}`} />{i < entries.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1" />}</div><div className="flex-1 min-w-0"><div className="flex items-baseline gap-2 flex-wrap"><span className={`text-sm font-semibold ${entry.action.includes("failed") || entry.action.includes("Failed") ? "text-red-700" : "text-gray-800"}`}>{entry.action}</span><span className="text-xs text-gray-400">{entry.ts}</span></div><div className="text-sm text-gray-500 mt-0.5">{entry.detail}</div><div className="text-xs text-gray-400 mt-0.5">by {entry.user}</div></div></div>))}</div>);
+  return (<div className="relative">{entries.map((entry, i) => (<div key={i} className="flex gap-4 pb-6 last:pb-0"><div className="flex flex-col items-center"><div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${entry.action.includes("failed") || entry.action.includes("Failed") ? "bg-red-500" : i === entries.length - 1 ? "bg-indigo-500" : "bg-gray-300"}`} />{i < entries.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1" />}</div><div className="flex-1 min-w-0"><div className="flex items-baseline gap-2 flex-wrap"><span className={`text-sm font-semibold ${entry.action.includes("failed") || entry.action.includes("Failed") ? "text-red-700" : "text-gray-800"}`}>{entry.action}</span>{entry.version && <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span>}<span className="text-xs text-gray-400">{entry.ts}</span></div><div className="text-sm text-gray-500 mt-0.5">{entry.detail}</div><div className="text-xs text-gray-400 mt-0.5">by {entry.user}</div></div></div>))}</div>);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -535,7 +535,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Payout date", payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} />]].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} />]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -598,11 +598,12 @@ const mockUnassignedMLEs = [
   { id: "MLE-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
 ];
 
-function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
+function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, preselectedMid }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
   const [step, setStep] = useState(1); // 1=date select, 2=sweep animation, 3=confirm
   const [fromDate, setFromDate] = useState("2026-02-24");
   const [toDate, setToDate] = useState("2026-02-25");
+  const [selectedMid, setSelectedMid] = useState(preselectedMid || "");
   const [sweepPhase, setSweepPhase] = useState("idle"); // idle, scanning, grouping, done
   const [scannedCount, setScannedCount] = useState(0);
   const [movedMLEs, setMovedMLEs] = useState(new Set());
@@ -610,8 +611,11 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Filter MLEs by selected date range
-  const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate);
+  // Get unique MIDs for the optional filter
+  const availableMids = [...new Set(allMLEs.map(m => m.mid))].sort();
+
+  // Filter MLEs by selected date range + optional MID
+  const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate && (!selectedMid || mle.mid === selectedMid));
   // Group by merchant
   const merchantGroups = {};
   filteredMLEs.forEach((mle) => {
@@ -623,8 +627,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedMLEs(new Set()); setConfirmed(false); setCreating(false); }
-  }, [open]);
+    if (open) { setStep(1); setSweepPhase("idle"); setScannedCount(0); setMovedMLEs(new Set()); setConfirmed(false); setCreating(false); setSelectedMid(preselectedMid || ""); }
+  }, [open, preselectedMid]);
 
   // Sweep animation controller
   const startSweep = () => {
@@ -687,6 +691,14 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
           <div className="grid grid-cols-2 gap-4">
             <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
             <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-1">MID filter <span className="font-normal text-gray-400">(optional)</span></label>
+            <select value={selectedMid} onChange={(e) => setSelectedMid(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+              <option value="">All merchants (where acquirer = Cuscal)</option>
+              {availableMids.map(mid => <option key={mid} value={mid}>{mid} — {allMLEs.find(m => m.mid === mid)?.merchant || mid}</option>)}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">Leave blank to prepare payouts for all eligible merchants, or select a specific MID.</p>
           </div>
           <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
             <p className="text-xs text-gray-500"><span className="font-semibold text-gray-700">{filteredMLEs.length}</span> unassigned merchant ledger entr{filteredMLEs.length !== 1 ? "ies" : "y"} found across <span className="font-semibold text-gray-700">{groups.length}</span> merchant{groups.length !== 1 ? "s" : ""}</p>
@@ -974,11 +986,12 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
             <HeroMetric heading="Failed" value="$6,112.75" colorClass="text-red-600" />
           </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Payout date", "Payout ID", "Merchant", "MID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
             {filteredPayouts.map((p) => (
               <tr key={p.id} onClick={() => setSelectedPayout(p)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${p.status === "Failed" ? "bg-red-50/30" : ""}`}>
-                <td className="py-3 px-3 text-sm text-gray-700">{p.date}</td>
+                <td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td>
+                <td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td>
                 <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td>
                 <td className="py-3 px-3 text-sm text-gray-700">{p.merchantName}</td>
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
@@ -987,7 +1000,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3"><PayoutStatusBadge status={p.status} /></td>
               </tr>
             ))}
-            {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           <div className="flex justify-center pt-4"><Button variant="outline" colorScheme="brand" size="md">More results</Button></div>
         </CardBody>
@@ -999,23 +1012,36 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [disableMerchant, setDisableMerchant] = useState(false);
+  const [showPrepare, setShowPrepare] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
-  const merchantPayouts = payouts.filter((p) => p.mid === "POSPAY00012345");
+  const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
   const filtered = statusFilter === "all" ? merchantPayouts : merchantPayouts.filter((p) => p.status === statusFilter);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus) => { onPayoutStatusChange(id, newStatus); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
   return (
     <div className="p-6 space-y-5">
+      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
+
       {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Payout execution disabled for this merchant.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Re-enable</Button></div>)}
-      <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Disable merchant payout execution" description="Prevents payout transfers for this merchant only." disabled={!canWrite} />
+
+      <div className="flex flex-col lg:flex-row justify-between gap-3">
+        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Disable merchant payout execution" description="Prevents payout transfers for this merchant only." disabled={!canWrite} />
+        <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+      </div>
       <div className="flex items-center gap-2 flex-wrap">
-        {["all", "Ready for Review", "Ready for Transfer", "Completed", "Failed", "Paused"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
+        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Paused", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
       </div>
       <Card>
         <CardHeader><span className="text-lg font-semibold text-gray-800">Payouts</span><span className="text-sm text-gray-400">{filtered.length} results</span></CardHeader>
@@ -1025,11 +1051,21 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange }) {
             <HeroMetric heading="Total payouts" value="$12,804.60" /><HeroMetric heading="Completed" value="$2,945.30" colorClass="text-emerald-600" /><HeroMetric heading="Pending" value="$8,439.30" colorClass="text-indigo-600" />
           </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Payout date", "Payout ID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Payout ID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
-            {filtered.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700">{p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} /></td></tr>))}
-            {filtered.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} /></td></tr>))}
+            {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages} ({filtered.length} results, {PAGE_SIZE} per page)</span>
+              <div className="flex gap-2">
+                <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardBody>
       </Card>
     </div>
@@ -1095,7 +1131,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs }) {
   const [activeTab, setActiveTab] = useState("transactions");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const bc = { org: "POS Pay Pty Ltd", facility: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", status: "Active" };
@@ -1108,7 +1144,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange }) {
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -2118,7 +2154,7 @@ export default function MSPSupportDashboard() {
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
             {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
