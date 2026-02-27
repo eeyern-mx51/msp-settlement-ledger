@@ -469,7 +469,13 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
-  const transfers = transfersByPayout[payout.id] || [];
+  const storedTransfers = transfersByPayout[payout.id] || [];
+  // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
+  const transfers = storedTransfers.length > 0 ? storedTransfers : (
+    ["Transferring", "Completed"].includes(payout.status)
+      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null, retryable: null }]
+      : []
+  );
   const failedTransfer = transfers.find(t => t.status === "Failed");
 
   // Dialog states
@@ -546,7 +552,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
         <CardHeader><span className="text-lg font-semibold text-gray-800">Transfers</span></CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          {transfers.length === 0 ? <Alert type="info">No transfers have been initiated for this payout yet.</Alert> : (
+          {transfers.length === 0 ? <Alert type="info">{["Ready for Review", "Ready for Transfer"].includes(payout.status) ? "Transfers are created when the payout is executed." : "No transfers have been initiated for this payout."}</Alert> : (
             <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
               {["Transfer ID", "Date", "BSB", "Account", "Amount", "Status", ...(isFailed ? ["Failure reason"] : [])].map((h) => <TH key={h}>{h}</TH>)}
             </tr></thead><tbody>
@@ -882,10 +888,10 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      {killSwitch && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Fleet payout execution is disabled.</span><span className="text-sm text-red-600 ml-1">No payouts can be executed until this is re-enabled.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setKillSwitch(false)} disabled={!canWrite}>Re-enable</Button></div>)}
+      {killSwitch && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Fleet payouts are paused.</span><span className="text-sm text-red-600 ml-1">No payouts will be transferred until resumed.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setKillSwitch(false)} disabled={!canWrite}>Resume payouts</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={killSwitch} onChange={setKillSwitch} label="Disable fleet payout execution" description="Emergency stop — prevents all payout transfers." disabled={!canWrite} />
+        <Toggle checked={killSwitch} onChange={setKillSwitch} label="Pause fleet payouts" description="Temporarily stop all payout transfers for this fleet." disabled={!canWrite} />
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
       </div>
 
@@ -955,10 +961,10 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
 
-      {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Payout execution disabled for this merchant.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Re-enable</Button></div>)}
+      {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Merchant payouts are paused.</span><span className="text-sm text-red-600 ml-1">Payouts for this merchant won't be transferred until resumed.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Resume payouts</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Disable merchant payout execution" description="Prevents payout transfers for this merchant only." disabled={!canWrite} />
+        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Pause merchant payouts" description="Temporarily stop payout transfers for this merchant." disabled={!canWrite} />
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
