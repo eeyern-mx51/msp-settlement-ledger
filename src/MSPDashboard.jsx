@@ -4,6 +4,7 @@ import E2EPayoutJourney from "./flows/E2EPayoutJourney";
 import FinOpsActionFlows from "./flows/FinOpsActionFlows";
 import PermissionsMatrix from "./flows/PermissionsMatrix";
 import DTEtoPayoutWireframes from "./flows/DTEtoPayoutWireframes";
+import PayoutDataDictionary from "./flows/PayoutDataDictionary";
 
 // ─── Icon Components ───
 const Icons = {
@@ -146,7 +147,7 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function PausePayoutDialog({ open, onClose, payout, onConfirm }) {
+function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -156,16 +157,16 @@ function PausePayoutDialog({ open, onClose, payout, onConfirm }) {
   };
   if (!payout) return null;
   return (
-    <Modal open={open} onClose={onClose} title="Pause payout">
+    <Modal open={open} onClose={onClose} title="Place hold on payout">
       <div className="space-y-5">
-        <Alert type="warning" title="This payout will be held">The payout will remain in a paused state until a FinOps Admin user resumes or abandons it. No transfers will be initiated while paused.</Alert>
+        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Admin user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for pausing</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
             <option value="">Select a reason...</option>
             <option>Pending merchant verification</option>
@@ -183,7 +184,7 @@ function PausePayoutDialog({ open, onClose, payout, onConfirm }) {
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Pausing..." : "Pause payout"}</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : "Place hold"}</Button>
         </div>
       </div>
     </Modal>
@@ -243,7 +244,7 @@ function PayoutStatusBadge({ status, paused, retryable }) {
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {paused && <Badge colorScheme="warning" size="sm"><Icons.Pause /> Paused</Badge>}
+      {paused && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
       {status === "Failed" && retryable === true && <Badge colorScheme="purple" size="sm">Retryable</Badge>}
       {status === "Failed" && retryable === false && <Badge colorScheme="neutral" size="sm">Non-retryable</Badge>}
     </span>
@@ -359,13 +360,13 @@ const auditLogs = {
     { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
     { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
   ],
-  // Paused
+  // On Hold
   "PO-2026-0220-002": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Paused", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Status changed to Paused", user: "System", detail: "Payout held pending review." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
   ],
   // Abandoned
   "PO-2026-0219-001": [
@@ -491,25 +492,25 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
-  const [showPause, setShowPause] = useState(false);
+  const [showHold, setShowHold] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
-  // Build actions based on status + paused flag
+  // Build actions based on status + hold flag
   const buildActions = () => {
-    // If payout is paused, show Resume + Abandon regardless of underlying status
+    // If payout is on hold, show Release Hold + Abandon regardless of underlying status
     if (payout.paused) return [
-      { label: "Resume", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resumed", message: `Payout ${payout.id} has been unpaused.` }); onStatusChange(payout.id, payout.status, { paused: false }); } },
+      { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { paused: false }); } },
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
     ];
     const map = {
       "Ready for Review": [
         { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
-        { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Ready for Transfer": [
         { label: "Execute", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
-        { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
@@ -525,8 +526,8 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
     onStatusChange(payout.id, "Ready for Transfer");
   };
-  const handlePause = (reason, note) => {
-    addToast({ type: "warning", title: "Payout paused", message: `${payout.id} — ${reason}` });
+  const handleHold = (reason, note) => {
+    addToast({ type: "warning", title: "Hold placed", message: `${payout.id} — ${reason}` });
     onStatusChange(payout.id, payout.status, { paused: true });
   };
   const handleAbandon = (reason) => {
@@ -537,7 +538,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   return (
     <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
-      <PausePayoutDialog open={showPause} onClose={() => setShowPause(false)} payout={payout} onConfirm={handlePause} />
+      <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
@@ -1003,7 +1004,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "Paused" ? payouts.filter((p) => p.paused) : payouts.filter((p) => p.status === statusFilter && !p.paused);
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.paused) : payouts.filter((p) => p.status === statusFilter && !p.paused);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
@@ -1014,16 +1015,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      {killSwitch && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Fleet payouts are paused.</span><span className="text-sm text-red-600 ml-1">No payouts will be transferred until resumed.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setKillSwitch(false)} disabled={!canWrite}>Resume payouts</Button></div>)}
+      {killSwitch && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold.</span><span className="text-sm text-red-600 ml-1">No payouts will be transferred until the hold is released.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setKillSwitch(false)} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={killSwitch} onChange={setKillSwitch} label="Pause fleet payouts" description="Temporarily stop all payout transfers for this fleet." disabled={!canWrite} />
+        <Toggle checked={killSwitch} onChange={setKillSwitch} label="Hold fleet payouts" description="Place all payouts for this fleet on hold. No transfers will proceed." disabled={!canWrite} />
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
         <div className="flex items-center gap-2 flex-wrap">
-          {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Paused", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
+          {["all", "Ready for Review", "Ready for Transfer", "Transferring", "On Hold", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
         </div>
         <DateFilterBar value={dateFilter} onChange={setDateFilter} />
       </div>
@@ -1084,7 +1085,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const canWrite = role === ROLES.FINOPS_T1;
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "Paused" ? merchantPayouts.filter((p) => p.paused) : merchantPayouts.filter((p) => p.status === statusFilter && !p.paused);
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.paused) : merchantPayouts.filter((p) => p.status === statusFilter && !p.paused);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase())) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
@@ -1100,14 +1101,14 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
 
-      {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Merchant payouts are paused.</span><span className="text-sm text-red-600 ml-1">Payouts for this merchant won't be transferred until resumed.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Resume payouts</Button></div>)}
+      {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Merchant payouts are on hold.</span><span className="text-sm text-red-600 ml-1">Payouts for this merchant won't be transferred until the hold is released.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Pause merchant payouts" description="Temporarily stop payout transfers for this merchant." disabled={!canWrite} />
+        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Hold merchant payouts" description="Place all payouts for this merchant on hold. No transfers will proceed." disabled={!canWrite} />
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
-        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Paused", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
+        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
       </div>
       <Card>
         <CardHeader><span className="text-lg font-semibold text-gray-800">Payouts</span><span className="text-sm text-gray-400">{filtered.length} results</span></CardHeader>
@@ -1262,7 +1263,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
             <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-amber-600"><Icons.Refresh /></span></div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-800 mb-1">Reset Payout Data</h3>
-              <p className="text-sm text-gray-500 mb-3">Restores all payout statuses to their original mock values. Use this after testing Approve, Pause, or Abandon flows to start fresh.</p>
+              <p className="text-sm text-gray-500 mb-3">Restores all payout statuses to their original mock values. Use this after testing Approve, Hold, or Abandon flows to start fresh.</p>
               {changedPayouts.length > 0 ? (
                 <div className="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
@@ -1301,7 +1302,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                     return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
                   }).filter(Boolean)
                 }
-                {(() => { const pausedCount = payouts.filter((p) => p.paused).length; return pausedCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> Paused</Badge><span className="text-gray-500">× {pausedCount}</span></div>) : null; })()}
+                {(() => { const holdCount = payouts.filter((p) => p.paused).length; return holdCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge><span className="text-gray-500">× {holdCount}</span></div>) : null; })()}
                 </div>
                 <p className="text-xs text-gray-400 mt-3">{payouts.length} total payouts in mock data</p>
               </div>
@@ -1320,9 +1321,10 @@ const uxArtefactsList = [
   { id: "ux-flows", title: "UX Flow Diagrams (All-in-One)", description: "Standalone HTML with all 4 flow diagrams — opens in a new tab", type: "Standalone HTML", icon: "flow", component: null, href: "ux-flows.html" },
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
-  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
+  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Execute, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
   { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
+  { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Discussion framework for manual vs automatic controls, scope levels (global/merchant/payout), and permission model", type: "Standalone HTML", icon: "controls", component: null, href: "payout-progression-controls.html" },
 ];
 
@@ -1336,6 +1338,7 @@ function UXArtefactsPage() {
     actions: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" /></svg>),
     roles: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" /><line x1="3" y1="9" x2="21" y2="9" /><line x1="9" y1="3" x2="9" y2="21" /></svg>),
     wireframe: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2" /><line x1="2" y1="8" x2="22" y2="8" /><line x1="8" y1="8" x2="8" y2="21" /><rect x="10" y="10" width="5" height="4" rx="0.5" strokeDasharray="2 1" /><rect x="10" y="16" width="10" height="3" rx="0.5" strokeDasharray="2 1" /></svg>),
+    docs: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>),
     controls: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
   };
 
