@@ -36,6 +36,7 @@ const Icons = {
   Refresh: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23,4 23,10 17,10" /><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10" /></svg>),
   Ban: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>),
   Check: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20,6 9,17 4,12" /></svg>),
+  Search: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>),
   Beaker: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v5.172a2 2 0 01-.586 1.414l-4.828 4.828A4 4 0 007.414 21h9.172a4 4 0 002.828-6.828l-4.828-4.828A2 2 0 0114 8.172V3" /><path d="M7 17h10" /></svg>),
   Layers: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12,2 2,7 12,12 22,7" /><polyline points="2,17 12,22 22,17" /><polyline points="2,12 12,17 22,12" /></svg>),
   Shield: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>),
@@ -157,7 +158,7 @@ function PausePayoutDialog({ open, onClose, payout, onConfirm }) {
   return (
     <Modal open={open} onClose={onClose} title="Pause payout">
       <div className="space-y-5">
-        <Alert type="warning" title="This payout will be held">The payout will remain in a paused state until a FinOps Tier 1 user resumes or abandons it. No transfers will be initiated while paused.</Alert>
+        <Alert type="warning" title="This payout will be held">The payout will remain in a paused state until a FinOps Admin user resumes or abandons it. No transfers will be initiated while paused.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
@@ -203,6 +204,9 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
     <Modal open={open} onClose={onClose} title="Abandon payout">
       <div className="space-y-5">
         <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently cancel it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
+        {payout.status === "Failed" && (
+          <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. Ensure bank detail corrections have been attempted (for non-retryable) or that retry limits have been exhausted (for retryable). This action will be audited.</Alert>
+        )}
         <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount], ["Transfers affected", payout.transferCount]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-red-600 font-medium">{label}</span><span className="text-red-800 font-semibold">{value}</span></div>
@@ -234,13 +238,20 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status }) {
-  const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Paused": "warning", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
-  return <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>;
+function PayoutStatusBadge({ status, paused, retryable }) {
+  const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
+      {paused && <Badge colorScheme="warning" size="sm"><Icons.Pause /> Paused</Badge>}
+      {status === "Failed" && retryable === true && <Badge colorScheme="purple" size="sm">Retryable</Badge>}
+      {status === "Failed" && retryable === false && <Badge colorScheme="neutral" size="sm">Non-retryable</Badge>}
+    </span>
+  );
 }
 
 // ─── Global role context (simulated) ───
-const ROLES = { FINOPS_T1: "FinOps Tier 1", FINOPS_T2: "FinOps Tier 2", ADMIN: "Administrator" };
+const ROLES = { FINOPS_T1: "FinOps Admin", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
 
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA — Expanded
@@ -263,9 +274,9 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
-  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Paused" },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed", retryable: true },
+  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", paused: true },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed", retryable: false },
   // 19 Feb
   { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
   { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
@@ -296,27 +307,27 @@ const auditLogs = {
   "PO-2026-0223-001": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
   ],
   "PO-2026-0223-002": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
   ],
   // Transferring — in progress
   "PO-2026-0223-003": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
     { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
   ],
   // Completed — full lifecycle
   "PO-2026-0222-001": [
     { ts: "22 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
     { ts: "22 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
+    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
     { ts: "22 Feb 2026, 10:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
     { ts: "22 Feb 2026, 1:45 PM", version: 6, action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
     { ts: "22 Feb 2026, 1:45 PM", version: 7, action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
@@ -324,8 +335,8 @@ const auditLogs = {
   "PO-2026-0221-001": [
     { ts: "21 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
     { ts: "21 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
-    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "2 transfers initiated (split by account)." },
+    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
+    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps Admin)", detail: "2 transfers initiated (split by account)." },
     { ts: "21 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
     { ts: "21 Feb 2026, 2:30 PM", version: 6, action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
     { ts: "21 Feb 2026, 2:35 PM", version: 7, action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
@@ -335,16 +346,16 @@ const auditLogs = {
   "PO-2026-0220-001": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps T1)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
+    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Execute triggered", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
     { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
     { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
   ],
   "PO-2026-0220-003": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps T1)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Execute triggered", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
     { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
     { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
   ],
@@ -352,21 +363,21 @@ const auditLogs = {
   "PO-2026-0220-002": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps T1)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Paused", user: "Sarah Chen (FinOps T1)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Paused", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
     { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Status changed to Paused", user: "System", detail: "Payout held pending review." },
   ],
   // Abandoned
   "PO-2026-0219-001": [
     { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
     { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps T1)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
     { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
   ],
   "PO-2026-0217-001": [
     { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
     { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps T1)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
     { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
   ],
 };
@@ -483,27 +494,32 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   const [showPause, setShowPause] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
-  const allActions = {
-    "Ready for Review": [
-      { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
-      { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+  // Build actions based on status + paused flag
+  const buildActions = () => {
+    // If payout is paused, show Resume + Abandon regardless of underlying status
+    if (payout.paused) return [
+      { label: "Resume", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resumed", message: `Payout ${payout.id} has been unpaused.` }); onStatusChange(payout.id, payout.status, { paused: false }); } },
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ],
-    "Ready for Transfer": [
-      { label: "Execute", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
-      { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ],
-    "Paused": [
-      { label: "Resume", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resumed", message: `Payout ${payout.id} has been moved back to Ready for Review.` }); onStatusChange(payout.id, "Ready for Review"); } },
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ],
-    "Failed": [
-      { label: "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Transferring"); } },
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ],
+    ];
+    const map = {
+      "Ready for Review": [
+        { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
+        { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      ],
+      "Ready for Transfer": [
+        { label: "Execute", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
+        { label: "Pause", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowPause(true) },
+        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      ],
+      "Failed": [
+        ...(payout.retryable ? [{ label: "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
+        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      ],
+    };
+    return map[payout.status] || [];
   };
-  const currentActions = allActions[payout.status] || [];
+  const currentActions = buildActions();
 
   const handleApprove = () => {
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
@@ -511,7 +527,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   };
   const handlePause = (reason, note) => {
     addToast({ type: "warning", title: "Payout paused", message: `${payout.id} — ${reason}` });
-    onStatusChange(payout.id, "Paused");
+    onStatusChange(payout.id, payout.status, { paused: true });
   };
   const handleAbandon = (reason) => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been permanently cancelled.` });
@@ -526,22 +542,23 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      {isFailed && failedTransfer && (<Alert type="error" title={`Transfer failed — ${failedTransfer.retryable ? "Retryable" : "Non-retryable"}`}>{failedTransfer.failureReason}{!failedTransfer.retryable ? ". The merchant's bank details need to be corrected before this payout can be retried." : ". This transfer can be automatically retried."}</Alert>)}
-      {isFailed && !failedTransfer && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
+      {isFailed && payout.retryable === true && (<Alert type="error" title="Transfer failed — Retryable">{failedTransfer ? failedTransfer.failureReason + ". " : ""}This payout can be automatically retried and will transition to Ready for Transfer.</Alert>)}
+      {isFailed && payout.retryable === false && (<Alert type="error" title="Transfer failed — Non-retryable">{failedTransfer ? failedTransfer.failureReason + ". " : ""}Manual resolution required. The merchant's bank details or settlement configuration need to be corrected before this payout can proceed.</Alert>)}
+      {isFailed && payout.retryable === undefined && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Tier 1 user to perform actions.</span></div>)}
+      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} paused={payout.paused} retryable={payout.retryable} /></div>
           {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} />]].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} paused={payout.paused} retryable={payout.retryable} />]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -831,9 +848,9 @@ function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
   const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[adj.status] || "neutral";
 
   const auditEntries = [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps T1)", detail: `${adj.type} adjustment of ${adj.amount} — ${adj.reason}.` },
-    ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment approved", user: "Sarah Chen (FinOps T1)", detail: "Included in next payout cycle." }] : []),
-    ...(adj.status === "Rejected" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment rejected", user: "Sarah Chen (FinOps T1)", detail: adj.rejectReason || "Rejected by reviewer." }] : []),
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps Admin)", detail: `${adj.type} adjustment of ${adj.amount} — ${adj.reason}.` },
+    ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment approved", user: "Sarah Chen (FinOps Admin)", detail: "Included in next payout cycle." }] : []),
+    ...(adj.status === "Rejected" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment rejected", user: "Sarah Chen (FinOps Admin)", detail: adj.rejectReason || "Rejected by reviewer." }] : []),
   ];
 
   return (
@@ -955,8 +972,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [killSwitch, setKillSwitch] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
   const isAdmin = role === ROLES.ADMIN;
+
+  const handleSort = (col) => {
+    if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); }
+    else { setSortCol(col); setSortDir("asc"); }
+  };
 
   if (!featureEnabled) return (
     <div className="p-6"><Card><CardBody className="py-16 text-center space-y-3">
@@ -976,9 +1001,12 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus) => { onPayoutStatusChange(id, newStatus); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
-  const filteredPayouts = statusFilter === "all" ? payouts : payouts.filter((p) => p.status === statusFilter);
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "Paused" ? payouts.filter((p) => p.paused) : payouts.filter((p) => p.status === statusFilter && !p.paused);
+  const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
+  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
 
   return (
     <div className="p-6 space-y-5">
@@ -1010,8 +1038,14 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
             <HeroMetric heading="Pending" value="$29,769.55" colorClass="text-indigo-600" />
             <HeroMetric heading="Failed" value="$6,112.75" colorClass="text-red-600" />
           </div>
+          <div className="mb-3">
+            <div className="relative"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Payout ID, amount, merchant, or MID..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
+          </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Transfers", "Amount", "Status"].map((h) => {
+              const sortable = ["Created", "Settlement date", "Payout ID", "Merchant", "Amount", "Status"].includes(h);
+              return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
+            })}
           </tr></thead><tbody>
             {filteredPayouts.map((p) => (
               <tr key={p.id} onClick={() => setSelectedPayout(p)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${p.status === "Failed" ? "bg-red-50/30" : ""}`}>
@@ -1022,7 +1056,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1043,17 +1077,24 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const [disableMerchant, setDisableMerchant] = useState(false);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
+  const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const filtered = statusFilter === "all" ? merchantPayouts : merchantPayouts.filter((p) => p.status === statusFilter);
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "Paused" ? merchantPayouts.filter((p) => p.paused) : merchantPayouts.filter((p) => p.status === statusFilter && !p.paused);
+  const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase())) : statusFiltered;
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
+  const filtered = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus) => { onPayoutStatusChange(id, newStatus); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1075,10 +1116,16 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <div className="flex flex-wrap gap-6 pb-4 mb-4 border-b border-gray-100">
             <HeroMetric heading="Total payouts" value="$12,804.60" /><HeroMetric heading="Completed" value="$2,945.30" colorClass="text-emerald-600" /><HeroMetric heading="Pending" value="$8,439.30" colorClass="text-indigo-600" />
           </div>
+          <div className="mb-3">
+            <div className="relative"><input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search by Payout ID or amount..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
+          </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Payout ID", "Transfers", "Amount", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Payout ID", "Transfers", "Amount", "Status"].map((h) => {
+              const sortable = ["Created", "Settlement date", "Payout ID", "Amount", "Status"].includes(h);
+              return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
+            })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1221,7 +1268,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
                   <div className="space-y-1">{changedPayouts.map((p) => {
                     const original = mockPayouts.find((o) => o.id === p.id);
-                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} /></div>);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} paused={original.paused} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></div>);
                   })}</div>
                 </div>
               ) : (
@@ -1249,11 +1296,13 @@ function DebuggingToolsPage({ onResetData, payouts }) {
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-gray-800 mb-1">Current Data Summary</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">{
-                  ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Paused", "Abandoned"].map((status) => {
+                  ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Abandoned"].map((status) => {
                     const count = payouts.filter((p) => p.status === status).length;
                     return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
                   }).filter(Boolean)
-                }</div>
+                }
+                {(() => { const pausedCount = payouts.filter((p) => p.paused).length; return pausedCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> Paused</Badge><span className="text-gray-500">× {pausedCount}</span></div>) : null; })()}
+                </div>
                 <p className="text-xs text-gray-400 mt-3">{payouts.length} total payouts in mock data</p>
               </div>
             </div>
@@ -1272,7 +1321,7 @@ const uxArtefactsList = [
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Pause, Abandon, Execute, and Resume with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps T1, FinOps T2, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Discussion framework for manual vs automatic controls, scope levels (global/merchant/payout), and permission model", type: "Standalone HTML", icon: "controls", component: null, href: "payout-progression-controls.html" },
 ];
@@ -2130,8 +2179,8 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span>Role:</span>
           <select value={role} onChange={(e) => onRoleChange(e.target.value)} className="text-xs bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-300">
-            <option value={ROLES.FINOPS_T1}>FinOps Tier 1</option>
-            <option value={ROLES.FINOPS_T2}>FinOps Tier 2</option>
+            <option value={ROLES.FINOPS_T1}>FinOps Admin</option>
+            <option value={ROLES.FINOPS_T2}>FinOps View only</option>
             <option value={ROLES.ADMIN}>Administrator</option>
           </select>
         </div>
@@ -2149,13 +2198,21 @@ export default function MSPSupportDashboard() {
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
 
-  const handlePayoutStatusChange = useCallback((payoutId, newStatus, newPayoutData) => {
+  const handlePayoutStatusChange = useCallback((payoutId, newStatus, extra) => {
     setPayouts((prev) => {
       // If it's a new payout (not found in existing list), add it
-      if (newPayoutData && !prev.find((p) => p.id === payoutId)) {
-        return [newPayoutData, ...prev];
+      if (extra && !prev.find((p) => p.id === payoutId) && extra.id) {
+        return [extra, ...prev];
       }
-      return prev.map((p) => p.id === payoutId ? { ...p, status: newStatus } : p);
+      return prev.map((p) => {
+        if (p.id !== payoutId) return p;
+        const updated = { ...p, status: newStatus };
+        // Merge extra flags (paused, retryable, etc.)
+        if (extra && typeof extra === "object") Object.assign(updated, extra);
+        // Clear paused flag when transitioning to terminal states
+        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.paused = false;
+        return updated;
+      });
     });
   }, []);
 
