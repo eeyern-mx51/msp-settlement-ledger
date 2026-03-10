@@ -6,6 +6,8 @@ import FinOpsActionFlows from "./flows/FinOpsActionFlows";
 import PermissionsMatrix from "./flows/PermissionsMatrix";
 import DTEtoPayoutWireframes from "./flows/DTEtoPayoutWireframes";
 import PayoutDataDictionary from "./flows/PayoutDataDictionary";
+import UXFlowDiagrams from "./flows/UXFlowDiagrams";
+import PayoutProgressionControls from "./flows/PayoutProgressionControls";
 
 // ─── Icon Components ───
 const Icons = {
@@ -1403,14 +1405,14 @@ function DebuggingToolsPage({ onResetData, payouts }) {
 // UX ARTEFACTS PAGE
 // ═══════════════════════════════════════════════════════════
 const uxArtefactsList = [
-  { id: "ux-flows", title: "UX Flow Diagrams (All-in-One)", description: "Standalone HTML with all 4 flow diagrams — opens in a new tab", type: "Standalone HTML", icon: "flow", component: null, href: "ux-flows.html" },
+  { id: "ux-flows", title: "UX Flow Diagrams (All-in-One)", description: "All 4 core flow diagrams in a tabbed view — Payout Lifecycle, E2E Journey, Action Flows, and Permissions", type: "React Component", icon: "flow", component: UXFlowDiagrams },
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Execute, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
   { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
-  { id: "progression-controls", title: "Payout Progression Controls", description: "Discussion framework for manual vs automatic controls, scope levels (global/merchant/payout), and permission model", type: "Standalone HTML", icon: "controls", component: null, href: "payout-progression-controls.html" },
+  { id: "progression-controls", title: "Payout Progression Controls", description: "Framework for Hold/Release Hold model — scope levels (fleet/merchant/payout), automation switches, failure controls, and resolved decisions", type: "React Component", icon: "controls", component: PayoutProgressionControls },
 ];
 
 function UXArtefactsPage() {
