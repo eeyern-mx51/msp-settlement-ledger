@@ -191,6 +191,48 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
+function BulkHoldDialog({ open, onClose, scope, onConfirm }) {
+  // scope: "fleet" or "merchant"
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const [loading, setLoading] = useState(false);
+  const label = scope === "fleet" ? "fleet" : "merchant";
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (FinOps Admin)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
+  };
+  return (
+    <Modal open={open} onClose={onClose} title={`Hold all ${label} payouts`}>
+      <div className="space-y-5">
+        <Alert type="warning" title={`All ${label} payouts will be placed on hold`}>No payouts {scope === "fleet" ? "across this fleet" : "for this merchant"} will be transferred until the hold is released. Payouts already in Transferring status will not be affected.</Alert>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
+          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+            <option value="">Select a reason...</option>
+            <option>Pending merchant verification</option>
+            <option>Suspicious activity review</option>
+            <option>Bank details under review</option>
+            <option>Regulatory hold</option>
+            <option>Internal audit</option>
+            <option>Suspected fraud across merchants</option>
+            <option>System maintenance</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : `Hold all ${label} payouts`}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
@@ -414,10 +456,10 @@ const transfersByPayout = {
     { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
   ],
   "PO-2026-0220-001": [
-    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit", retryable: false },
+    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit", retryable: false, errorCode: "INVALID_BSB", recommendedAction: "Contact merchant to verify and update BSB. Update bank details in the system, then retry.", attempt: 1 },
   ],
   "PO-2026-0220-003": [
-    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA", retryable: true },
+    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA", retryable: true, errorCode: "GATEWAY_TIMEOUT", recommendedAction: "Retry after confirming no duplicate payment was processed.", attempt: 2 },
   ],
   "PO-2026-0219-002": [
     { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null, retryable: null },
@@ -514,7 +556,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
-        ...(payout.retryable ? [{ label: "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
+        ...(payout.retryable ? [{ label: failedTransfer?.attempt ? `Retry (attempt ${failedTransfer.attempt + 1})` : "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
     };
@@ -543,8 +585,37 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      {isFailed && payout.retryable === true && (<Alert type="error" title="Transfer failed — Retryable">{failedTransfer ? failedTransfer.failureReason + ". " : ""}This payout can be automatically retried and will transition to Ready for Transfer.</Alert>)}
-      {isFailed && payout.retryable === false && (<Alert type="error" title="Transfer failed — Non-retryable">{failedTransfer ? failedTransfer.failureReason + ". " : ""}Manual resolution required. The merchant's bank details or settlement configuration need to be corrected before this payout can proceed.</Alert>)}
+      {isFailed && payout.retryable === true && (
+        <div className="space-y-2">
+          <Alert type="error" title="Transfer failed — Retryable">
+            {failedTransfer ? failedTransfer.failureReason + ". " : ""}FinOps Admin can manually retry this payout.
+          </Alert>
+          <div className="flex flex-col sm:flex-row gap-2 px-1">
+            {failedTransfer?.errorCode && (
+              <div className="flex items-center gap-2 text-xs"><span className="font-bold text-gray-500">Error code:</span><code className="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{failedTransfer.errorCode}</code></div>
+            )}
+            {failedTransfer?.attempt && (
+              <div className="flex items-center gap-2 text-xs"><span className="font-bold text-gray-500">Attempt:</span><span className={`font-bold px-2 py-0.5 rounded ${failedTransfer.attempt >= 3 ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-700"}`}>{failedTransfer.attempt} of 3{failedTransfer.attempt >= 3 ? " — Escalation recommended" : ""}</span></div>
+            )}
+          </div>
+          {failedTransfer?.errorCode === "GATEWAY_TIMEOUT" && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800"><span className="font-bold flex-shrink-0 mt-0.5">⚠</span><span>Timeout failures are ambiguous — the original payment may have succeeded without confirmation. Confirm no duplicate payment was processed before retrying.</span></div>
+          )}
+        </div>
+      )}
+      {isFailed && payout.retryable === false && (
+        <div className="space-y-2">
+          <Alert type="error" title="Transfer failed — Non-retryable">
+            {failedTransfer ? failedTransfer.failureReason + ". " : ""}The root cause must be resolved before this payout can proceed.
+          </Alert>
+          {failedTransfer?.errorCode && (
+            <div className="flex items-center gap-2 text-xs px-1"><span className="font-bold text-gray-500">Error code:</span><code className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{failedTransfer.errorCode}</code></div>
+          )}
+          {failedTransfer?.recommendedAction && (
+            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800"><span className="font-bold flex-shrink-0">Recommended:</span><span>{failedTransfer.recommendedAction}</span></div>
+          )}
+        </div>
+      )}
       {isFailed && payout.retryable === undefined && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
@@ -970,7 +1041,8 @@ function MerchantAdjustmentsTab({ role, mid }) {
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [dateFilter, setDateFilter] = useState("week");
-  const [killSwitch, setKillSwitch] = useState(false);
+  const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
+  const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -978,6 +1050,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
   const isAdmin = role === ROLES.ADMIN;
+  const { addToast } = useToast();
 
   const handleSort = (col) => {
     if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); }
@@ -1015,11 +1088,15 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      {killSwitch && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold.</span><span className="text-sm text-red-600 ml-1">No payouts will be transferred until the hold is released.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setKillSwitch(false)} disabled={!canWrite}>Release hold</Button></div>)}
+      <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { setFleetHold(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
+
+      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setFleetHold(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={killSwitch} onChange={setKillSwitch} label="Hold fleet payouts" description="Place all payouts for this fleet on hold. No transfers will proceed." disabled={!canWrite} />
-        <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+          {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+        </div>
       </div>
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
@@ -1075,7 +1152,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
-  const [disableMerchant, setDisableMerchant] = useState(false);
+  const [merchantHold, setMerchantHold] = useState(null); // null or { reason, note, user, timestamp }
+  const [showMerchantHoldDialog, setShowMerchantHoldDialog] = useState(false);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
@@ -1083,6 +1161,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
+  const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
   const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.paused) : merchantPayouts.filter((p) => p.status === statusFilter && !p.paused);
@@ -1101,11 +1180,15 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
 
-      {disableMerchant && (<div className="flex items-center gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><Icons.Shield /><div className="flex-1"><span className="text-sm font-bold text-red-800">Merchant payouts are on hold.</span><span className="text-sm text-red-600 ml-1">Payouts for this merchant won't be transferred until the hold is released.</span></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => setDisableMerchant(false)} disabled={!canWrite}>Release hold</Button></div>)}
+      <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Merchant hold placed", message: `All merchant payouts are now on hold — ${holdInfo.reason}.` }); }} />
+
+      {merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Merchant payouts are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Merchant hold released", message: "Payouts for this merchant can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <Toggle checked={disableMerchant} onChange={setDisableMerchant} label="Hold merchant payouts" description="Place all payouts for this merchant on hold. No transfers will proceed." disabled={!canWrite} />
-        <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+          {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+        </div>
       </div>
       <div className="flex items-center gap-2 flex-wrap">
         {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}

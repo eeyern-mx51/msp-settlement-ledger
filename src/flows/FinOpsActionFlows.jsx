@@ -94,7 +94,7 @@ const FLOWS = {
       { actor: "System", action: "Set status to Transferring", detail: "Status MUST be set before the NPP request is made. Audit log: \"Transfer initiated\"." },
       { actor: "System", action: "Send payment via NPP", detail: "Payout Service → Cuscal Payment API → NPP. Creates payout transfer record." },
       { actor: "System", action: "Await NPP webhook", detail: "Cuscal sends webhook with transfer outcome. Recover NPP Status endpoint as backup." },
-      { actor: "System", action: "Record transfer outcome", detail: "Success → Completed + MLE entry. Transient failure → Ready for Transfer (auto-retry). Persistent failure → Failed + alert." },
+      { actor: "System", action: "Record transfer outcome", detail: "Success → Completed + MLE entry. Transient failure → Failed (retryable) — manual retry available. Persistent failure → Failed (non-retryable) — resolution required." },
       { actor: "UI", action: "Success toast", detail: "\"Transfer initiated — PO-XXXX is now transferring to the merchant's bank.\"" },
     ],
     edgeCases: [
@@ -104,6 +104,35 @@ const FLOWS = {
       "Future: multi-select / trigger all from fleet list",
       "Backoff logic if too many failures across merchants",
       "Challenge with automation: sufficient funds check",
+    ],
+  },
+  retry: {
+    title: "Retry Payout",
+    icon: "↻",
+    color: "#2563EB",
+    bgColor: "#EFF6FF",
+    precondition: "Payout is in Failed status with retryable flag. Non-retryable payouts must have root cause resolved first.",
+    role: "FinOps Admin only (POC: manual only. Pilot/BAU: automated for select conditions)",
+    transition: "Failed (retryable) → Ready for Transfer → Execute → Transferring → Completed / Failed",
+    steps: [
+      { actor: "FinOps Admin", action: "Navigate to failed payout", detail: "Filter by Failed status. Review the error code and failure reason displayed in the alert banner." },
+      { actor: "FinOps Admin", action: "Review failure context", detail: "Check error code (e.g. GATEWAY_TIMEOUT, RATE_LIMITED), attempt count, and recommended action. For GATEWAY_TIMEOUT, confirm no duplicate payment was processed." },
+      { actor: "FinOps Admin", action: "Click \"Retry (attempt N)\" button", detail: "Button shows the attempt number. Available only on retryable failures. Triggers immediately — no confirmation dialog." },
+      { actor: "System", action: "Transition to Ready for Transfer", detail: "Status → Ready for Transfer. Attempt counter incremented. Audit log: \"Manual retry initiated — Attempt N.\"" },
+      { actor: "FinOps Admin", action: "Execute the transfer", detail: "Payout now follows the standard Execute flow — click Execute to initiate the NPP transfer." },
+      { actor: "System", action: "Record outcome", detail: "Success → Completed. Failure → returns to Failed with updated attempt count." },
+      { actor: "UI", action: "Success toast", detail: "\"Retry initiated — PO-XXXX has been queued for re-transfer.\"" },
+    ],
+    edgeCases: [
+      "Retryable conditions: GATEWAY_TIMEOUT, NPP_UNAVAILABLE, RATE_LIMITED, RECEIVER_TEMP_UNAVAIL, CUSCAL_5XX, INSUFFICIENT_FUNDS",
+      "Non-retryable conditions: INVALID_BSB, INVALID_ACCOUNT, ACCOUNT_CLOSED, ACCOUNT_BLOCKED, NAME_MISMATCH, COMPLIANCE_BLOCK, PAYMENT_REJECTED, DUPLICATE_REFERENCE",
+      "After 3 failed attempts: amber 'Escalation recommended' indicator — investigate root cause before retrying",
+      "After 5 failed attempts: red 'Investigation required' indicator — likely systemic issue",
+      "GATEWAY_TIMEOUT retries should be preceded by reconciliation check (is the original payment still pending?)",
+      "INSUFFICIENT_FUNDS: alert treasury/finance team — the retry will fail again if the account isn't funded",
+      "Multiple merchants failing simultaneously suggests a Cuscal/NPP outage, not individual payout issues",
+      "Non-retryable resolution flow: fix root cause → FinOps transitions payout to Ready for Transfer → Execute (this is a fresh attempt, not a retry of old data)",
+      "Future: auto-retry for RATE_LIMITED and NPP_UNAVAILABLE in Pilot phase. Full auto-retry with exponential backoff in BAU.",
     ],
   },
   release: {
@@ -129,7 +158,7 @@ const FLOWS = {
   },
 };
 
-const FLOW_ORDER = ["approve", "hold", "abandon", "execute", "release"];
+const FLOW_ORDER = ["approve", "hold", "abandon", "execute", "retry", "release"];
 
 export default function FinOpsActionFlows() {
   const [activeFlow, setActiveFlow] = useState("approve");
