@@ -194,20 +194,24 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function BulkHoldDialog({ open, onClose, scope, onConfirm }) {
+function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
   // scope: "fleet" or "merchant"
   const [reason, setReason] = useState("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const label = scope === "fleet" ? "fleet" : "merchant";
+  const isFleet = scope === "fleet";
+  const dialogTitle = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
+  const alertTitle = isFleet ? "All fleet payouts will be placed on hold" : `All payouts for ${merchantName || "this merchant"} will be placed on hold`;
+  const alertBody = isFleet ? "No payouts across this fleet will be transferred until the hold is released. Payouts already in Transferring status will not be affected." : `No payouts for ${merchantName || "this merchant"} will be transferred until the hold is released. Payouts already in Transferring status will not be affected.`;
+  const confirmLabel = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
   const handleConfirm = () => {
     setLoading(true);
     setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (FinOps Admin)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
   };
   return (
-    <Modal open={open} onClose={onClose} title={`Hold all ${label} payouts`}>
+    <Modal open={open} onClose={onClose} title={dialogTitle}>
       <div className="space-y-5">
-        <Alert type="warning" title={`All ${label} payouts will be placed on hold`}>No payouts {scope === "fleet" ? "across this fleet" : "for this merchant"} will be transferred until the hold is released. Payouts already in Transferring status will not be affected.</Alert>
+        <Alert type="warning" title={alertTitle}>{alertBody}</Alert>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
@@ -229,7 +233,7 @@ function BulkHoldDialog({ open, onClose, scope, onConfirm }) {
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : `Hold all ${label} payouts`}</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : confirmLabel}</Button>
         </div>
       </div>
     </Modal>
@@ -1147,7 +1151,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [merchantHold, setMerchantHold] = useState(null); // null or { reason, note, user, timestamp }
@@ -1178,9 +1182,9 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
 
-      <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Merchant hold placed", message: `All merchant payouts are now on hold — ${holdInfo.reason}.` }); }} />
+      <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" merchantName={merchantName || "this merchant"} onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Hold placed", message: `All payouts for ${merchantName || "this merchant"} are now on hold — ${holdInfo.reason}.` }); }} />
 
-      {merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Merchant payouts are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Merchant hold released", message: "Payouts for this merchant can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
+      {merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex items-center gap-2 flex-wrap">
         {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
@@ -1190,7 +1194,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+            {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold payouts</Button>}
           </div>
         </CardHeader>
         <Divider />
@@ -1298,7 +1302,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>

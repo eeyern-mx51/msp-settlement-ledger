@@ -24,7 +24,7 @@ function StepTag({ step }) {
 /* ─── Data ─── */
 const SCENARIOS = [
   { scenario: "Platform incident — DTE files are corrupted today", level: "global", outcome: "FinOps Admin activates fleet hold. All automation stops, all manual actions blocked. Fix the data, release hold." },
-  { scenario: "Merchant under fraud investigation", level: "merchant", outcome: "FinOps Admin holds that merchant's payouts. Other merchants keep flowing. Investigation concludes, release hold." },
+  { scenario: "Merchant under fraud investigation", level: "merchant", outcome: "FinOps Admin clicks \"Hold payouts\" on the merchant page → dialog confirms \"Hold payouts for [Merchant Name]\". Other merchants keep flowing. Investigation concludes, release hold." },
   { scenario: "One payout has unusual amounts — need to verify", level: "payout", outcome: "FinOps Admin places a hold on that payout. Rest of the merchant's payouts keep flowing. Verified? Release hold." },
   { scenario: "Moving to auto-approval but want to keep manual transfers", level: "global", outcome: "Turn on auto-approval. Leave auto-transfer off. Preparation is already manual (POC). Gradual rollout." },
   { scenario: "New FinOps Viewer joins — shouldn't approve payouts", level: "permission", outcome: "Not a toggle — View-only role simply doesn't have approve/execute buttons. No configuration needed." },
@@ -117,8 +117,8 @@ export default function PayoutProgressionControls() {
               <span className="text-[11px] text-orange-600/70">Single MID</span>
             </div>
             <div className="px-4 py-4">
-              <p className="text-sm font-semibold text-gray-900 mb-1">Hold payouts for one merchant</p>
-              <p className="text-sm text-gray-600">"Hold merchant payouts" — blocks <StepTag step="all" /> for a specific MID.</p>
+              <p className="text-sm font-semibold text-gray-900 mb-1">Hold payouts for a specific merchant</p>
+              <p className="text-sm text-gray-600">"Hold payouts for [Merchant Name]" — blocks <StepTag step="all" /> for a specific MID. The merchant name is used in the button, dialog, and banner to eliminate ambiguity.</p>
               <p className="text-xs text-gray-400 mt-1">e.g. Fraud investigation on one merchant, bank details changing</p>
             </div>
           </div>
@@ -264,19 +264,40 @@ export default function PayoutProgressionControls() {
           </div>
 
           <div className="border-t border-gray-100 pt-4">
-            <h3 className="text-sm font-bold text-gray-900 mb-2">Fleet & merchant level</h3>
+            <h3 className="text-sm font-bold text-gray-900 mb-2">Fleet level</h3>
             <div className="space-y-2 text-sm text-gray-600">
               <div className="flex items-start gap-2">
-                <span className="text-indigo-600 font-bold text-xs mt-0.5">DORMANT</span>
-                <span>Ghost/outline button: "Hold all payouts" — low visual weight, discoverable but not dominant.</span>
+                <span className="text-indigo-600 font-bold text-xs mt-0.5">BUTTON</span>
+                <span>Ghost/outline button: <strong>"Hold all payouts"</strong> — low visual weight, discoverable but not dominant.</span>
               </div>
               <div className="flex items-start gap-2">
-                <span className="text-red-600 font-bold text-xs mt-0.5">ACTIVE</span>
-                <span>Red banner with reason, who placed it, when, and optional note. "Release Hold" button in the banner.</span>
+                <span className="text-red-600 font-bold text-xs mt-0.5">BANNER</span>
+                <span>"Fleet payouts are on hold" — red banner with reason, who placed it, when, and optional note. "Release Hold" button in the banner.</span>
               </div>
               <div className="flex items-start gap-2">
                 <span className="text-amber-600 font-bold text-xs mt-0.5">DIALOG</span>
-                <span>Hold requires a mandatory reason (dropdown) and optional note. Release hold is immediate — no reason required.</span>
+                <span>Title: "Hold all payouts". Mandatory reason (dropdown) and optional note. Release is immediate — no reason required.</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <h3 className="text-sm font-bold text-gray-900 mb-2">Merchant level</h3>
+            <div className="space-y-2 text-sm text-gray-600">
+              <div className="flex items-start gap-2">
+                <span className="text-indigo-600 font-bold text-xs mt-0.5">BUTTON</span>
+                <span>Ghost/outline button: <strong>"Hold payouts"</strong> — shorter label since merchant context is already established by the page.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-red-600 font-bold text-xs mt-0.5">BANNER</span>
+                <span>"Payouts for [Merchant Name] are on hold" — uses the actual merchant name to remove ambiguity between merchant-level and fleet-level holds.</span>
+              </div>
+              <div className="flex items-start gap-2">
+                <span className="text-amber-600 font-bold text-xs mt-0.5">DIALOG</span>
+                <span>Title: "Hold payouts for [Merchant Name]". Body: "All payouts for [Merchant Name] will be placed on hold." Mandatory reason (dropdown) and optional note. Release is immediate.</span>
+              </div>
+              <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+                <strong>Why the merchant name?</strong> Without it, "Hold all merchant payouts" is ambiguous — it could mean "all payouts for this merchant" or "all merchants' payouts." Using the actual name ("Hold payouts for Joe's Coffee") eliminates this entirely.
               </div>
             </div>
           </div>
@@ -383,6 +404,10 @@ export default function PayoutProgressionControls() {
           <li className="flex items-start gap-2">
             <span className="text-emerald-500 font-bold mt-0.5">✓</span>
             <span><strong>Terminology:</strong> "Hold" / "Release Hold" adopted across all scopes. "Hold" is a flag, not a status.</span>
+          </li>
+          <li className="flex items-start gap-2">
+            <span className="text-emerald-500 font-bold mt-0.5">✓</span>
+            <span><strong>Merchant-level disambiguation:</strong> Merchant hold uses the actual merchant name — "Hold payouts for [Merchant Name]" — to avoid confusion with fleet-level "Hold all payouts".</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500 font-bold mt-0.5">✓</span>
