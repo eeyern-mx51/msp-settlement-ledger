@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
+import html2pdf from "html2pdf.js";
 import PayoutLifecycle from "./flows/PayoutLifecycle";
 import E2EPayoutJourney from "./flows/E2EPayoutJourney";
 import FinOpsActionFlows from "./flows/FinOpsActionFlows";
@@ -38,6 +39,7 @@ const Icons = {
   Ban: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="4.93" y1="4.93" x2="19.07" y2="19.07" /></svg>),
   Check: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20,6 9,17 4,12" /></svg>),
   Search: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>),
+  Download: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>),
   Beaker: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 3h6M10 3v5.172a2 2 0 01-.586 1.414l-4.828 4.828A4 4 0 007.414 21h9.172a4 4 0 002.828-6.828l-4.828-4.828A2 2 0 0114 8.172V3" /><path d="M7 17h10" /></svg>),
   Layers: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="12,2 2,7 12,12 22,7" /><polyline points="2,17 12,22 22,17" /><polyline points="2,12 12,17 22,12" /></svg>),
   Shield: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>),
@@ -1425,6 +1427,31 @@ function UXArtefactsPage() {
     controls: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
   };
 
+  const artefactContentRef = useRef(null);
+  const [pdfExporting, setPdfExporting] = useState(false);
+
+  const handleDownloadPDF = async () => {
+    if (!artefactContentRef.current) return;
+    setPdfExporting(true);
+    try {
+      const el = artefactContentRef.current;
+      const artefact = uxArtefactsList.find((a) => a.id === activeArtefact);
+      const filename = `${artefact.title.replace(/[^a-zA-Z0-9]+/g, "-").replace(/-+$/, "")}.pdf`;
+      await html2pdf().set({
+        margin: [10, 10, 10, 10],
+        filename,
+        image: { type: "jpeg", quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
+        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
+      }).from(el).save();
+    } catch (err) {
+      console.error("PDF export failed:", err);
+    } finally {
+      setPdfExporting(false);
+    }
+  };
+
   // If an artefact is selected, render it full-page with a back button
   if (activeArtefact) {
     const artefact = uxArtefactsList.find((a) => a.id === activeArtefact);
@@ -1436,10 +1463,15 @@ function UXArtefactsPage() {
             <Icons.ChevronLeft /><span>Back to artefacts</span>
           </button>
           <div className="w-px h-5 bg-gray-200" />
-          <h3 className="text-sm font-semibold text-gray-800">{artefact.title}</h3>
+          <h3 className="text-sm font-semibold text-gray-800 flex-1">{artefact.title}</h3>
+          <button onClick={handleDownloadPDF} disabled={pdfExporting} className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 disabled:cursor-wait transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50">
+            <Icons.Download /><span>{pdfExporting ? "Exporting..." : "Download PDF"}</span>
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-6">
-          {ArtefactComponent && <ArtefactComponent />}
+        <div className="flex-1 overflow-y-auto" ref={artefactContentRef}>
+          <div className="p-6">
+            {ArtefactComponent && <ArtefactComponent />}
+          </div>
         </div>
       </div>
     );
