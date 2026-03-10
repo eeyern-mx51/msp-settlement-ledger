@@ -351,7 +351,7 @@ function WireframeTransfer() {
       <div className="bg-white rounded border border-gray-200 px-3 py-2 space-y-1.5">
         <span className="text-[9px] font-bold text-gray-400">STATUS TRACKING</span>
         {[
-          { t: "11:00 AM", a: "Execute triggered", s: "info" },
+          { t: "11:00 AM", a: "Execute transfer", s: "info" },
           { t: "11:00 AM", a: "Status → Transferring", s: "info" },
           { t: "11:02 AM", a: "NPP credit submitted", s: "info" },
           { t: "01:45 PM", a: "Transfer confirmed → Completed", s: "success" },
@@ -466,7 +466,7 @@ const STEPS = [
   },
   {
     id: 7, phase: "Transfer", title: "Execute transfer → NPP → Merchant",
-    actor: "FinOps T1 / System (automated)", type: "both",
+    actor: "FinOps Admin / System (automated)", type: "both",
     description: "Approved payouts are executed — sending payment via Cuscal Payment API → NPP (New Payments Platform) → merchant's bank account. Transfer status is tracked via webhooks. Success → Completed. Transient failure → auto-retry. Persistent failure → Failed + alert.",
     wireframe: WireframeTransfer,
     uiReq: true, reqLabel: "Execute transfer, Status tracking, Failure handling",

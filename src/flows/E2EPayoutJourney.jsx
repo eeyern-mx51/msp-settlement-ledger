@@ -73,13 +73,13 @@ const STEPS = [
   {
     id: 7,
     phase: "Transfer",
-    title: "Execute payout transfer",
-    actor: "FinOps T1 (manual) / Automated",
+    title: "Execute transfer",
+    actor: "FinOps Admin (manual) / Automated",
     type: "both",
-    description: "The approved payout is executed — triggering a payment transfer via NPP (New Payments Platform) to the merchant's bank account. Status set to Transferring before the NPP request.",
+    description: "The approved payout transfer is executed — triggering a payment via NPP (New Payments Platform) to the merchant's bank account. Status set to Transferring before the NPP request.",
     uiReq: true,
-    reqLabel: "Execute payout (transfer)",
-    dataFlow: "Support Dashboard → Payout Service → Payout Execute Cron → NPP (Cuscal API)",
+    reqLabel: "Execute transfer button, Status tracking",
+    dataFlow: "Support Dashboard → Payout Service → NPP (Cuscal API)",
     details: ["POC: manual button press per merchant", "Pilot/BAU: automated based on criteria (5d vs 7d)", "Payment sent via Cuscal Payment API → NPP", "All transfer attempts are logged"],
   },
   {
