@@ -82,6 +82,62 @@ function Toggle({ checked, onChange, label, description, disabled }) {
 function FilterChip({ label, active, onClick }) {
   return <button onClick={onClick} className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${active ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}>{label}</button>;
 }
+
+const PAYOUT_FILTER_STEPS = [
+  { key: "all", label: "All" },
+  { key: "On Hold", label: "On Hold", color: "amber" },
+  { key: "Ready for Review", label: "Review", color: "indigo" },
+  { key: "Ready for Transfer", label: "Transfer", color: "emerald" },
+  { key: "Transferring", label: "In flight", color: "purple" },
+  { key: "Failed", label: "Failed", color: "red" },
+  { key: "Completed", label: "Completed", color: "green" },
+  { key: "Abandoned", label: "Abandoned", color: "gray" },
+];
+
+function PayoutProgressionFilter({ active, onChange, payouts }) {
+  const counts = {};
+  payouts.forEach((p) => {
+    if (p.hold) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
+    counts[p.status] = (counts[p.status] || 0) + 1;
+  });
+  const total = payouts.length;
+
+  const chipColors = {
+    amber: { active: "bg-amber-500 text-white border-amber-500", inactive: "text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100" },
+    indigo: { active: "bg-indigo-600 text-white border-indigo-600", inactive: "text-indigo-700 border-indigo-300 bg-indigo-50 hover:bg-indigo-100" },
+    emerald: { active: "bg-emerald-600 text-white border-emerald-600", inactive: "text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" },
+    purple: { active: "bg-purple-600 text-white border-purple-600", inactive: "text-purple-700 border-purple-300 bg-purple-50 hover:bg-purple-100" },
+    red: { active: "bg-red-500 text-white border-red-500", inactive: "text-red-700 border-red-300 bg-red-50 hover:bg-red-100" },
+    green: { active: "bg-green-600 text-white border-green-600", inactive: "text-green-700 border-green-300 bg-green-50 hover:bg-green-100" },
+    gray: { active: "bg-gray-500 text-white border-gray-500", inactive: "text-gray-600 border-gray-300 bg-gray-50 hover:bg-gray-100" },
+  };
+
+  return (
+    <div className="flex items-center gap-1 flex-wrap">
+      {PAYOUT_FILTER_STEPS.map((step, i) => {
+        const count = step.key === "all" ? total : (counts[step.key] || 0);
+        const isActive = active === step.key;
+        const colors = step.color ? chipColors[step.color] : null;
+        const cls = step.key === "all"
+          ? (isActive ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50")
+          : (isActive ? colors.active : colors.inactive);
+
+        return (
+          <span key={step.key} className="inline-flex items-center gap-0">
+            {i > 1 && <span className="text-gray-300 text-[10px] mx-0.5">›</span>}
+            <button
+              onClick={() => onChange(step.key)}
+              className={`text-xs font-medium px-2 py-1 rounded-md border transition-colors inline-flex items-center gap-1.5 ${cls}`}
+            >
+              {step.label}
+              <span className={`text-[10px] font-bold ${isActive ? "opacity-80" : "opacity-60"}`}>{count}</span>
+            </button>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
 function DateFilterBar({ value, onChange, options }) {
   return <div className="flex gap-2">{(options || [{ id: "today", label: "Today" }, { id: "week", label: "This week" }, { id: "custom", label: "Custom" }]).map((f) => (<button key={f.id} onClick={() => onChange(f.id)} className={`text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${value === f.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}>{f.label}</button>))}</div>;
 }
@@ -1133,6 +1189,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} />
+
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
@@ -1217,6 +1275,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
       {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
+
+      <PayoutProgressionFilter active={statusFilter} onChange={(s) => { setStatusFilter(s); setCurrentPage(1); }} payouts={merchantPayouts} />
 
       <Card>
         <CardHeader>
