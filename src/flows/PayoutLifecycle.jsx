@@ -2,8 +2,8 @@ import { useState } from "react";
 
 const STATES = [
   { id: "ready_for_review", label: "Ready for\nReview", x: 350, y: 60, color: "#EEF2FF", border: "#818CF8", textColor: "#4338CA", description: "Starting state for a payout where mx51 owes money to the merchant. Can have a Hold placed (flag overlay).", entry: "Payout is prepared (automated daily job sweeps merchant balance to zero).", exits: ["Approved → Ready for Transfer", "Hold → Hold flag set (stays in this state)", "Abandon → Abandoned", "Zero/negative balance → auto-Completed"] },
-  { id: "ready_for_transfer", label: "Ready for\nTransfer", x: 350, y: 220, color: "#F0FDF4", border: "#86EFAC", textColor: "#166534", description: "Payment transfer can be executed. Indicates the earliest execution time has been reached. Can have a Hold placed (flag overlay).", entry: "FinOps approves the payout after review, or retryable failure auto-transitions here.", exits: ["Execute transfer → Transferring", "Hold → Hold flag set (stays in this state)", "Abandon → Abandoned"] },
-  { id: "transferring", label: "Transferring", x: 350, y: 380, color: "#F5F3FF", border: "#C084FC", textColor: "#7C3AED", description: "Payout is being transferred to the merchant via NPP. Status MUST be set before the NPP request. Cannot be held or abandoned.", entry: "FinOps clicks \"Execute transfer\" (POC: manual, Pilot/BAU: automated).", exits: ["Success → Completed", "Failure (retryable) → Ready for Transfer", "Failure (non-retryable) → Failed"] },
+  { id: "ready_for_transfer", label: "Ready for\nTransfer", x: 350, y: 220, color: "#F0FDF4", border: "#86EFAC", textColor: "#166534", description: "Payment transfer can be initiated. Indicates the earliest execution time has been reached. Can have a Hold placed (flag overlay).", entry: "FinOps approves the payout after review, or retryable failure auto-transitions here.", exits: ["Begin transfer → Transferring", "Hold → Hold flag set (stays in this state)", "Abandon → Abandoned"] },
+  { id: "transferring", label: "Transferring", x: 350, y: 380, color: "#F5F3FF", border: "#C084FC", textColor: "#7C3AED", description: "Payout is being transferred to the merchant via NPP. Status MUST be set before the NPP request. Cannot be held or abandoned.", entry: "FinOps clicks \"Begin transfer\" (POC: manual, Pilot/BAU: automated).", exits: ["Success → Completed", "Failure (retryable) → Ready for Transfer", "Failure (non-retryable) → Failed"] },
   { id: "completed", label: "Completed", x: 580, y: 380, color: "#F0FDF4", border: "#22C55E", textColor: "#166534", description: "Terminal state. Merchant has been paid. Also used when payout amount is zero or negative (debt deferred).", entry: "NPP transfer succeeds, or payout amount is zero/negative at approval.", exits: ["Returned money → Failed (edge case)"] },
   { id: "failed", label: "Failed", x: 350, y: 540, color: "#FEF2F2", border: "#F87171", textColor: "#B91C1C", description: "Transfer has failed. Distinguished as retryable or non-retryable. Retryable auto-transitions to Ready for Transfer. Non-retryable requires manual resolution.", entry: "NPP transfer fails or completed transfer is returned by bank.", exits: ["Retryable → auto Ready for Transfer", "Non-retryable → manual resolution then Ready for Transfer", "Abandon → Abandoned (stringent criteria)"] },
   { id: "abandoned", label: "Abandoned", x: 80, y: 380, color: "#F9FAFB", border: "#9CA3AF", textColor: "#374151", description: "Terminal state. Payout will never be attempted. Merchant ledger entries are released back to the balance for inclusion in a future payout.", entry: "FinOps abandons from Ready for Review, Ready for Transfer, or Failed (stringent criteria for Failed).", exits: ["None — terminal state"] },
@@ -62,9 +62,9 @@ export default function PayoutLifecycle() {
             <line x1={430} y1={124} x2={430} y2={214} stroke="#4F46E5" strokeWidth="1.5" markerEnd="url(#arrow-manual)" />
             <text x={440} y={172} fontSize="9" fill="#4F46E5" fontWeight="600" fontFamily="system-ui">Approve</text>
 
-            {/* Transfer → Transferring (Execute transfer) */}
+            {/* Transfer → Transferring (Begin transfer) */}
             <line x1={430} y1={284} x2={430} y2={374} stroke="#4F46E5" strokeWidth="1.5" markerEnd="url(#arrow-manual)" />
-            <text x={440} y={332} fontSize="9" fill="#4F46E5" fontWeight="600" fontFamily="system-ui">Execute transfer</text>
+            <text x={440} y={332} fontSize="9" fill="#4F46E5" fontWeight="600" fontFamily="system-ui">Begin transfer</text>
 
             {/* Transferring → Completed (Success) */}
             <line x1={510} y1={412} x2={574} y2={412} stroke="#16A34A" strokeWidth="1.5" markerEnd="url(#arrow-auto)" strokeDasharray="4 2" />
@@ -128,7 +128,7 @@ export default function PayoutLifecycle() {
               ["2", "Ready for Review", "Ready for Transfer", "Approve", "Manual", "FinOps Admin reviews and approves"],
               ["3", "Ready for Review", "Completed", "Zero/neg balance", "Auto", "Debt deferred \u2014 no transfer needed"],
               ["4", "Ready for Review", "Abandoned", "Abandon", "Manual", "FinOps Admin cancels before approval"],
-              ["5", "Ready for Transfer", "Transferring", "Execute transfer", "Manual/Auto", "NPP transfer initiated"],
+              ["5", "Ready for Transfer", "Transferring", "Begin transfer", "Manual/Auto", "NPP transfer initiated"],
               ["6", "Ready for Transfer", "Abandoned", "Abandon", "Manual", "FinOps Admin cancels before execution"],
               ["7", "Transferring", "Completed", "NPP success", "Auto", "Merchant bank confirms receipt"],
               ["8", "Transferring", "Failed (retryable)", "NPP transient failure", "Auto", "Auto-transitions to Ready for Transfer"],

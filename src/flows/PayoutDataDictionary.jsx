@@ -29,7 +29,7 @@ const SECTIONS = [
         color: "#22C55E",
         bg: "#F0FDF4",
         definition: "The payout has been approved and is eligible for execution. The earliest execution window has been reached. Funds can now be sent via NPP.",
-        uiTreatment: "Green badge. Primary action: Execute transfer. Secondary actions: Hold, Abandon.",
+        uiTreatment: "Green badge. Primary action: Begin transfer. Secondary actions: Hold, Abandon.",
         useCases: [
           "FinOps Admin approves payout PO-2026-0220-005. It moves to Ready for Transfer and appears in the execution queue.",
           "A retryable failure is manually retried by FinOps Admin — the payout transitions back here for re-execution.",
@@ -48,8 +48,8 @@ const SECTIONS = [
         definition: "The NPP transfer has been initiated. The payout is in-flight — funds are being sent to the merchant's bank. This status MUST be set before the NPP request is made.",
         uiTreatment: "Purple badge. No user actions available — this is a system-driven transitional state.",
         useCases: [
-          "FinOps Admin clicks \"Execute transfer\" on PO-2026-0220-005. The system sets status to Transferring, then initiates the NPP request.",
-          "In Pilot/BAU mode, the system auto-executes approved payouts and sets Transferring programmatically.",
+          "FinOps Admin clicks \"Begin transfer\" on PO-2026-0220-005. The system sets status to Transferring, then initiates the NPP request.",
+          "In Pilot/BAU mode, the system auto-initiates transfers for approved payouts and sets Transferring programmatically.",
         ],
         auditExamples: [
           { actor: "Sarah Chen (FinOps Admin)", entry: "Transfer initiated — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
@@ -252,7 +252,7 @@ const SECTIONS = [
         definition: "Rules governing how retries are managed, tracked, and escalated across both retryable and non-retryable failure types.",
         rules: [
           { rule: "All retries are manual (POC)", detail: "In the POC phase, every retry is initiated by a FinOps Admin clicking the Retry button. No automatic retries occur. This ensures full human oversight while the team builds confidence in the payout pipeline.", futureAutomation: true },
-          { rule: "Retry transitions to Ready for Transfer", detail: "When a retry is initiated, the payout status changes from Failed to Ready for Transfer. FinOps must then execute the transfer as a separate step. This maintains the two-step (approve → execute transfer) control flow.", futureAutomation: false },
+          { rule: "Retry transitions to Ready for Transfer", detail: "When a retry is initiated, the payout status changes from Failed to Ready for Transfer. FinOps must then begin the transfer as a separate step. This maintains the two-step (approve → begin transfer) control flow.", futureAutomation: false },
           { rule: "Attempt counter", detail: "The system tracks the number of transfer attempts (including the original). This is displayed in the payout detail view and logged in every audit entry.", futureAutomation: false },
           { rule: "Soft escalation at attempt 3", detail: "After 3 failed attempts (including the original), the system displays an amber 'Escalation recommended' indicator. FinOps should investigate the root cause rather than retrying again.", futureAutomation: true },
           { rule: "Hard escalation at attempt 5", detail: "After 5 failed attempts, the system displays a red 'Investigation required' indicator. At this point, the failure likely has a systemic cause that won't resolve with more retries.", futureAutomation: true },
@@ -308,23 +308,23 @@ const SECTIONS = [
         uxJustification: "'Approve' is the standard financial operations term for authorising a payment to proceed. Direct, unambiguous.",
       },
       {
-        term: "Execute Transfer",
+        term: "Begin Transfer",
         type: "Action (manual / automated)",
         color: "#4F46E5",
         bg: "#EEF2FF",
         definition: "Initiates the NPP bank transfer. The payout status changes to Transferring before the NPP request is made.",
-        uiTreatment: "Primary solid button labelled \"Execute transfer\". Triggers immediately without confirmation dialog (the approval step already served as the gate).",
+        uiTreatment: "Primary solid button labelled \"Begin transfer\". Triggers immediately without confirmation dialog (the approval step already served as the gate).",
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Execute transfer — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
+          { actor: "Sarah Chen (FinOps Admin)", entry: "Begin transfer — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
         ],
-        uxJustification: "We chose 'Execute transfer' over alternatives: 'Begin transfer' / 'Initiate transfer' are awkward because they imply the start of a process without conveying decisiveness. 'Execute' is authoritative and appropriate for the gravity of triggering real money movement. Including the noun 'transfer' makes the action scannable alongside other actions (Approve, Hold, Abandon). The resulting 'Transferring' status then communicates the in-progress nature. 'Send payout' was considered but feels too casual for a FinOps context. 'Submit for transfer' implies there's another approval step, which there isn't.",
+        uxJustification: "We chose 'Begin transfer' because it's clear, approachable, and naturally pairs with the resulting 'Transferring' status — you begin a transfer, and it's now transferring. 'Begin' is direct without being overly technical or authoritarian. Including the noun 'transfer' makes the action scannable alongside other actions (Approve, Hold, Abandon). The verb 'begin' signals intent to start the process, which is accurate — the NPP transfer is asynchronous and the system tracks it to completion. Considered and rejected: 'Execute transfer' (too authoritarian for a FinOps tool), 'Send payout' (too casual), 'Submit for transfer' (implies another approval step).",
         alternatives: [
-          { term: "Execute (standalone)", verdict: "Considered", reason: "Works but less scannable — the noun helps distinguish the action at a glance alongside Approve, Hold, and Abandon." },
-          { term: "Initiate Transfer", verdict: "Rejected", reason: "Verbose and passive. Doesn't convey the decisiveness of the action." },
+          { term: "Execute Transfer", verdict: "Considered", reason: "Authoritative but overly formal. 'Execute' carries connotations of finality that don't match the asynchronous NPP flow. 'Begin' better reflects the initiation-then-tracking pattern." },
+          { term: "Execute (standalone)", verdict: "Considered", reason: "Less scannable without the noun. Also inherits the same formality concern as 'Execute Transfer'." },
+          { term: "Initiate Transfer", verdict: "Rejected", reason: "Verbose and passive. Doesn't feel like a button label — reads more like a system log entry." },
           { term: "Run Transfer", verdict: "Rejected", reason: "Reads as a batch/pipeline operation. 'Run' is engineer-oriented, not FinOps-oriented." },
-          { term: "Begin Transfer", verdict: "Rejected", reason: "Awkward — 'begin' doesn't imply completion and sounds hesitant for a financial operation." },
           { term: "Send Payout", verdict: "Considered", reason: "Too casual for a FinOps tool. 'Send' is consumer-grade language (Venmo, PayPal)." },
-          { term: "Submit for Transfer", verdict: "Rejected", reason: "Implies an additional approval queue. Misleading — Execute transfer triggers it directly." },
+          { term: "Submit for Transfer", verdict: "Rejected", reason: "Implies an additional approval queue. Misleading — Begin transfer triggers it directly." },
           { term: "Dispatch", verdict: "Considered", reason: "Precise but uncommon in financial ops. Would add friction to onboarding." },
         ],
       },
@@ -378,7 +378,7 @@ const SECTIONS = [
         type: "Role",
         color: "#4F46E5",
         bg: "#EEF2FF",
-        definition: "Full read-write access to all payout operations. Can Approve, Execute Transfer, Hold, Release Hold, Retry, and Abandon payouts. Can place fleet-level holds (\"Hold all payouts\") and merchant-level holds (\"Hold payouts for [Merchant Name]\").",
+        definition: "Full read-write access to all payout operations. Can Approve, Begin Transfer, Hold, Release Hold, Retry, and Abandon payouts. Can place fleet-level holds (\"Hold all payouts\") and merchant-level holds (\"Hold payouts for [Merchant Name]\").",
         uiTreatment: "All action buttons are enabled. Role displayed in the header toolbar dropdown.",
         auditExamples: [
           { actor: "Sarah Chen (FinOps Admin)", entry: "Approved — Status changed to Ready for Transfer." },
@@ -549,9 +549,9 @@ function TermCard({ item }) {
 // ─── Text-only flat view for print / export ───
 function TextOnlyView() {
   const DESIGN_PRINCIPLES = [
-    { num: 1, title: "Persona-first language.", body: "Every term is chosen for how a FinOps Admin would naturally describe it in conversation: \"place a hold on that payout,\" \"execute the transfer,\" \"abandon this one.\" We avoid engineering jargon (disable progression, state machine, flag toggle)." },
+    { num: 1, title: "Persona-first language.", body: "Every term is chosen for how a FinOps Admin would naturally describe it in conversation: \"place a hold on that payout,\" \"begin the transfer,\" \"abandon this one.\" We avoid engineering jargon (disable progression, state machine, flag toggle)." },
     { num: 2, title: "Unambiguous action verbs.", body: "Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do." },
-    { num: 3, title: "Friction proportional to consequence.", body: "Reversible actions (Approve, Execute Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software." },
+    { num: 3, title: "Friction proportional to consequence.", body: "Reversible actions (Approve, Begin Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software." },
     { num: 4, title: "Status names describe what's true right now.", body: "\"Ready for Review\" means the payout is ready to be reviewed. \"Transferring\" means funds are in transit. \"On Hold\" means progression is frozen. Every name answers \"what's the current state of this payout?\"" },
     { num: 5, title: "Flags vs states are architecturally honest.", body: "\"On Hold\" is a flag because the underlying status matters — when the hold is released, the payout resumes from where it was. \"Retryable\" is a flag because it's a property of the failure, not a separate lifecycle state. This distinction prevents data model confusion and ensures accurate audit trails." },
     { num: 6, title: "Manual-first, automate later.", body: "POC keeps all retry and escalation actions manual to build FinOps familiarity and confidence. Future automation opportunities are documented alongside each rule, creating a clear roadmap from POC to Pilot to BAU." },
@@ -690,9 +690,9 @@ export default function PayoutDataDictionary() {
             <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3">Terminology Design Principles</h2>
               <div className="space-y-3 text-sm text-gray-700">
-                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Admin would naturally describe it in conversation: "place a hold on that payout," "execute the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Admin would naturally describe it in conversation: "place a hold on that payout," "begin the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">2.</span><span><strong>Unambiguous action verbs.</strong> Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do.</span></div>
-                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">3.</span><span><strong>Friction proportional to consequence.</strong> Reversible actions (Approve, Execute Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software.</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">3.</span><span><strong>Friction proportional to consequence.</strong> Reversible actions (Approve, Begin Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software.</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">4.</span><span><strong>Status names describe what's true right now.</strong> "Ready for Review" means the payout is ready to be reviewed. "Transferring" means funds are in transit. "On Hold" means progression is frozen. Every name answers "what's the current state of this payout?"</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">5.</span><span><strong>Flags vs states are architecturally honest.</strong> "On Hold" is a flag because the underlying status matters — when the hold is released, the payout resumes from where it was. "Retryable" is a flag because it's a property of the failure, not a separate lifecycle state. This distinction prevents data model confusion and ensures accurate audit trails.</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">6.</span><span><strong>Manual-first, automate later.</strong> POC keeps all retry and escalation actions manual to build FinOps familiarity and confidence. Future automation opportunities are documented alongside each rule, creating a clear roadmap from POC → Pilot → BAU.</span></div>

@@ -15,7 +15,7 @@ const CATEGORIES = [
       { action: "View payout detail", finops_t1: "full", finops_t2: "read", admin: "none" },
       { action: "Prepare payout (date range)", finops_t1: "full", finops_t2: "none", admin: "none" },
       { action: "Approve payout", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Execute transfer", finops_t1: "full", finops_t2: "none", admin: "none" },
+      { action: "Begin transfer", finops_t1: "full", finops_t2: "none", admin: "none" },
       { action: "Hold payout", finops_t1: "full", finops_t2: "none", admin: "none" },
       { action: "Release Hold", finops_t1: "full", finops_t2: "none", admin: "none" },
       { action: "Abandon payout", finops_t1: "full", finops_t2: "none", admin: "none" },

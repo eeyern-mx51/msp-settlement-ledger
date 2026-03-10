@@ -27,15 +27,15 @@ const SCENARIOS = [
   { scenario: "Merchant under fraud investigation", level: "merchant", outcome: "FinOps Admin clicks \"Hold payouts\" on the merchant page → dialog confirms \"Hold payouts for [Merchant Name]\". Other merchants keep flowing. Investigation concludes, release hold." },
   { scenario: "One payout has unusual amounts — need to verify", level: "payout", outcome: "FinOps Admin places a hold on that payout. Rest of the merchant's payouts keep flowing. Verified? Release hold." },
   { scenario: "Moving to auto-approval but want to keep manual transfers", level: "global", outcome: "Turn on auto-approval. Leave auto-transfer off. Preparation is already manual (POC). Gradual rollout." },
-  { scenario: "New FinOps Viewer joins — shouldn't approve payouts", level: "permission", outcome: "Not a toggle — View-only role simply doesn't have approve/execute transfer buttons. No configuration needed." },
-  { scenario: "Bank holiday — don't want transfers going out", level: "global", outcome: "FinOps Admin turns off auto-transfer for the day. Payouts can still be prepared and approved, transfers just won't execute." },
+  { scenario: "New FinOps Viewer joins — shouldn't approve payouts", level: "permission", outcome: "Not a toggle — View-only role simply doesn't have approve/begin transfer buttons. No configuration needed." },
+  { scenario: "Bank holiday — don't want transfers going out", level: "global", outcome: "FinOps Admin turns off auto-transfer for the day. Payouts can still be prepared and approved, transfers just won't initiate." },
   { scenario: "NPP gateway experiencing intermittent timeouts", level: "global", outcome: "FinOps Admin activates fleet hold to prevent transfers accumulating retryable failures. Resume once NPP stabilises." },
 ];
 
 const AUTOMATION_STEPS = [
   { step: "Preparation", auto_on: "System runs daily at 8:30 AM, auto-creates payouts from unsettled MLEs", auto_off: "FinOps manually triggers \"Prepare payout\" (current POC behaviour)", who: "FinOps Admin only" },
   { step: "Approval", auto_on: "System auto-approves payouts that pass validation rules", auto_off: "FinOps manually reviews and clicks \"Approve\" (current POC behaviour)", who: "FinOps Admin only" },
-  { step: "Transfer", auto_on: "System auto-initiates transfer once approved", auto_off: "FinOps manually clicks \"Execute transfer\" (current POC behaviour)", who: "FinOps Admin only" },
+  { step: "Transfer", auto_on: "System auto-initiates transfer once approved", auto_off: "FinOps manually clicks \"Begin transfer\" (current POC behaviour)", who: "FinOps Admin only" },
 ];
 
 /* ─── Expandable section ─── */

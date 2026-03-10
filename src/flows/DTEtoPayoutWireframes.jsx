@@ -324,7 +324,7 @@ function WireframePayoutReview() {
 function WireframeTransfer() {
   return (
     <div className="border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 p-4 font-mono text-[11px] text-gray-500 space-y-3">
-      <div className="text-center text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Execute Transfer → NPP</div>
+      <div className="text-center text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Begin Transfer → NPP</div>
       {/* Transfer flow */}
       <div className="flex items-center justify-center gap-2 py-3">
         <div className="w-20 h-16 bg-white rounded border-2 border-indigo-200 flex flex-col items-center justify-center">
@@ -351,7 +351,7 @@ function WireframeTransfer() {
       <div className="bg-white rounded border border-gray-200 px-3 py-2 space-y-1.5">
         <span className="text-[9px] font-bold text-gray-400">STATUS TRACKING</span>
         {[
-          { t: "11:00 AM", a: "Execute transfer", s: "info" },
+          { t: "11:00 AM", a: "Begin transfer", s: "info" },
           { t: "11:00 AM", a: "Status → Transferring", s: "info" },
           { t: "11:02 AM", a: "NPP credit submitted", s: "info" },
           { t: "01:45 PM", a: "Transfer confirmed → Completed", s: "success" },
@@ -465,14 +465,14 @@ const STEPS = [
     ],
   },
   {
-    id: 7, phase: "Transfer", title: "Execute transfer → NPP → Merchant",
+    id: 7, phase: "Transfer", title: "Begin transfer → NPP → Merchant",
     actor: "FinOps Admin / System (automated)", type: "both",
-    description: "Approved payouts are executed — sending payment via Cuscal Payment API → NPP (New Payments Platform) → merchant's bank account. Transfer status is tracked via webhooks. Success → Completed. Transient failure → auto-retry. Persistent failure → Failed + alert.",
+    description: "Approved payout transfers are initiated — sending payment via Cuscal Payment API → NPP (New Payments Platform) → merchant's bank account. Transfer status is tracked via webhooks. Success → Completed. Transient failure → auto-retry. Persistent failure → Failed + alert.",
     wireframe: WireframeTransfer,
-    uiReq: true, reqLabel: "Execute transfer, Status tracking, Failure handling",
+    uiReq: true, reqLabel: "Begin transfer, Status tracking, Failure handling",
     dataFlow: "Payout Service → Cuscal Payment API → NPP → Merchant bank → Webhook → Status update",
     details: [
-      "Execute: Payout Service calls Cuscal Payment API with BSB/account",
+      "Begin transfer: Payout Service calls Cuscal Payment API with BSB/account",
       "NPP: Real-time payment via New Payments Platform",
       "Status tracking: Transferring → Completed (webhook confirmation)",
       "Transient failure: auto-retry up to 3x → back to Ready for Transfer",
