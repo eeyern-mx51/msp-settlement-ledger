@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
-import html2pdf from "html2pdf.js";
 import PayoutLifecycle from "./flows/PayoutLifecycle";
 import E2EPayoutJourney from "./flows/E2EPayoutJourney";
 import FinOpsActionFlows from "./flows/FinOpsActionFlows";
@@ -1430,28 +1429,38 @@ function UXArtefactsPage() {
   };
 
   const artefactContentRef = useRef(null);
-  const [pdfExporting, setPdfExporting] = useState(false);
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (!artefactContentRef.current) return;
-    setPdfExporting(true);
-    try {
-      const el = artefactContentRef.current;
-      const artefact = uxArtefactsList.find((a) => a.id === activeArtefact);
-      const filename = `${artefact.title.replace(/[^a-zA-Z0-9]+/g, "-").replace(/-+$/, "")}.pdf`;
-      await html2pdf().set({
-        margin: [10, 10, 10, 10],
-        filename,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false, scrollY: 0 },
-        jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
-        pagebreak: { mode: ["avoid-all", "css", "legacy"] },
-      }).from(el).save();
-    } catch (err) {
-      console.error("PDF export failed:", err);
-    } finally {
-      setPdfExporting(false);
-    }
+    const content = artefactContentRef.current;
+    const artefact = uxArtefactsList.find((a) => a.id === activeArtefact);
+    const title = artefact?.title || "Artefact";
+
+    // Open a new window with just the artefact content + styles for clean printing
+    const printWindow = window.open("", "_blank", "width=900,height=700");
+    if (!printWindow) return;
+
+    // Collect all stylesheets from the current page
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join("\n");
+
+    printWindow.document.write(`<!DOCTYPE html>
+<html><head><title>${title}</title>${styles}
+<style>
+  @media print {
+    body { margin: 0; padding: 20px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: white; color: #1a1a2e; padding: 24px; }
+</style></head><body>
+<div style="max-width: 860px; margin: 0 auto;">${content.innerHTML}</div>
+<script>
+  window.onafterprint = function() { window.close(); };
+  setTimeout(function() { window.print(); }, 400);
+</script>
+</body></html>`);
+    printWindow.document.close();
   };
 
   // If an artefact is selected, render it full-page with a back button
@@ -1466,8 +1475,8 @@ function UXArtefactsPage() {
           </button>
           <div className="w-px h-5 bg-gray-200" />
           <h3 className="text-sm font-semibold text-gray-800 flex-1">{artefact.title}</h3>
-          <button onClick={handleDownloadPDF} disabled={pdfExporting} className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:text-gray-400 disabled:cursor-wait transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50">
-            <Icons.Download /><span>{pdfExporting ? "Exporting..." : "Download PDF"}</span>
+          <button onClick={handleDownloadPDF} className="inline-flex items-center gap-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-800 transition-colors px-3 py-1.5 rounded-lg hover:bg-indigo-50">
+            <Icons.Download /><span>Download PDF</span>
           </button>
         </div>
         <div className="flex-1 overflow-y-auto" ref={artefactContentRef}>
