@@ -1043,7 +1043,6 @@ function MerchantAdjustmentsTab({ role, mid }) {
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [dateFilter, setDateFilter] = useState("week");
   const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
   const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
@@ -1095,22 +1094,18 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setFleetHold(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-          {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
-        </div>
-      </div>
-
-      <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          {["all", "Ready for Review", "Ready for Transfer", "Transferring", "On Hold", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
-        </div>
-        <DateFilterBar value={dateFilter} onChange={setDateFilter} />
+      <div className="flex items-center gap-2 flex-wrap">
+        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "On Hold", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
       </div>
 
       <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Payouts</span><span className="text-sm text-gray-400">{filteredPayouts.length} results</span></CardHeader>
+        <CardHeader>
+          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
+          <div className="flex items-center gap-2">
+            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+            {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+          </div>
+        </CardHeader>
         <Divider />
         <CardBody className="pt-4">
           <div className="flex flex-wrap gap-6 pb-4 mb-4 border-b border-gray-100">
@@ -1187,17 +1182,17 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       {merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Merchant payouts are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Merchant hold released", message: "Payouts for this merchant can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-          {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
-        </div>
-      </div>
       <div className="flex items-center gap-2 flex-wrap">
         {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
       </div>
       <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Payouts</span><span className="text-sm text-gray-400">{filtered.length} results</span></CardHeader>
+        <CardHeader>
+          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+          <div className="flex items-center gap-2">
+            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
+            {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+          </div>
+        </CardHeader>
         <Divider />
         <CardBody className="pt-4">
           <div className="flex flex-wrap gap-6 pb-4 mb-4 border-b border-gray-100">
