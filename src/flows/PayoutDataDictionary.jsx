@@ -123,8 +123,8 @@ const SECTIONS = [
         type: "Flag (boolean overlay)",
         color: "#FBBF24",
         bg: "#FFFBEB",
-        definition: "A hold placed on a payout to temporarily freeze all progression. The underlying status (Ready for Review or Ready for Transfer) is preserved. While on hold, no status transitions occur except Release Hold and Abandon.",
-        uiTreatment: "Amber 'On Hold' badge displayed alongside the status badge. Actions change to: Release Hold (primary) and Abandon (secondary). The underlying status badge remains visible so FinOps always knows where the payout was when the hold was placed.",
+        definition: "A hold placed on a payout to temporarily freeze all progression. The underlying status (Ready for Review or Ready for Transfer) is preserved. While on hold, no status transitions occur except Release Hold and Abandon. Holds can be placed at three scopes: fleet level (\"Hold all payouts\"), merchant level (\"Hold payouts for [Merchant Name]\"), or individual payout level (\"Place on hold\").",
+        uiTreatment: "Amber 'On Hold' badge displayed alongside the status badge. Actions change to: Release Hold (primary) and Abandon (secondary). The underlying status badge remains visible so FinOps always knows where the payout was when the hold was placed. Merchant-level holds use the actual merchant name in the button, dialog, and banner to disambiguate from fleet-level holds.",
         useCases: [
           "Sarah notices an unusually high payout amount for Merchant Y. She places a hold while she investigates with the merchant team.",
           "Regulatory compliance flags a merchant for review. FinOps places a hold on all their pending payouts until clearance is received.",
@@ -376,7 +376,7 @@ const SECTIONS = [
         type: "Role",
         color: "#4F46E5",
         bg: "#EEF2FF",
-        definition: "Full read-write access to all payout operations. Can Approve, Execute, Hold, Release Hold, Retry, and Abandon payouts. Can place fleet and merchant-level holds.",
+        definition: "Full read-write access to all payout operations. Can Approve, Execute, Hold, Release Hold, Retry, and Abandon payouts. Can place fleet-level holds (\"Hold all payouts\") and merchant-level holds (\"Hold payouts for [Merchant Name]\").",
         uiTreatment: "All action buttons are enabled. Role displayed in the header toolbar dropdown.",
         auditExamples: [
           { actor: "Sarah Chen (FinOps Admin)", entry: "Approved — Status changed to Ready for Transfer." },

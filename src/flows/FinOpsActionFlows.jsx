@@ -48,7 +48,8 @@ const FLOWS = {
       "Holding from Ready for Review: payout remains Ready for Review but approval is blocked",
       "Holding from Ready for Transfer: payout remains Ready for Transfer but execution is blocked",
       "A held payout blocks all progression — no auto-approve or auto-transfer",
-      "Fleet-level hold (kill switch) overrides individual payout actions",
+      "Fleet-level hold (\"Hold all payouts\") overrides individual payout and merchant-level holds",
+      "Merchant-level hold (\"Hold payouts for [Merchant Name]\") uses the merchant name to disambiguate from fleet-level holds",
     ],
   },
   abandon: {
@@ -153,7 +154,8 @@ const FLOWS = {
     edgeCases: [
       "Releasing hold re-enables all actions available for the underlying status",
       "Auto-approve/auto-transfer criteria may immediately re-trigger (Pilot/BAU)",
-      "Fleet-level hold release affects all payouts for that fleet",
+      "Fleet-level hold release (\"Hold all payouts\") affects all payouts fleet-wide",
+      "Merchant-level hold release affects only payouts for that specific merchant — uses merchant name in banner and toast",
     ],
   },
 };
