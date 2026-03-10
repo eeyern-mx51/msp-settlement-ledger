@@ -302,6 +302,8 @@ function PayoutStatusBadge({ status, hold, retryable }) {
 
 // ─── Global role context (simulated) ───
 const ROLES = { FINOPS_T1: "FinOps Admin", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
+const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
+const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA — Expanded
@@ -1085,7 +1087,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortCol, setSortCol] = useState(null);
+  const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
   const isAdmin = role === ROLES.ADMIN;
@@ -1118,7 +1120,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
-  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
 
   return (
@@ -1130,10 +1132,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
       <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { onFleetHoldChange(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
-
-      <div className="flex items-center gap-2 flex-wrap">
-        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "On Hold", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
-      </div>
 
       <Card>
         <CardHeader>
@@ -1192,7 +1190,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
-  const [sortCol, setSortCol] = useState(null);
+  const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
@@ -1201,7 +1199,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
   const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.hold) : merchantPayouts.filter((p) => p.status === statusFilter && !p.hold);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase())) : statusFiltered;
-  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
 
   // Pagination
@@ -1220,9 +1218,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
       {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      <div className="flex items-center gap-2 flex-wrap">
-        {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
-      </div>
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
