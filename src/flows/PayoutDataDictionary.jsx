@@ -544,44 +544,160 @@ function TermCard({ item }) {
   );
 }
 
+// ─── Text-only flat view for print / export ───
+function TextOnlyView() {
+  const DESIGN_PRINCIPLES = [
+    { num: 1, title: "Persona-first language.", body: "Every term is chosen for how a FinOps Admin would naturally describe it in conversation: \"place a hold on that payout,\" \"execute the transfer,\" \"abandon this one.\" We avoid engineering jargon (disable progression, state machine, flag toggle)." },
+    { num: 2, title: "Unambiguous action verbs.", body: "Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do." },
+    { num: 3, title: "Friction proportional to consequence.", body: "Reversible actions (Approve, Execute, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software." },
+    { num: 4, title: "Status names describe what's true right now.", body: "\"Ready for Review\" means the payout is ready to be reviewed. \"Transferring\" means funds are in transit. \"On Hold\" means progression is frozen. Every name answers \"what's the current state of this payout?\"" },
+    { num: 5, title: "Flags vs states are architecturally honest.", body: "\"On Hold\" is a flag because the underlying status matters — when the hold is released, the payout resumes from where it was. \"Retryable\" is a flag because it's a property of the failure, not a separate lifecycle state. This distinction prevents data model confusion and ensures accurate audit trails." },
+    { num: 6, title: "Manual-first, automate later.", body: "POC keeps all retry and escalation actions manual to build FinOps familiarity and confidence. Future automation opportunities are documented alongside each rule, creating a clear roadmap from POC to Pilot to BAU." },
+  ];
+
+  return (
+    <div className="max-w-4xl mx-auto text-sm text-gray-800 leading-relaxed">
+      {SECTIONS.map((section) => (
+        <div key={section.id} className="mb-8">
+          <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide border-b-2 border-gray-300 pb-1 mb-4">{section.title}</h2>
+          <p className="text-gray-500 mb-4">{section.subtitle}</p>
+
+          {section.items.map((item) => (
+            <div key={item.term} className="mb-6 pl-0">
+              <h3 className="text-sm font-bold text-gray-900 mb-1">{item.term} <span className="font-normal text-gray-500">({item.type})</span></h3>
+
+              <p className="mb-2">{item.definition}</p>
+
+              {item.uiTreatment && (
+                <p className="mb-2"><span className="font-semibold text-gray-700">UI treatment: </span>{item.uiTreatment}</p>
+              )}
+
+              {item.conditions && item.conditions.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Failure conditions:</p>
+                  {item.conditions.map((c) => (
+                    <p key={c.code} className="ml-4 mb-1"><span className="font-mono font-semibold">{c.code}</span> — {c.description}. {c.detail} Recommended: {c.recommendedAction}</p>
+                  ))}
+                </div>
+              )}
+
+              {item.rules && item.rules.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Rules:</p>
+                  {item.rules.map((r, i) => (
+                    <p key={i} className="ml-4 mb-1">{i + 1}. {r.rule}{r.futureAutomation ? " [Future: automate]" : ""} — {r.detail}</p>
+                  ))}
+                </div>
+              )}
+
+              {item.futureAutomationNotes && item.futureAutomationNotes.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Future automation opportunities:</p>
+                  {item.futureAutomationNotes.map((note, i) => (
+                    <p key={i} className="ml-4 mb-1">- {note}</p>
+                  ))}
+                </div>
+              )}
+
+              {item.useCases && item.useCases.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Use cases:</p>
+                  {item.useCases.map((uc, i) => (
+                    <p key={i} className="ml-4 mb-1">{i + 1}. {uc}</p>
+                  ))}
+                </div>
+              )}
+
+              {item.auditExamples && item.auditExamples.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Audit log examples:</p>
+                  {item.auditExamples.map((ex, i) => (
+                    <p key={i} className="ml-4 mb-1">[{ex.actor}] {ex.entry}</p>
+                  ))}
+                </div>
+              )}
+
+              <p className="mb-2"><span className="font-semibold text-gray-700">UX justification: </span>{item.uxJustification}</p>
+
+              {item.alternatives && item.alternatives.length > 0 && (
+                <div className="mb-2">
+                  <p className="font-semibold text-gray-700 mb-1">Alternatives considered:</p>
+                  {item.alternatives.map((alt, i) => (
+                    <p key={i} className="ml-4 mb-1">{alt.term} ({alt.verdict}) — {alt.reason}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      <div className="mb-8">
+        <h2 className="text-base font-bold text-gray-900 uppercase tracking-wide border-b-2 border-gray-300 pb-1 mb-4">Terminology Design Principles</h2>
+        {DESIGN_PRINCIPLES.map((p) => (
+          <p key={p.num} className="mb-2">{p.num}. <span className="font-semibold">{p.title}</span> {p.body}</p>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function PayoutDataDictionary() {
+  const [textOnly, setTextOnly] = useState(false);
+
   return (
     <div className="min-h-screen bg-white p-8 font-sans">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">Payout Data Dictionary</h1>
+        <div className="flex items-start justify-between mb-1">
+          <h1 className="text-2xl font-bold text-gray-900">Payout Data Dictionary</h1>
+          <button
+            onClick={() => setTextOnly(!textOnly)}
+            className={`inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors flex-shrink-0 ${textOnly ? "bg-indigo-600 text-white border-indigo-600" : "text-gray-600 border-gray-300 hover:bg-gray-50"}`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="12" x2="17" y2="12" /><line x1="3" y1="18" x2="13" y2="18" /></svg>
+            {textOnly ? "Card view" : "Text only"}
+          </button>
+        </div>
         <p className="text-sm text-gray-500 mb-1">Comprehensive terminology reference for the POSPay Plus payout lifecycle</p>
-        <p className="text-xs text-gray-400 mb-6">Click any term to expand its full definition, use cases, audit log examples, and UX justification.</p>
+        {!textOnly && <p className="text-xs text-gray-400 mb-6">Click any term to expand its full definition, use cases, audit log examples, and UX justification.</p>}
+        {textOnly && <p className="text-xs text-gray-400 mb-6">Flat text view — optimised for print and document export.</p>}
 
-        <div className="flex gap-2 mb-8 flex-wrap">
-          <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-indigo-400" /><span>Status</span></div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-amber-400" /><span>Flag</span></div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-gray-400" /><span>Terminal</span></div>
-          <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-blue-400" /><span>Automation candidate</span></div>
-        </div>
-
-        {SECTIONS.map((section) => (
-          <div key={section.id} className="mb-10">
-            <div className="mb-4">
-              <h2 className="text-lg font-bold text-gray-800">{section.title}</h2>
-              <p className="text-sm text-gray-500">{section.subtitle}</p>
+        {textOnly ? (
+          <TextOnlyView />
+        ) : (
+          <>
+            <div className="flex gap-2 mb-8 flex-wrap">
+              <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-indigo-400" /><span>Status</span></div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-amber-400" /><span>Flag</span></div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-gray-400" /><span>Terminal</span></div>
+              <div className="flex items-center gap-1.5 text-xs text-gray-500"><div className="w-3 h-3 rounded-full bg-blue-400" /><span>Automation candidate</span></div>
             </div>
-            <div className="space-y-3">
-              {section.items.map((item) => <TermCard key={item.term} item={item} />)}
-            </div>
-          </div>
-        ))}
 
-        <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
-          <h2 className="text-sm font-bold text-gray-800 mb-3">Terminology Design Principles</h2>
-          <div className="space-y-3 text-sm text-gray-700">
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Admin would naturally describe it in conversation: "place a hold on that payout," "execute the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">2.</span><span><strong>Unambiguous action verbs.</strong> Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do.</span></div>
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">3.</span><span><strong>Friction proportional to consequence.</strong> Reversible actions (Approve, Execute, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software.</span></div>
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">4.</span><span><strong>Status names describe what's true right now.</strong> "Ready for Review" means the payout is ready to be reviewed. "Transferring" means funds are in transit. "On Hold" means progression is frozen. Every name answers "what's the current state of this payout?"</span></div>
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">5.</span><span><strong>Flags vs states are architecturally honest.</strong> "On Hold" is a flag because the underlying status matters — when the hold is released, the payout resumes from where it was. "Retryable" is a flag because it's a property of the failure, not a separate lifecycle state. This distinction prevents data model confusion and ensures accurate audit trails.</span></div>
-            <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">6.</span><span><strong>Manual-first, automate later.</strong> POC keeps all retry and escalation actions manual to build FinOps familiarity and confidence. Future automation opportunities are documented alongside each rule, creating a clear roadmap from POC → Pilot → BAU.</span></div>
-          </div>
-        </div>
+            {SECTIONS.map((section) => (
+              <div key={section.id} className="mb-10">
+                <div className="mb-4">
+                  <h2 className="text-lg font-bold text-gray-800">{section.title}</h2>
+                  <p className="text-sm text-gray-500">{section.subtitle}</p>
+                </div>
+                <div className="space-y-3">
+                  {section.items.map((item) => <TermCard key={item.term} item={item} />)}
+                </div>
+              </div>
+            ))}
+
+            <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
+              <h2 className="text-sm font-bold text-gray-800 mb-3">Terminology Design Principles</h2>
+              <div className="space-y-3 text-sm text-gray-700">
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Admin would naturally describe it in conversation: "place a hold on that payout," "execute the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">2.</span><span><strong>Unambiguous action verbs.</strong> Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do.</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">3.</span><span><strong>Friction proportional to consequence.</strong> Reversible actions (Approve, Execute, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software.</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">4.</span><span><strong>Status names describe what's true right now.</strong> "Ready for Review" means the payout is ready to be reviewed. "Transferring" means funds are in transit. "On Hold" means progression is frozen. Every name answers "what's the current state of this payout?"</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">5.</span><span><strong>Flags vs states are architecturally honest.</strong> "On Hold" is a flag because the underlying status matters — when the hold is released, the payout resumes from where it was. "Retryable" is a flag because it's a property of the failure, not a separate lifecycle state. This distinction prevents data model confusion and ensures accurate audit trails.</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">6.</span><span><strong>Manual-first, automate later.</strong> POC keeps all retry and escalation actions manual to build FinOps familiarity and confidence. Future automation opportunities are documented alongside each rule, creating a clear roadmap from POC → Pilot → BAU.</span></div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

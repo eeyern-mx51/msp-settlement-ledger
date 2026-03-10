@@ -288,12 +288,12 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, paused, retryable }) {
+function PayoutStatusBadge({ status, hold, retryable }) {
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {paused && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
+      {hold && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
       {status === "Failed" && retryable === true && <Badge colorScheme="purple" size="sm">Retryable</Badge>}
       {status === "Failed" && retryable === false && <Badge colorScheme="neutral" size="sm">Non-retryable</Badge>}
     </span>
@@ -325,7 +325,7 @@ const mockPayouts = [
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
   // 20 Feb — failures and issues
   { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed", retryable: true },
-  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", paused: true },
+  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", hold: true },
   { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed", retryable: false },
   // 19 Feb
   { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
@@ -523,12 +523,13 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW (with transfer failure reporting)
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
+  const isTerminal = isCompleted || isAbandoned;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
   const storedTransfers = transfersByPayout[payout.id] || [];
   // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
@@ -539,16 +540,26 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   );
   const failedTransfer = transfers.find(t => t.status === "Failed");
 
+  // Determine effective hold state — fleet overrides merchant overrides payout-level
+  const effectiveHoldScope = !isTerminal && fleetHold ? "fleet" : !isTerminal && merchantHold ? "merchant" : payout.hold ? "payout" : null;
+  const isHeldByHigherScope = effectiveHoldScope === "fleet" || effectiveHoldScope === "merchant";
+
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
-  // Build actions based on status + hold flag
+  // Build actions based on status + hold flag (including fleet/merchant holds)
   const buildActions = () => {
-    // If payout is on hold, show Release Hold + Abandon regardless of underlying status
-    if (payout.paused) return [
-      { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { paused: false }); } },
+    // Terminal states have no actions
+    if (isTerminal) return [];
+    // If held by a higher scope (fleet or merchant), no payout-level actions — hold is managed at a higher level
+    if (isHeldByHigherScope) return [
+      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+    ];
+    // If payout is individually on hold, show Release Hold + Abandon regardless of underlying status
+    if (payout.hold) return [
+      { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { hold: false }); } },
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
     ];
     const map = {
@@ -577,7 +588,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
   };
   const handleHold = (reason, note) => {
     addToast({ type: "warning", title: "Hold placed", message: `${payout.id} — ${reason}` });
-    onStatusChange(payout.id, payout.status, { paused: true });
+    onStatusChange(payout.id, payout.status, { hold: true });
   };
   const handleAbandon = (reason) => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been permanently cancelled.` });
@@ -591,6 +602,29 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
+
+      {effectiveHoldScope === "fleet" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+          <div className="mt-0.5"><Icons.Shield /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div>
+            <p className="text-sm text-red-700">{fleetHold.reason}</p>
+            <p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p>
+            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the fleet-level hold is released from the Payouts page.</p>
+          </div>
+        </div>
+      )}
+      {effectiveHoldScope === "merchant" && (
+        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+          <div className="mt-0.5"><Icons.Shield /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || payout.merchantName} are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Merchant-level</span></div>
+            <p className="text-sm text-red-700">{merchantHold.reason}</p>
+            <p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p>
+            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the merchant-level hold is released.</p>
+          </div>
+        </div>
+      )}
 
       {isFailed && payout.retryable === true && (
         <div className="space-y-2">
@@ -630,14 +664,14 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange }) {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} paused={payout.paused} retryable={payout.retryable} /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} retryable={payout.retryable} /></div>
           {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} paused={payout.paused} retryable={payout.retryable} />]].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} retryable={payout.retryable} />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1045,9 +1079,8 @@ function MerchantAdjustmentsTab({ role, mid }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, onFleetHoldChange }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
   const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
@@ -1081,9 +1114,9 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.paused) : payouts.filter((p) => p.status === statusFilter && !p.paused);
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
@@ -1094,9 +1127,9 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { setFleetHold(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
+      <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { onFleetHoldChange(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
 
-      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setFleetHold(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
+      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex items-center gap-2 flex-wrap">
         {["all", "Ready for Review", "Ready for Transfer", "Transferring", "On Hold", "Failed", "Completed", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
@@ -1136,7 +1169,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1151,7 +1184,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, fleetHold }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [merchantHold, setMerchantHold] = useState(null); // null or { reason, note, user, timestamp }
@@ -1166,7 +1199,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.paused) : merchantPayouts.filter((p) => p.status === statusFilter && !p.paused);
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.hold) : merchantPayouts.filter((p) => p.status === statusFilter && !p.hold);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase())) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => p.status };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
@@ -1176,7 +1209,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} merchantHold={merchantHold} merchantName={merchantName} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1184,7 +1217,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" merchantName={merchantName || "this merchant"} onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Hold placed", message: `All payouts for ${merchantName || "this merchant"} are now on hold — ${holdInfo.reason}.` }); }} />
 
-      {merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
+      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
+      {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
       <div className="flex items-center gap-2 flex-wrap">
         {["all", "Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "On Hold", "Abandoned"].map((s) => (<FilterChip key={s} label={s === "all" ? "All" : s} active={statusFilter === s} onClick={() => { setStatusFilter(s); setCurrentPage(1); }} />))}
@@ -1194,7 +1228,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            {!merchantHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold payouts</Button>}
+            {!merchantHold && !fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold payouts</Button>}
           </div>
         </CardHeader>
         <Divider />
@@ -1211,7 +1245,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1289,7 +1323,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold }) {
   const [activeTab, setActiveTab] = useState("transactions");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const bc = { org: "POS Pay Pty Ltd", facility: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", status: "Active" };
@@ -1302,7 +1336,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} fleetHold={fleetHold} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -1354,7 +1388,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
                   <div className="space-y-1">{changedPayouts.map((p) => {
                     const original = mockPayouts.find((o) => o.id === p.id);
-                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} paused={original.paused} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} paused={p.paused} retryable={p.retryable} /></div>);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></div>);
                   })}</div>
                 </div>
               ) : (
@@ -1387,7 +1421,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                     return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
                   }).filter(Boolean)
                 }
-                {(() => { const holdCount = payouts.filter((p) => p.paused).length; return holdCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge><span className="text-gray-500">× {holdCount}</span></div>) : null; })()}
+                {(() => { const holdCount = payouts.filter((p) => p.hold).length; return holdCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge><span className="text-gray-500">× {holdCount}</span></div>) : null; })()}
                 </div>
                 <p className="text-xs text-gray-400 mt-3">{payouts.length} total payouts in mock data</p>
               </div>
@@ -2325,6 +2359,7 @@ export default function MSPSupportDashboard() {
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
+  const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
 
   const handlePayoutStatusChange = useCallback((payoutId, newStatus, extra) => {
     setPayouts((prev) => {
@@ -2335,10 +2370,10 @@ export default function MSPSupportDashboard() {
       return prev.map((p) => {
         if (p.id !== payoutId) return p;
         const updated = { ...p, status: newStatus };
-        // Merge extra flags (paused, retryable, etc.)
+        // Merge extra flags (hold, retryable, etc.)
         if (extra && typeof extra === "object") Object.assign(updated, extra);
-        // Clear paused flag when transitioning to terminal states
-        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.paused = false;
+        // Clear hold flag when transitioning to terminal states
+        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.hold = false;
         return updated;
       });
     });
@@ -2347,6 +2382,7 @@ export default function MSPSupportDashboard() {
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
     setUnassignedMLEs([...mockUnassignedMLEs]);
+    setFleetHold(null);
   }, []);
 
   // Ingest enriched MLEs from DTE Generator
@@ -2365,8 +2401,8 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} onFleetHoldChange={setFleetHold} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}

@@ -66,9 +66,9 @@ const STEPS = [
     type: "manual",
     description: "The FinOps team reviews prepared payouts to validate amounts against expected DTE transaction sums. If satisfactory, they approve — moving the payout to Ready for Transfer.",
     uiReq: true,
-    reqLabel: "Approve payout, Pause payout, Abandon payout",
+    reqLabel: "Approve payout, Hold payout, Abandon payout",
     dataFlow: "Support Dashboard → Payout Service",
-    details: ["POC: fully manual review & approve", "Pilot: auto-approve based on pre-defined criteria", "Can pause for investigation (e.g. suspicious activity)", "Can abandon if payout should not proceed"],
+    details: ["POC: fully manual review & approve", "Pilot: auto-approve based on pre-defined criteria", "Can place on hold for investigation (e.g. suspicious activity)", "Can abandon if payout should not proceed"],
   },
   {
     id: 7,
