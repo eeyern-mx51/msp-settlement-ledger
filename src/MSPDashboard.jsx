@@ -751,21 +751,57 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 // ═══════════════════════════════════════════════════════════
 // CREATE ADJUSTMENT DIALOG
 // ═══════════════════════════════════════════════════════════
-function CreateAdjustmentDialog({ open, onClose }) {
+function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
+  const [type, setType] = useState("Manual");
   const [info, setInfo] = useState("");
   const [extDesc, setExtDesc] = useState("");
+  const [creating, setCreating] = useState(false);
+  const { addToast } = useToast();
+
+  useEffect(() => { if (open) { setAmount(""); setReason(""); setType("Manual"); setInfo(""); setExtDesc(""); setCreating(false); } }, [open]);
+
+  const handleCreate = () => {
+    setCreating(true);
+    setTimeout(() => {
+      const today = new Date();
+      const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const num = String(Math.floor(Math.random() * 900) + 100);
+      const parsedAmt = parseFloat(amount);
+      const newAdj = {
+        id: `ADJ-2026-${dateStr.replace(/\s/g, "").slice(0, 4)}-${num}`,
+        date: dateStr,
+        amount: `${parsedAmt < 0 ? "-" : ""}$${Math.abs(parsedAmt).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
+        type,
+        reason,
+        payoutId: "—",
+        status: "Pending approval",
+        internalNote: info || "No internal note provided.",
+        externalDesc: extDesc || reason,
+        mid: mid || "POSPAY00012345",
+      };
+      onCreateAdjustment(newAdj);
+      addToast({ type: "success", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} is pending approval.` });
+      onClose();
+    }, 500);
+  };
+
   return (
     <Modal open={open} onClose={onClose} title="Create adjustment">
       <div className="space-y-4">
-        <div><label className="block text-sm font-semibold text-gray-700 mb-1">Amount (AUD)</label><input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /><p className="text-xs text-gray-400 mt-1">Use negative for debits. Value in dollars.</p></div>
+        <div className="grid grid-cols-2 gap-4">
+          <div><label className="block text-sm font-semibold text-gray-700 mb-1">Amount (AUD)</label><input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /><p className="text-xs text-gray-400 mt-1">Use negative for debits.</p></div>
+          <div><label className="block text-sm font-semibold text-gray-700 mb-1">Type</label><select value={type} onChange={(e) => setType(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"><option value="Manual">Manual</option><option value="Auto">Auto</option></select></div>
+        </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">Reason</label><select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"><option value="">Select a reason...</option><option>Customer goodwill credit</option><option>Fee correction</option><option>Promotional credit</option><option>Chargeback recovery</option><option>Settlement discrepancy</option><option>Other</option></select></div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note</label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" /><p className="text-xs text-gray-400 mt-1">{info.length}/500 characters</p></div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">External description</label><textarea value={extDesc} onChange={(e) => setExtDesc(e.target.value)} maxLength={250} rows={2} placeholder="Description visible to the merchant on their statement..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" /><p className="text-xs text-gray-400 mt-1">{extDesc.length}/250 characters</p></div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!amount || !reason} leftIcon={<Icons.Plus />}>Create adjustment</Button>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!amount || !reason || isNaN(parseFloat(amount)) || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.Plus />}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create adjustment"}
+          </Button>
         </div>
       </div>
     </Modal>
@@ -775,21 +811,48 @@ function CreateAdjustmentDialog({ open, onClose }) {
 // ═══════════════════════════════════════════════════════════
 // ADJUSTMENT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function AdjustmentDetailView({ adj, onBack, role }) {
-  const canApprove = role === ROLES.FINOPS_T1 && adj.status === "Pending approval";
+function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
+  const { addToast } = useToast();
+  const canWrite = role === ROLES.FINOPS_T1;
+  const isPending = adj.status === "Pending approval";
+  const [showReject, setShowReject] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const handleApprove = () => {
+    onStatusChange(adj.id, "Approved");
+    addToast({ type: "success", title: "Adjustment approved", message: `${adj.id} has been approved and will be included in the next payout cycle.` });
+  };
+  const handleReject = () => {
+    onStatusChange(adj.id, "Rejected", rejectReason);
+    addToast({ type: "warning", title: "Adjustment rejected", message: `${adj.id} has been rejected.` });
+    setShowReject(false);
+  };
+
+  const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[adj.status] || "neutral";
+
+  const auditEntries = [
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps T1)", detail: `${adj.type} adjustment of ${adj.amount} — ${adj.reason}.` },
+    ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment approved", user: "Sarah Chen (FinOps T1)", detail: "Included in next payout cycle." }] : []),
+    ...(adj.status === "Rejected" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment rejected", user: "Sarah Chen (FinOps T1)", detail: adj.rejectReason || "Rejected by reviewer." }] : []),
+  ];
+
   return (
     <div className="p-6 space-y-5">
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to adjustments</button>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span><Badge colorScheme={adj.status === "Approved" ? "success" : "warning"} size="sm">{adj.status}</Badge></div>
-          {canApprove && <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />}>Approve</Button>}
-          {!canApprove && adj.status === "Pending approval" && <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} disabled>Approve</Button>}
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span><Badge colorScheme={statusColor} size="sm">{adj.status}</Badge></div>
+          {isPending && (
+            <div className="flex gap-2">
+              <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowReject(true)} disabled={!canWrite}>Reject</Button>
+              <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} onClick={handleApprove} disabled={!canWrite}>Approve</Button>
+            </div>
+          )}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Type", <Badge colorScheme={adj.type === "Manual" ? "brand" : "neutral"} size="sm">{adj.type}</Badge>], ["Reason", adj.reason], ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>], ["Status", <Badge colorScheme={adj.status === "Approved" ? "success" : "warning"} size="sm">{adj.status}</Badge>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Type", <Badge colorScheme={adj.type === "Manual" ? "brand" : "neutral"} size="sm">{adj.type}</Badge>], ["Reason", adj.reason], ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>], ["Status", <Badge colorScheme={statusColor} size="sm">{adj.status}</Badge>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -800,8 +863,19 @@ function AdjustmentDetailView({ adj, onBack, role }) {
         </CardBody>
       </Card>
       <Card><CardHeader><span className="text-lg font-semibold text-gray-800">Audit log</span></CardHeader><Divider />
-        <CardBody className="pt-4"><AuditTimeline entries={[{ ts: adj.date + ", 10:00 AM", action: "Adjustment created", user: "Tom Wright (FinOps T1)", detail: `${adj.type} adjustment of ${adj.amount} — ${adj.reason}.` }, ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", action: "Adjustment approved", user: "Sarah Chen (FinOps T1)", detail: "Included in next payout cycle." }] : [])]} /></CardBody>
+        <CardBody className="pt-4"><AuditTimeline entries={auditEntries} /></CardBody>
       </Card>
+      {/* Reject confirmation dialog */}
+      <Modal open={showReject} onClose={() => setShowReject(false)} title="Reject adjustment" width="max-w-md">
+        <div className="space-y-4">
+          <Alert type="warning" title={`Reject ${adj.id}?`}>This adjustment of {adj.amount} will be marked as rejected and will not be applied to any payout.</Alert>
+          <div><label className="block text-sm font-semibold text-gray-700 mb-1">Reason for rejection</label><textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} placeholder="Explain why this adjustment is being rejected..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" /></div>
+          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => setShowReject(false)}>Cancel</Button>
+            <Button variant="solid" colorScheme="error" size="md" disabled={!rejectReason.trim()} onClick={handleReject} leftIcon={<Icons.Ban />}>Reject adjustment</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -809,38 +883,62 @@ function AdjustmentDetailView({ adj, onBack, role }) {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT ADJUSTMENTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantAdjustmentsTab({ role }) {
+function MerchantAdjustmentsTab({ role, mid }) {
+  const [adjustments, setAdjustments] = useState([...mockAdjustments]);
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all");
   const canWrite = role === ROLES.FINOPS_T1;
 
-  if (selectedAdj) return <AdjustmentDetailView adj={selectedAdj} onBack={() => setSelectedAdj(null)} role={role} />;
+  const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); };
+  const handleStatusChange = (adjId, newStatus, rejectReason) => {
+    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: newStatus, ...(rejectReason ? { rejectReason } : {}) } : a));
+    // Also update selectedAdj so detail view reflects the change
+    setSelectedAdj((prev) => prev && prev.id === adjId ? { ...prev, status: newStatus, ...(rejectReason ? { rejectReason } : {}) } : prev);
+  };
+
+  const filtered = statusFilter === "all" ? adjustments : adjustments.filter((a) => a.status === statusFilter);
+  const statusCounts = { "Pending approval": 0, "Approved": 0, "Rejected": 0 };
+  adjustments.forEach((a) => { if (statusCounts[a.status] !== undefined) statusCounts[a.status]++; });
+
+  // Keep selectedAdj in sync
+  const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
+  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} role={role} onStatusChange={handleStatusChange} />;
 
   return (
     <div className="p-6 space-y-5">
-      <CreateAdjustmentDialog open={showCreate} onClose={() => setShowCreate(false)} />
-      <div className="flex justify-between items-center">
-        <div />
+      <CreateAdjustmentDialog open={showCreate} onClose={() => setShowCreate(false)} onCreateAdjustment={handleCreate} mid={mid} />
+
+      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create or approve them.</span></div>)}
+
+      <div className="flex flex-col lg:flex-row justify-between gap-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {["all", "Pending approval", "Approved", "Rejected"].map((s) => (<FilterChip key={s} label={s === "all" ? `All (${adjustments.length})` : `${s} (${statusCounts[s] || 0})`} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
+        </div>
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
       </div>
       <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Adjustments</span><span className="text-sm text-gray-400">{mockAdjustments.length} results</span></CardHeader>
+        <CardHeader><span className="text-lg font-semibold text-gray-800">Adjustments</span><span className="text-sm text-gray-400">{filtered.length} results</span></CardHeader>
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Date", "Adjustment ID", "Amount", "Type", "Reason", "Payout", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
-            {mockAdjustments.map((a) => (
-              <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
-                <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
-                <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
-                <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
-                <td className="py-3 px-3"><Badge colorScheme={a.type === "Manual" ? "brand" : "neutral"} size="sm">{a.type}</Badge></td>
-                <td className="py-3 px-3 text-sm text-gray-600">{a.reason}</td>
-                <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
-                <td className="py-3 px-3"><Badge colorScheme={a.status === "Approved" ? "success" : "warning"} size="sm">{a.status}</Badge></td>
-              </tr>
-            ))}
+            {filtered.map((a) => {
+              const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[a.status] || "neutral";
+              return (
+                <tr key={a.id} onClick={() => setSelectedAdj(a)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${a.status === "Rejected" ? "bg-red-50/30" : ""}`}>
+                  <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
+                  <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
+                  <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
+                  <td className="py-3 px-3"><Badge colorScheme={a.type === "Manual" ? "brand" : "neutral"} size="sm">{a.type}</Badge></td>
+                  <td className="py-3 px-3 text-sm text-gray-600">{a.reason}</td>
+                  <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
+                  <td className="py-3 px-3"><Badge colorScheme={statusColor} size="sm">{a.status}</Badge></td>
+                </tr>
+              );
+            })}
+            {filtered.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No adjustments match the selected filter.</td></tr>}
           </tbody></table></div>
         </CardBody>
       </Card>
@@ -1072,7 +1170,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
       {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} />}
-      {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} />}
+      {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
   </div>);
