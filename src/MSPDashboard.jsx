@@ -1017,7 +1017,7 @@ function AdjustmentDetailView({ adj, onBack }) {
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Origin", <Badge colorScheme={adj.origin === "System" ? "neutral" : "brand"} size="sm">{adj.origin}</Badge>], ...(adj.entryType ? [["Entry type", <Badge colorScheme={adj.entryType === "Debit deferred" ? "error" : "success"} size="sm">{adj.entryType}</Badge>]] : []), ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Origin", <Badge colorScheme={adj.origin === "System" ? "neutral" : "brand"} size="sm">{adj.origin}</Badge>], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debit deferred" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1062,7 +1062,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Date", "Adjustment ID", "Amount", "Origin", "Entry type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Date", "Adjustment ID", "Amount", "Origin", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
             {adjustments.map((a) => (
                 <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
@@ -1070,7 +1070,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
                   <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
                   <td className="py-3 px-3"><Badge colorScheme={a.origin === "System" ? "neutral" : "brand"} size="sm">{a.origin}</Badge></td>
-                  <td className="py-3 px-3 text-sm text-gray-600">{a.entryType ? <Badge colorScheme={a.entryType === "Debit deferred" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <span className="text-gray-400">—</span>}</td>
+                  <td className="py-3 px-3">{a.entryType ? <Badge colorScheme={a.entryType === "Debit deferred" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>}</td>
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
