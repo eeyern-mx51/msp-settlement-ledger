@@ -548,17 +548,17 @@ const transfersByPayout = {
 // entryType: null (default) | "Debit deferred" (system negative) | "Debit rollover" (system balancing positive)
 // System-initiated negative amounts always come in pairs: Debit deferred (negative) + Debit rollover (positive)
 const mockAdjustments = [
-  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
-  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
-  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
-  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
-  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
-  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
-  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
-  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
-  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", requestedSettlementDate: "28 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
+  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
+  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
+  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
+  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", requestedSettlementDate: "24 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
+  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debit deferred", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
+  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
 ];
 
 // ─── Transactions — expanded ───
@@ -947,11 +947,19 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 // ═══════════════════════════════════════════════════════════
 function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
   const [amount, setAmount] = useState("");
+  const [settlementDate, setSettlementDate] = useState("");
   const [info, setInfo] = useState("");
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  useEffect(() => { if (open) { setAmount(""); setInfo(""); setCreating(false); } }, [open]);
+  // Date bounds: unlimited past, 7 days future
+  const today = new Date();
+  const maxDate = new Date(today);
+  maxDate.setDate(maxDate.getDate() + 7);
+  const maxDateStr = maxDate.toISOString().split("T")[0];
+  const todayStr = today.toISOString().split("T")[0];
+
+  useEffect(() => { if (open) { setAmount(""); setSettlementDate(todayStr); setInfo(""); setCreating(false); } }, [open]);
 
   const handleCreate = () => {
     setCreating(true);
@@ -960,9 +968,12 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
       const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
       const num = String(Math.floor(Math.random() * 900) + 100);
       const parsedAmt = parseFloat(amount);
+      const selDate = settlementDate ? new Date(settlementDate + "T00:00:00") : today;
+      const reqSettDateStr = selDate.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
       const newAdj = {
         id: `ADJ-2026-${dateStr.replace(/\s/g, "").slice(0, 4)}-${num}`,
         date: dateStr,
+        requestedSettlementDate: reqSettDateStr,
         amount: `${parsedAmt < 0 ? "-" : ""}$${Math.abs(parsedAmt).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
         initiatedBy: "Tom Wright",
         entryType: null,
@@ -986,6 +997,11 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
             <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
           </div>
           <p className="text-xs text-gray-400 mt-1">Use negative for debits.</p>
+        </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
+          <p className="text-xs text-gray-400 mt-1">Adjustment will be included in a payout settled on or before this date.</p>
         </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${info.length >= 500 ? "border-red-400" : "border-gray-300"}`} /><p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p></div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
@@ -1017,7 +1033,7 @@ function AdjustmentDetailView({ adj, onBack }) {
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debit deferred" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date created", adj.date], ["Requested settlement date", adj.requestedSettlementDate || "—"], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debit deferred" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1040,9 +1056,14 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [adjustments, setAdjustments] = useState([...mockAdjustments]);
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
   const canWrite = role === ROLES.FINOPS_T1;
+  const PAGE_SIZE = 20;
 
-  const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); };
+  const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
+
+  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
+  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
@@ -1062,11 +1083,12 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Date", "Adjustment ID", "Amount", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Adjustment ID", "Amount", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
-            {adjustments.map((a) => (
+            {paginatedAdj.map((a) => (
                 <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
+                  <td className="py-3 px-3 text-sm text-gray-700">{a.requestedSettlementDate || "—"}</td>
                   <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : a.initiatedBy}</td>
@@ -1074,8 +1096,17 @@ function MerchantAdjustmentsTab({ role, mid }) {
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
-            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
+            {adjustments.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
+              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages} ({adjustments.length} results, {PAGE_SIZE} per page)</span>
+              <div className="flex gap-2">
+                <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
+                <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
+              </div>
+            </div>
+          )}
         </CardBody>
       </Card>
     </div>
@@ -1149,12 +1180,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="flex flex-wrap gap-6 pb-4 mb-4 border-b border-gray-100">
-            <HeroMetric heading="Total payouts" value="$65,253.20" tooltip="Sum of all payout amounts." />
-            <HeroMetric heading="Completed" value="$18,149.90" colorClass="text-emerald-600" />
-            <HeroMetric heading="Pending" value="$29,769.55" colorClass="text-indigo-600" />
-            <HeroMetric heading="Failed" value="$6,112.75" colorClass="text-red-600" />
-          </div>
           <div className="mb-3">
             <div className="relative"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Payout ID, amount, merchant, or MID..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
           </div>
@@ -1236,9 +1261,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="flex flex-wrap gap-6 pb-4 mb-4 border-b border-gray-100">
-            <HeroMetric heading="Total payouts" value="$12,804.60" /><HeroMetric heading="Completed" value="$2,945.30" colorClass="text-emerald-600" /><HeroMetric heading="Pending" value="$8,439.30" colorClass="text-indigo-600" />
-          </div>
           <div className="mb-3">
             <div className="relative"><input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search by Payout ID or amount..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
           </div>
