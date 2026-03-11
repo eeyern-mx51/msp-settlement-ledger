@@ -544,15 +544,21 @@ const transfersByPayout = {
 };
 
 // ─── Adjustments — expanded ───
+// origin: "Generic" (manual/user-created) | "System" (auto-generated)
+// entryType: null (default) | "Debit deferred" (system negative) | "Debit rollover" (system balancing positive)
+// System-origin negative amounts always come in pairs: Debit deferred (negative) + Debit rollover (positive)
 const mockAdjustments = [
-  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", type: "Manual", reason: "Chargeback recovery", payoutId: "PO-2026-0224-001", status: "Pending approval", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount.", externalDesc: "Chargeback reversal — dispute resolved in your favour." },
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", type: "Manual", reason: "Customer goodwill credit", payoutId: "PO-2026-0223-001", status: "Pending approval", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager.", externalDesc: "Goodwill adjustment for service delay." },
-  { id: "ADJ-2026-0223-002", date: "23 Feb 2026", amount: "-$82.30", type: "Auto", reason: "Scheme fee rebate", payoutId: "PO-2026-0223-002", status: "Approved", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012.", externalDesc: "Visa scheme fee rebate — Q4 2025." },
-  { id: "ADJ-2026-0222-001", date: "22 Feb 2026", amount: "-$45.50", type: "Auto", reason: "Fee correction", payoutId: "PO-2026-0222-001", status: "Approved", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions.", externalDesc: "Fee correction for surcharge miscalculation." },
-  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", type: "Manual", reason: "Settlement discrepancy", payoutId: "PO-2026-0222-002", status: "Rejected", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions.", externalDesc: "Settlement discrepancy investigation." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", type: "Manual", reason: "Promotional credit", payoutId: "PO-2026-0221-002", status: "Approved", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE.", externalDesc: "Promotional credit — onboarding campaign." },
-  { id: "ADJ-2026-0220-001", date: "20 Feb 2026", amount: "-$1,200.00", type: "Manual", reason: "Chargeback recovery", payoutId: "PO-2026-0220-001", status: "Approved", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout.", externalDesc: "Chargeback deduction — dispute CB-77104." },
-  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", type: "Auto", reason: "Fee correction", payoutId: "PO-2026-0218-001", status: "Approved", internalNote: "Terminal rental fee was double-charged in January billing cycle.", externalDesc: "Terminal rental fee correction — January double charge." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
+  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", amount: "-$82.30", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
+  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", amount: "$82.30", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
+  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", amount: "-$45.50", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
+  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", amount: "$45.50", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
+  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", amount: "-$1,200.00", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
+  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", amount: "$1,200.00", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
 ];
 
 // ─── Transactions — expanded ───
@@ -958,16 +964,14 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
         id: `ADJ-2026-${dateStr.replace(/\s/g, "").slice(0, 4)}-${num}`,
         date: dateStr,
         amount: `${parsedAmt < 0 ? "-" : ""}$${Math.abs(parsedAmt).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-        type: "Manual",
-        reason: "—",
+        origin: "Generic",
+        entryType: null,
         payoutId: "—",
-        status: "Pending approval",
-        internalNote: info || "No internal note provided.",
-        externalDesc: "—",
+        internalNote: info,
         mid: mid || "POSPAY00012345",
       };
       onCreateAdjustment(newAdj);
-      addToast({ type: "success", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} is pending approval.` });
+      addToast({ type: "success", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} has been created.` });
       onClose();
     }, 500);
   };
@@ -998,29 +1002,9 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ═══════════════════════════════════════════════════════════
 // ADJUSTMENT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
-  const { addToast } = useToast();
-  const canWrite = role === ROLES.FINOPS_T1;
-  const isPending = adj.status === "Pending approval";
-  const [showReject, setShowReject] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
-  const handleApprove = () => {
-    onStatusChange(adj.id, "Approved");
-    addToast({ type: "success", title: "Adjustment approved", message: `${adj.id} has been approved and will be included in the next payout cycle.` });
-  };
-  const handleReject = () => {
-    onStatusChange(adj.id, "Rejected", rejectReason);
-    addToast({ type: "warning", title: "Adjustment rejected", message: `${adj.id} has been rejected.` });
-    setShowReject(false);
-  };
-
-  const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[adj.status] || "neutral";
-
+function AdjustmentDetailView({ adj, onBack }) {
   const auditEntries = [
     { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps Admin)", detail: `Adjustment of ${adj.amount} created.` },
-    ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment approved", user: "Sarah Chen (FinOps Admin)", detail: "Included in next payout cycle." }] : []),
-    ...(adj.status === "Rejected" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment rejected", user: "Sarah Chen (FinOps Admin)", detail: adj.rejectReason || "Rejected by reviewer." }] : []),
   ];
 
   return (
@@ -1028,18 +1012,12 @@ function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to adjustments</button>
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span><Badge colorScheme={statusColor} size="sm">{adj.status}</Badge></div>
-          {isPending && (
-            <div className="flex gap-2">
-              <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowReject(true)} disabled={!canWrite}>Reject</Button>
-              <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} onClick={handleApprove} disabled={!canWrite}>Approve</Button>
-            </div>
-          )}
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span></div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>], ["Status", <Badge colorScheme={statusColor} size="sm">{adj.status}</Badge>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Origin", <Badge colorScheme={adj.origin === "System" ? "neutral" : "brand"} size="sm">{adj.origin}</Badge>], ...(adj.entryType ? [["Entry type", <Badge colorScheme={adj.entryType === "Debit deferred" ? "error" : "success"} size="sm">{adj.entryType}</Badge>]] : []), ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1051,17 +1029,6 @@ function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
       <Card><CardHeader><span className="text-lg font-semibold text-gray-800">Audit log</span></CardHeader><Divider />
         <CardBody className="pt-4"><AuditTimeline entries={auditEntries} /></CardBody>
       </Card>
-      {/* Reject confirmation dialog */}
-      <Modal open={showReject} onClose={() => setShowReject(false)} title="Reject adjustment" width="max-w-md">
-        <div className="space-y-4">
-          <Alert type="warning" title={`Reject ${adj.id}?`}>This adjustment of {adj.amount} will be marked as rejected and will not be applied to any payout.</Alert>
-          <div><label className="block text-sm font-semibold text-gray-700 mb-1">Reason for rejection</label><textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} placeholder="Explain why this adjustment is being rejected..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" /></div>
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => setShowReject(false)}>Cancel</Button>
-            <Button variant="solid" colorScheme="error" size="md" disabled={!rejectReason.trim()} onClick={handleReject} leftIcon={<Icons.Ban />}>Reject adjustment</Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   );
 }
@@ -1073,55 +1040,41 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [adjustments, setAdjustments] = useState([...mockAdjustments]);
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [statusFilter, setStatusFilter] = useState("all");
   const canWrite = role === ROLES.FINOPS_T1;
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); };
-  const handleStatusChange = (adjId, newStatus, rejectReason) => {
-    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: newStatus, ...(rejectReason ? { rejectReason } : {}) } : a));
-    // Also update selectedAdj so detail view reflects the change
-    setSelectedAdj((prev) => prev && prev.id === adjId ? { ...prev, status: newStatus, ...(rejectReason ? { rejectReason } : {}) } : prev);
-  };
-
-  const filtered = statusFilter === "all" ? adjustments : adjustments.filter((a) => a.status === statusFilter);
-  const statusCounts = { "Pending approval": 0, "Approved": 0, "Rejected": 0 };
-  adjustments.forEach((a) => { if (statusCounts[a.status] !== undefined) statusCounts[a.status]++; });
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
-  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} role={role} onStatusChange={handleStatusChange} />;
+  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} />;
 
   return (
     <div className="p-6 space-y-5">
       <CreateAdjustmentDialog open={showCreate} onClose={() => setShowCreate(false)} onCreateAdjustment={handleCreate} mid={mid} />
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create or approve them.</span></div>)}
+      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
       <div className="flex justify-end">
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
       </div>
       <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Adjustments</span><span className="text-sm text-gray-400">{filtered.length} results</span></CardHeader>
+        <CardHeader><span className="text-lg font-semibold text-gray-800">Adjustments</span><span className="text-sm text-gray-400">{adjustments.length} results</span></CardHeader>
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Date", "Adjustment ID", "Amount", "Type", "Reason", "Payout", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Date", "Adjustment ID", "Amount", "Origin", "Entry type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
-            {filtered.map((a) => {
-              const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[a.status] || "neutral";
-              return (
-                <tr key={a.id} onClick={() => setSelectedAdj(a)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${a.status === "Rejected" ? "bg-red-50/30" : ""}`}>
+            {adjustments.map((a) => (
+                <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
                   <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
-                  <td className="py-3 px-3"><Badge colorScheme={a.type === "Manual" ? "brand" : "neutral"} size="sm">{a.type}</Badge></td>
-                  <td className="py-3 px-3 text-sm text-gray-600">{a.reason}</td>
+                  <td className="py-3 px-3"><Badge colorScheme={a.origin === "System" ? "neutral" : "brand"} size="sm">{a.origin}</Badge></td>
+                  <td className="py-3 px-3 text-sm text-gray-600">{a.entryType ? <Badge colorScheme={a.entryType === "Debit deferred" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <span className="text-gray-400">—</span>}</td>
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
-                  <td className="py-3 px-3"><Badge colorScheme={statusColor} size="sm">{a.status}</Badge></td>
                 </tr>
-              );
-            })}
-            {filtered.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No adjustments match the selected filter.</td></tr>}
+            ))}
+            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
         </CardBody>
       </Card>
