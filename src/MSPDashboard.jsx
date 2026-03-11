@@ -1097,10 +1097,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create or approve them.</span></div>)}
 
-      <div className="flex flex-col lg:flex-row justify-between gap-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          {["all", "Pending approval", "Approved", "Rejected"].map((s) => (<FilterChip key={s} label={s === "all" ? `All (${adjustments.length})` : `${s} (${statusCounts[s] || 0})`} active={statusFilter === s} onClick={() => setStatusFilter(s)} />))}
-        </div>
+      <div className="flex justify-end">
         <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
       </div>
       <Card>
@@ -1187,7 +1184,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} />
+      {/* PayoutProgressionFilter hidden — filters removed for now */}
 
       <Card>
         <CardHeader>
@@ -1274,7 +1271,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
       {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      <PayoutProgressionFilter active={statusFilter} onChange={(s) => { setStatusFilter(s); setCurrentPage(1); }} payouts={merchantPayouts} />
+      {/* PayoutProgressionFilter hidden — filters removed for now */}
 
       <Card>
         <CardHeader>
@@ -1376,14 +1373,15 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold }) {
-  const [activeTab, setActiveTab] = useState("transactions");
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, initialTab, onTabChange }) {
+  const [activeTab, setActiveTab] = useState(initialTab || "transactions");
+  const handleTabChange = (tab) => { setActiveTab(tab); if (onTabChange) onTabChange(tab); };
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const bc = { org: "POS Pay Pty Ltd", facility: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", status: "Active" };
   return (<div className="flex flex-col h-full">
     <div className="bg-white border-b border-gray-200">
       <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100"><Icons.Store /><span className="text-sm font-medium text-indigo-600 cursor-pointer hover:underline">{bc.org}</span><Icons.ChevronRight /><span className="text-sm font-medium text-gray-800">{bc.facility}</span><span className="ml-1"><Badge colorScheme="neutral" size="md">{bc.mid}</Badge></span><span className="ml-1"><Badge colorScheme="success" size="md">{bc.status}</Badge></span></div>
-      <div className="px-4 py-1 flex gap-1">{tabs.map((tab) => (<button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98] hover:bg-gray-50 hover:text-gray-700"}`}>{tab.label}</button>))}</div>
+      <div className="px-4 py-1 flex gap-1">{tabs.map((tab) => (<button key={tab.id} onClick={() => handleTabChange(tab.id)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98] hover:bg-gray-50 hover:text-gray-700"}`}>{tab.label}</button>))}</div>
     </div>
     <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
       {activeTab === "overview" && <OverviewTab />}
@@ -2404,9 +2402,27 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
   );
 }
 
+// ── URL hash helpers for refresh persistence ──
+function parseHash() {
+  const h = window.location.hash.replace(/^#\/?/, "");
+  if (!h) return { page: "payouts", detail: false, tab: null };
+  const parts = h.split("/");
+  const page = parts[0] || "payouts";
+  const detail = parts[1] === "detail";
+  const tab = parts[2] || null;
+  return { page, detail, tab };
+}
+function buildHash(page, detail, tab) {
+  let h = `#${page}`;
+  if (detail) { h += "/detail"; if (tab) h += `/${tab}`; }
+  return h;
+}
+
 export default function MSPSupportDashboard() {
-  const [activePage, setActivePage] = useState("payouts");
-  const [merchantDetailView, setMerchantDetailView] = useState(false);
+  const initial = parseHash();
+  const [activePage, setActivePage] = useState(initial.page);
+  const [merchantDetailView, setMerchantDetailView] = useState(initial.detail);
+  const [initialMerchantTab] = useState(initial.tab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [role, setRole] = useState(ROLES.FINOPS_T1);
   const [featureEnabled, setFeatureEnabled] = useState(true);
@@ -2445,7 +2461,26 @@ export default function MSPSupportDashboard() {
 
   const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "dte-generator": { icon: Icons.DocumentText, label: "DTE Generator" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
   const currentHeading = headings[activePage] || headings["merchant-facilities"];
-  const handleNav = (id) => { setActivePage(id); setMerchantDetailView(false); };
+  const handleNav = (id) => { setActivePage(id); setMerchantDetailView(false); window.location.hash = buildHash(id, false, null); };
+
+  // Sync hash when merchantDetailView changes
+  const updateHash = useCallback((page, detail, tab) => {
+    const newHash = buildHash(page, detail, tab);
+    if (window.location.hash !== newHash) window.location.hash = newHash;
+  }, []);
+
+  // Listen for browser back/forward
+  useEffect(() => {
+    const onHashChange = () => {
+      const { page, detail } = parseHash();
+      setActivePage(page);
+      setMerchantDetailView(detail);
+    };
+    window.addEventListener("hashchange", onHashChange);
+    // Set initial hash if empty
+    if (!window.location.hash) window.location.hash = buildHash(activePage, merchantDetailView, null);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <ToastProvider>
@@ -2455,8 +2490,8 @@ export default function MSPSupportDashboard() {
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
             {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} onFleetHoldChange={setFleetHold} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} />}
-            {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => setMerchantDetailView(true)} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
+            {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => { setMerchantDetailView(true); updateHash("merchant-facilities", true, null); }} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
             {activePage === "ux-artefacts" && <UXArtefactsPage />}
