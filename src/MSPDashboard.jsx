@@ -976,17 +976,17 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
     <Modal open={open} onClose={onClose} title="Create adjustment">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Amount</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Amount <span className="text-red-500">*</span></label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">AUD</span>
             <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
           </div>
           <p className="text-xs text-gray-400 mt-1">Use negative for debits.</p>
         </div>
-        <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note</label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" /><p className="text-xs text-gray-400 mt-1">{info.length}/500 characters</p></div>
+        <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${info.length >= 500 ? "border-red-400" : "border-gray-300"}`} /><p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p></div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!amount || isNaN(parseFloat(amount)) || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.Plus />}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!amount || isNaN(parseFloat(amount)) || !info.trim() || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.Plus />}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create adjustment"}
           </Button>
         </div>
@@ -1018,7 +1018,7 @@ function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
   const statusColor = { "Approved": "success", "Rejected": "error", "Pending approval": "warning" }[adj.status] || "neutral";
 
   const auditEntries = [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps Admin)", detail: `${adj.type} adjustment of ${adj.amount} — ${adj.reason}.` },
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps Admin)", detail: `Adjustment of ${adj.amount} created.` },
     ...(adj.status === "Approved" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment approved", user: "Sarah Chen (FinOps Admin)", detail: "Included in next payout cycle." }] : []),
     ...(adj.status === "Rejected" ? [{ ts: adj.date + ", 10:30 AM", version: 2, action: "Adjustment rejected", user: "Sarah Chen (FinOps Admin)", detail: adj.rejectReason || "Rejected by reviewer." }] : []),
   ];
@@ -1039,13 +1039,12 @@ function AdjustmentDetailView({ adj, onBack, role, onStatusChange }) {
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Type", <Badge colorScheme={adj.type === "Manual" ? "brand" : "neutral"} size="sm">{adj.type}</Badge>], ["Reason", adj.reason], ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>], ["Status", <Badge colorScheme={statusColor} size="sm">{adj.status}</Badge>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date", adj.date], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>], ["Status", <Badge colorScheme={statusColor} size="sm">{adj.status}</Badge>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
           <div className="mt-6 space-y-4">
             <div><h4 className="text-sm font-semibold text-gray-700 mb-1">Internal note</h4><div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-100">{adj.internalNote}</div></div>
-            <div><h4 className="text-sm font-semibold text-gray-700 mb-1">External description (merchant-visible)</h4><div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-100">{adj.externalDesc}</div></div>
           </div>
         </CardBody>
       </Card>
