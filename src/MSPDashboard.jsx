@@ -544,21 +544,21 @@ const transfersByPayout = {
 };
 
 // ─── Adjustments — expanded ───
-// origin: "Generic" (manual/user-created) | "System" (auto-generated)
+// origin: "Manual" (manual/user-created) | "System" (auto-generated)
 // entryType: null (default) | "Debit deferred" (system negative) | "Debit rollover" (system balancing positive)
 // System-origin negative amounts always come in pairs: Debit deferred (negative) + Debit rollover (positive)
 const mockAdjustments = [
-  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", amount: "$350.00", origin: "Manual", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", amount: "$125.00", origin: "Manual", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
   { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", amount: "-$82.30", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
   { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", amount: "$82.30", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
   { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", amount: "-$45.50", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
   { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", amount: "$45.50", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
-  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", amount: "$500.00", origin: "Manual", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", amount: "$200.00", origin: "Manual", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
   { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", amount: "-$1,200.00", origin: "System", entryType: "Debit deferred", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
   { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", amount: "$1,200.00", origin: "System", entryType: "Debit rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
-  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", origin: "Generic", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", amount: "$75.00", origin: "Manual", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
 ];
 
 // ─── Transactions — expanded ───
@@ -964,7 +964,7 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
         id: `ADJ-2026-${dateStr.replace(/\s/g, "").slice(0, 4)}-${num}`,
         date: dateStr,
         amount: `${parsedAmt < 0 ? "-" : ""}$${Math.abs(parsedAmt).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-        origin: "Generic",
+        origin: "Manual",
         entryType: null,
         payoutId: "—",
         internalNote: info,
