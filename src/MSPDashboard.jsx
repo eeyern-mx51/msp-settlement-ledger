@@ -1075,11 +1075,13 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
-      <div className="flex justify-end">
-        <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
-      </div>
       <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Adjustments</span><span className="text-sm text-gray-400">{adjustments.length} results</span></CardHeader>
+        <CardHeader>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
+          <div className="flex items-center gap-2">
+            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
+          </div>
+        </CardHeader>
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
