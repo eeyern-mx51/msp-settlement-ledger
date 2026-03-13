@@ -311,7 +311,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
       <div className="space-y-5">
         <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently cancel it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
         {payout.status === "Failed" && (
-          <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. Ensure bank detail corrections have been attempted (for non-retryable) or that retry limits have been exhausted (for retryable). This action will be audited.</Alert>
+          <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
         )}
         <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount], ["Transfers affected", payout.transferCount]].map(([label, value]) => (
@@ -344,14 +344,12 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, hold, retryable }) {
+function PayoutStatusBadge({ status, hold }) {
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
       {hold && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
-      {status === "Failed" && retryable === true && <Badge colorScheme="purple" size="sm">Retryable</Badge>}
-      {status === "Failed" && retryable === false && <Badge colorScheme="neutral" size="sm">Non-retryable</Badge>}
     </span>
   );
 }
@@ -638,7 +636,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
-        ...(payout.retryable ? [{ label: failedTransfer?.attempt ? `Retry (attempt ${failedTransfer.attempt + 1})` : "Retry", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Retry initiated", message: `Payout ${payout.id} has been queued for re-transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
     };
@@ -690,52 +687,21 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         </div>
       )}
 
-      {isFailed && payout.retryable === true && (
-        <div className="space-y-2">
-          <Alert type="error" title="Transfer failed — Retryable">
-            {failedTransfer ? failedTransfer.failureReason + ". " : ""}FinOps Admin can manually retry this payout.
-          </Alert>
-          <div className="flex flex-col sm:flex-row gap-2 px-1">
-            {failedTransfer?.errorCode && (
-              <div className="flex items-center gap-2 text-xs"><span className="font-bold text-gray-500">Error code:</span><code className="font-mono font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">{failedTransfer.errorCode}</code></div>
-            )}
-            {failedTransfer?.attempt && (
-              <div className="flex items-center gap-2 text-xs"><span className="font-bold text-gray-500">Attempt:</span><span className={`font-bold px-2 py-0.5 rounded ${failedTransfer.attempt >= 3 ? "bg-red-50 text-red-600" : "bg-gray-100 text-gray-700"}`}>{failedTransfer.attempt} of 3{failedTransfer.attempt >= 3 ? " — Escalation recommended" : ""}</span></div>
-            )}
-          </div>
-          {failedTransfer?.errorCode === "GATEWAY_TIMEOUT" && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800"><span className="font-bold flex-shrink-0 mt-0.5">⚠</span><span>Timeout failures are ambiguous — the original payment may have succeeded without confirmation. Confirm no duplicate payment was processed before retrying.</span></div>
-          )}
-        </div>
-      )}
-      {isFailed && payout.retryable === false && (
-        <div className="space-y-2">
-          <Alert type="error" title="Transfer failed — Non-retryable">
-            {failedTransfer ? failedTransfer.failureReason + ". " : ""}The root cause must be resolved before this payout can proceed.
-          </Alert>
-          {failedTransfer?.errorCode && (
-            <div className="flex items-center gap-2 text-xs px-1"><span className="font-bold text-gray-500">Error code:</span><code className="font-mono font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">{failedTransfer.errorCode}</code></div>
-          )}
-          {failedTransfer?.recommendedAction && (
-            <div className="flex items-start gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-800"><span className="font-bold flex-shrink-0">Recommended:</span><span>{failedTransfer.recommendedAction}</span></div>
-          )}
-        </div>
-      )}
-      {isFailed && payout.retryable === undefined && (<Alert type="error" title="Transfer failed">Transfer details unavailable. Check audit log for more information.</Alert>)}
+      {isFailed && (<Alert type="error" title="Transfer failed">{failedTransfer ? failedTransfer.failureReason + "." : "Transfer details unavailable. Check audit log for more information."}</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} retryable={payout.retryable} /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  /></div>
           {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} retryable={payout.retryable} />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -758,7 +724,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
                   <td className="py-3 px-3 text-sm font-mono text-gray-700">{t.account}</td>
                   <td className="py-3 px-3 text-sm font-semibold text-gray-900">{t.amount}</td>
                   <td className="py-3 px-3"><Badge colorScheme={t.status === "Failed" ? "error" : "success"} size="sm">{t.status}</Badge></td>
-                  {isFailed && <td className="py-3 px-3 text-sm text-red-600 max-w-[300px]"><div className="flex items-start gap-1.5"><Icons.AlertTriangle /><div><div>{t.failureReason}</div><div className="text-xs mt-1"><Badge colorScheme={t.retryable === false ? "error" : "warning"} size="sm">{t.retryable === false ? "Non-retryable" : "Retryable"}</Badge></div></div></div></td>}
+                  {isFailed && t.failureReason && <td className="py-3 px-3 text-sm text-red-600 max-w-[300px]"><div className="flex items-start gap-1.5"><Icons.AlertTriangle /><span>{t.failureReason}</span></div></td>}
                 </tr>
               ))}
             </tbody></table></div>
@@ -1200,7 +1166,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold}  /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1272,7 +1238,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold}  /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1416,7 +1382,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
                   <div className="space-y-1">{changedPayouts.map((p) => {
                     const original = mockPayouts.find((o) => o.id === p.id);
-                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold} retryable={p.retryable} /></div>);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold}  /></div>);
                   })}</div>
                 </div>
               ) : (
