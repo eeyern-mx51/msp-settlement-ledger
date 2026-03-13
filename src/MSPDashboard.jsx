@@ -193,7 +193,7 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
       <div className="space-y-5">
         <Alert type="info" title="Review before approving">Once approved, this payout will move to "Ready for Transfer" and the transfer can be initiated. Ensure the amounts and merchant details are correct.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount], ["Transfers", payout.transferCount]].map(([label, value]) => (
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
         </div>
@@ -314,7 +314,7 @@ function CancelPayoutDialog({ open, onClose, payout, onConfirm }) {
           <Alert type="warning" title="Stringent criteria apply">Cancelling a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
         )}
         <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
-          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount], ["Transfers affected", payout.transferCount]].map(([label, value]) => (
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-red-600 font-medium">{label}</span><span className="text-red-800 font-semibold">{value}</span></div>
           ))}
         </div>
@@ -367,34 +367,34 @@ const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[
 // ═══════════════════════════════════════════════════════════
 const mockPayouts = [
   // 24 Feb — today
-  { id: "PO-2026-0224-001", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0224-002", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", transferCount: 1, status: "Ready for Review" },
-  { id: "PO-2026-0224-003", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", transferCount: 1, status: "Ready for Review" },
+  { id: "PO-2026-0224-001", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", status: "Ready for Review" },
+  { id: "PO-2026-0224-002", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", status: "Ready for Review" },
+  { id: "PO-2026-0224-003", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", status: "Ready for Review" },
   // 23 Feb
-  { id: "PO-2026-0223-001", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", transferCount: 1, status: "Ready for Transfer" },
-  { id: "PO-2026-0223-002", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", transferCount: 2, status: "Ready for Transfer" },
-  { id: "PO-2026-0223-003", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", transferCount: 1, status: "Transferring" },
+  { id: "PO-2026-0223-001", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", status: "Ready for Transfer" },
+  { id: "PO-2026-0223-002", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", status: "Ready for Transfer" },
+  { id: "PO-2026-0223-003", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", status: "Transferring" },
   // 22 Feb
-  { id: "PO-2026-0222-001", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0222-002", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0222-003", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$2,640.15", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0222-001", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", status: "Completed" },
+  { id: "PO-2026-0222-002", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", status: "Completed" },
+  { id: "PO-2026-0222-003", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$2,640.15", status: "Completed" },
   // 21 Feb
-  { id: "PO-2026-0221-001", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$15,204.60", transferCount: 2, status: "Completed" },
-  { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0221-001", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$15,204.60", status: "Completed" },
+  { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", status: "Completed" },
+  { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
-  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", hold: true },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed" },
+  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", status: "Ready for Transfer", hold: true },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed" },
   // 19 Feb
-  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Cancelled" },
-  { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
+  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", status: "Cancelled" },
+  { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", status: "Completed" },
   // 18 Feb
-  { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", transferCount: 3, status: "Completed" },
-  { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", transferCount: 1, status: "Completed" },
-  { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", transferCount: 2, status: "Completed" },
+  { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", status: "Completed" },
+  { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", status: "Completed" },
+  { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", status: "Completed" },
   // 17 Feb
-  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Cancelled" },
+  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", status: "Cancelled" },
 ];
 
 // ─── Per-payout audit logs ───
@@ -497,52 +497,6 @@ const defaultAuditLog = (payout) => [
   { ts: payout.date + ", 6:01 AM", version: 2, action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
 ];
 
-// ─── Per-payout transfers ───
-const transfersByPayout = {
-  "PO-2026-0222-001": [
-    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0222-002": [
-    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
-  ],
-  "PO-2026-0222-003": [
-    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null },
-  ],
-  "PO-2026-0221-001": [
-    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
-    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
-  ],
-  "PO-2026-0221-002": [
-    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0221-003": [
-    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
-  ],
-  "PO-2026-0223-003": [
-    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null },
-  ],
-  "PO-2026-0220-001": [
-    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit" },
-  ],
-  "PO-2026-0220-003": [
-    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA" },
-  ],
-  "PO-2026-0219-002": [
-    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
-  ],
-  "PO-2026-0218-001": [
-    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
-    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
-    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null },
-  ],
-  "PO-2026-0218-002": [
-    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0218-003": [
-    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
-    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null },
-  ],
-};
 
 // ─── Adjustments — expanded ───
 // initiatedBy: FinOps username (manual) | "System" (auto-generated)
@@ -586,7 +540,7 @@ function AuditTimeline({ entries }) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// PAYOUT DETAIL VIEW (with transfer failure reporting)
+// PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
 function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName }) {
   const { addToast } = useToast();
@@ -596,14 +550,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   const isCancelled = payout.status === "Cancelled";
   const isTerminal = isCompleted || isCancelled;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
-  const storedTransfers = transfersByPayout[payout.id] || [];
-  // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
-  const transfers = storedTransfers.length > 0 ? storedTransfers : (
-    ["Transferring", "Completed"].includes(payout.status)
-      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null }]
-      : []
-  );
-  const failedTransfer = transfers.find(t => t.status === "Failed");
 
   // Determine effective hold state — fleet overrides merchant overrides payout-level
   const effectiveHoldScope = !isTerminal && fleetHold ? "fleet" : !isTerminal && merchantHold ? "merchant" : payout.hold ? "payout" : null;
@@ -691,7 +637,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         </div>
       )}
 
-      {isFailed && (<Alert type="error" title="Transfer failed">{failedTransfer ? failedTransfer.failureReason + "." : "Transfer details unavailable. Check audit log for more information."}</Alert>)}
+      {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isCancelled && (<Alert type="warning" title="Payout cancelled">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
@@ -705,34 +651,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
-        </CardBody>
-      </Card>
-
-      <Card>
-        <CardHeader><span className="text-lg font-semibold text-gray-800">Transfers</span></CardHeader>
-        <Divider />
-        <CardBody className="pt-4">
-          {transfers.length === 0 ? <Alert type="info">{["Ready for Review", "Ready for Transfer"].includes(payout.status) ? "Transfers are created when the transfer is initiated." : "No transfers have been initiated for this payout."}</Alert> : (
-            <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-              {["Transfer ID", "Date", "BSB", "Account", "Amount", "Status", ...(isFailed ? ["Failure reason"] : [])].map((h) => <TH key={h}>{h}</TH>)}
-            </tr></thead><tbody>
-              {transfers.map((t) => (
-                <tr key={t.id} className={`border-b border-gray-100 ${t.status === "Failed" ? "bg-red-50/50" : ""}`}>
-                  <td className="py-3 px-3 text-sm font-mono text-gray-700">{t.id}</td>
-                  <td className="py-3 px-3 text-sm text-gray-700">{t.date}</td>
-                  <td className="py-3 px-3 text-sm font-mono text-gray-700">{t.bsb}</td>
-                  <td className="py-3 px-3 text-sm font-mono text-gray-700">{t.account}</td>
-                  <td className="py-3 px-3 text-sm font-semibold text-gray-900">{t.amount}</td>
-                  <td className="py-3 px-3"><Badge colorScheme={t.status === "Failed" ? "error" : "success"} size="sm">{t.status}</Badge></td>
-                  {isFailed && t.failureReason && <td className="py-3 px-3 text-sm text-red-600 max-w-[300px]"><div className="flex items-start gap-1.5"><Icons.AlertTriangle /><span>{t.failureReason}</span></div></td>}
-                </tr>
-              ))}
-            </tbody></table></div>
-          )}
         </CardBody>
       </Card>
 
@@ -813,8 +735,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
         merchantName: g.merchant,
         mid: g.mid,
         amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-        transferCount: 1,
-        status: g.total <= 0 ? "Completed" : "Ready for Review",
+               status: g.total <= 0 ? "Completed" : "Ready for Review",
       }));
       onCreatePayouts(newPayouts);
       addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared and set to Ready for Review.` });
@@ -1160,7 +1081,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
             <div className="relative"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Payout ID, amount, merchant, or MID..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
           </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Transfers", "Amount", "Status"].map((h) => {
+            {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Merchant", "Amount", "Status"].includes(h);
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
@@ -1172,12 +1093,11 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td>
                 <td className="py-3 px-3 text-sm text-gray-700">{p.merchantName}</td>
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
-                <td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
                 <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td>
               </tr>
             ))}
-            {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           <div className="flex justify-center pt-4"><Button variant="outline" colorScheme="brand" size="md">More results</Button></div>
         </CardBody>
@@ -1241,13 +1161,13 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
             <div className="relative"><input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search by Payout ID or amount..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
           </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Payout ID", "Transfers", "Amount", "Status"].map((h) => {
+            {["Created", "Settlement date", "Payout ID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Amount", "Status"].includes(h);
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
-            {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
+            {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
           {totalPages > 1 && (
