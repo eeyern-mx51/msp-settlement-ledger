@@ -1031,13 +1031,15 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState("all");
   const canWrite = role === ROLES.FINOPS_T1;
   const PAGE_SIZE = 20;
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
 
-  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
-  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const filteredAdj = typeFilter === "all" ? adjustments : typeFilter === "system" ? adjustments.filter(a => a.initiatedBy === "System") : typeFilter === "manual" ? adjustments.filter(a => a.initiatedBy !== "System") : adjustments.filter(a => a.entryType === typeFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredAdj.length / PAGE_SIZE));
+  const paginatedAdj = filteredAdj.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
@@ -1049,9 +1051,23 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
+      <div className="flex flex-wrap gap-2">
+        {[{ key: "all", label: "All" }, { key: "manual", label: "Manual" }, { key: "system", label: "System" }, { key: "Debit deferral", label: "Debit deferral" }, { key: "Debit rollover", label: "Debit rollover" }].map(f => (
+          <button key={f.key} onClick={() => { setTypeFilter(f.key); setCurrentPage(1); }} className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${typeFilter === f.key ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{f.label} ({f.key === "all" ? adjustments.length : f.key === "system" ? adjustments.filter(a => a.initiatedBy === "System").length : f.key === "manual" ? adjustments.filter(a => a.initiatedBy !== "System").length : adjustments.filter(a => a.entryType === f.key).length})</button>
+        ))}
+      </div>
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const totalPositive = adjustments.filter(a => !a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const totalNegative = adjustments.filter(a => a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const net = totalPositive + totalNegative; return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Net adjustments" value={`${net >= 0 ? "$" : "-$"}${Math.abs(net).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass={net >= 0 ? "text-emerald-600" : "text-red-600"} />
+          <HeroMetric heading="Credits" value={`$${totalPositive.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Debits" value={`-$${Math.abs(totalNegative).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
+
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filteredAdj.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1144,7 +1160,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} />
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = payouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = payouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = payouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = payouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
+          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
+          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
 
       <Card>
         <CardHeader>
@@ -1225,7 +1250,16 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
       {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} />
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = merchantPayouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = merchantPayouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = merchantPayouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = merchantPayouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
+          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
+          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
 
       <Card>
         <CardHeader>
