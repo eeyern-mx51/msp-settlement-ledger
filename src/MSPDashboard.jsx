@@ -380,9 +380,9 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", transferCount: 1, status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", transferCount: 1, status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed", retryable: true },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", transferCount: 1, status: "Failed" },
   { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", hold: true },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed", retryable: false },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
   // 19 Feb
   { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
   { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
@@ -454,7 +454,7 @@ const auditLogs = {
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
     { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Non-retryable — merchant bank details must be corrected." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Payout moved to Failed." },
     { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
   ],
   "PO-2026-0220-003": [
@@ -462,7 +462,7 @@ const auditLogs = {
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
     { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Retryable." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Payout returned to Ready for Transfer for retry." },
     { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
   ],
   // On Hold
@@ -497,47 +497,47 @@ const defaultAuditLog = (payout) => [
 // ─── Per-payout transfers ───
 const transfersByPayout = {
   "PO-2026-0222-001": [
-    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
   ],
   "PO-2026-0222-002": [
-    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
+    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
   ],
   "PO-2026-0222-003": [
-    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null, retryable: null },
+    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null },
   ],
   "PO-2026-0221-001": [
-    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null, retryable: null },
-    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null, retryable: null },
+    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
+    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
   ],
   "PO-2026-0221-002": [
-    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
   ],
   "PO-2026-0221-003": [
-    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null, retryable: null },
+    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
   ],
   "PO-2026-0223-003": [
-    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
+    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null },
   ],
   "PO-2026-0220-001": [
-    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit", retryable: false, errorCode: "INVALID_BSB", recommendedAction: "Contact merchant to verify and update BSB. Update bank details in the system, then retry.", attempt: 1 },
+    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit" },
   ],
   "PO-2026-0220-003": [
-    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA", retryable: true, errorCode: "GATEWAY_TIMEOUT", recommendedAction: "Retry after confirming no duplicate payment was processed.", attempt: 2 },
+    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA" },
   ],
   "PO-2026-0219-002": [
-    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null, retryable: null },
+    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
   ],
   "PO-2026-0218-001": [
-    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null, retryable: null },
-    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null, retryable: null },
-    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
+    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
+    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null },
   ],
   "PO-2026-0218-002": [
-    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
   ],
   "PO-2026-0218-003": [
-    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null, retryable: null },
-    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null, retryable: null },
+    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
+    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null },
   ],
 };
 
@@ -597,7 +597,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
   const transfers = storedTransfers.length > 0 ? storedTransfers : (
     ["Transferring", "Completed"].includes(payout.status)
-      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null, retryable: null }]
+      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null }]
       : []
   );
   const failedTransfer = transfers.find(t => t.status === "Failed");
@@ -1391,7 +1391,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
                   <div className="space-y-1">{changedPayouts.map((p) => {
                     const original = mockPayouts.find((o) => o.id === p.id);
-                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} retryable={original.retryable} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold}  /></div>);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold}  /></div>);
                   })}</div>
                 </div>
               ) : (
@@ -2391,7 +2391,7 @@ export default function MSPSupportDashboard() {
       return prev.map((p) => {
         if (p.id !== payoutId) return p;
         const updated = { ...p, status: newStatus };
-        // Merge extra flags (hold, retryable, etc.)
+        // Merge extra flags (hold, etc.)
         if (extra && typeof extra === "object") Object.assign(updated, extra);
         // Clear hold flag when transitioning to terminal states
         if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.hold = false;
