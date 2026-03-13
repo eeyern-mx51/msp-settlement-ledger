@@ -989,8 +989,12 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ADJUSTMENT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
 function AdjustmentDetailView({ adj, onBack }) {
-  const auditEntries = [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "Tom Wright (FinOps Admin)", detail: `Adjustment of ${adj.amount} created.` },
+  const isSystem = adj.initiatedBy === "System";
+  const auditEntries = isSystem ? [
+    { ts: adj.date + ", 6:00 AM", version: 1, action: "Adjustment auto-generated", user: "System", detail: `${adj.entryType || "Adjustment"} of ${adj.amount} created automatically during payout preparation.` },
+    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 2, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debit deferral" ? "A corresponding Debit rollover has been created to offset this deferral." : "This entry offsets the linked Debit deferral."}` }] : []),
+  ] : [
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Admin)", detail: `Manual adjustment of ${adj.amount} created.` },
   ];
 
   return (
