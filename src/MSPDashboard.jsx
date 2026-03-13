@@ -1018,7 +1018,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
@@ -1051,9 +1050,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Cancelled") setSelectedPayout(null); }} fleetHold={fleetHold} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
-  const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
+  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
   return (
     <div className="p-6 space-y-5">
@@ -1077,9 +1075,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="mb-3">
-            <div className="relative"><input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Search by Payout ID, amount, merchant, or MID..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
-          </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Merchant", "Amount", "Status"].includes(h);
@@ -1116,7 +1111,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const [showMerchantHoldDialog, setShowMerchantHoldDialog] = useState(false);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState("");
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 20;
@@ -1125,9 +1119,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
   const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.hold) : merchantPayouts.filter((p) => p.status === statusFilter && !p.hold);
-  const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase())) : statusFiltered;
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filtered = sortCol && sortKeyMap[sortCol] ? [...searched].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : searched;
+  const filtered = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1157,9 +1150,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="mb-3">
-            <div className="relative"><input type="text" value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }} placeholder="Search by Payout ID or amount..." className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 placeholder:text-gray-400" /><span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span></div>
-          </div>
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Amount", "Status"].includes(h);
