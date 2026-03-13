@@ -91,7 +91,7 @@ const PAYOUT_FILTER_STEPS = [
   { key: "Transferring", label: "In flight", color: "purple" },
   { key: "Failed", label: "Failed", color: "red" },
   { key: "Completed", label: "Completed", color: "green" },
-  { key: "Abandoned", label: "Abandoned", color: "gray" },
+  { key: "Cancelled", label: "Cancelled", color: "gray" },
 ];
 
 function PayoutProgressionFilter({ active, onChange, payouts }) {
@@ -218,7 +218,7 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
   return (
     <Modal open={open} onClose={onClose} title="Place hold on payout">
       <div className="space-y-5">
-        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Admin user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
+        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Admin user releases the hold or cancels it. No transfers will be initiated while on hold.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
@@ -296,22 +296,22 @@ function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
   );
 }
 
-function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
+function CancelPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
-  const isConfirmed = confirmText === "ABANDON";
+  const isConfirmed = confirmText === "CANCEL";
   const handleConfirm = () => {
     setLoading(true);
     setTimeout(() => { setLoading(false); onConfirm(reason); onClose(); setConfirmText(""); setReason(""); }, 1500);
   };
   if (!payout) return null;
   return (
-    <Modal open={open} onClose={onClose} title="Abandon payout">
+    <Modal open={open} onClose={onClose} title="Cancel payout">
       <div className="space-y-5">
-        <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently cancel it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
+        <Alert type="error" title="This action is irreversible">Cancelling this payout will permanently stop it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
         {payout.status === "Failed" && (
-          <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
+          <Alert type="warning" title="Stringent criteria apply">Cancelling a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
         )}
         <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount], ["Transfers affected", payout.transferCount]].map(([label, value]) => (
@@ -319,7 +319,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
           ))}
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for abandoning</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for cancellation</label>
           <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
             <option value="">Select a reason...</option>
             <option>Duplicate payout</option>
@@ -331,12 +331,12 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
           </select>
         </div>
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Type ABANDON to confirm</label>
-          <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value.toUpperCase())} placeholder="ABANDON" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 font-mono tracking-wider focus:ring-2 focus:ring-red-200 focus:border-red-400" />
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Type CANCEL to confirm</label>
+          <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value.toUpperCase())} placeholder="CANCEL" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 font-mono tracking-wider focus:ring-2 focus:ring-red-200 focus:border-red-400" />
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed || !reason} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Go back</Button>
+          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed || !reason} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Cancelling..." : "Cancel payout"}</Button>
         </div>
       </div>
     </Modal>
@@ -344,19 +344,22 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, hold }) {
-  const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
+function PayoutStatusBadge({ status, hold, amount }) {
+  const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Cancelled": "neutral" };
+  const numAmt = amount ? parseFloat(String(amount).replace(/[^0-9.\-]/g, "")) : null;
+  const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
       {hold && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
+      {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
 }
 
 // ─── Global role context (simulated) ───
 const ROLES = { FINOPS_T1: "FinOps Admin", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
-const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
+const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Cancelled": 5 };
 const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
 // ═══════════════════════════════════════════════════════════
@@ -384,14 +387,14 @@ const mockPayouts = [
   { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", transferCount: 1, status: "Ready for Transfer", hold: true },
   { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", transferCount: 1, status: "Failed" },
   // 19 Feb
-  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Abandoned" },
+  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", transferCount: 1, status: "Cancelled" },
   { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", transferCount: 1, status: "Completed" },
   // 18 Feb
   { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", transferCount: 3, status: "Completed" },
   { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", transferCount: 1, status: "Completed" },
   { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", transferCount: 2, status: "Completed" },
   // 17 Feb
-  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Abandoned" },
+  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", transferCount: 1, status: "Cancelled" },
 ];
 
 // ─── Per-payout audit logs ───
@@ -473,18 +476,18 @@ const auditLogs = {
     { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
     { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
   ],
-  // Abandoned
+  // Cancelled
   "PO-2026-0219-001": [
     { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
     { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Cancelled", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Cancelled", user: "System", detail: "Payout cancelled. Funds returned to merchant ledger." },
   ],
   "PO-2026-0217-001": [
     { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
     { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Cancelled", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Cancelling to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Cancelled", user: "System", detail: "Payout cancelled." },
   ],
 };
 
@@ -590,8 +593,8 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
-  const isAbandoned = payout.status === "Abandoned";
-  const isTerminal = isCompleted || isAbandoned;
+  const isCancelled = payout.status === "Cancelled";
+  const isTerminal = isCompleted || isCancelled;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
   const storedTransfers = transfersByPayout[payout.id] || [];
   // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
@@ -609,7 +612,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
   const [showHold, setShowHold] = useState(false);
-  const [showAbandon, setShowAbandon] = useState(false);
+  const [showCancel, setShowCancel] = useState(false);
 
   // Build actions based on status + hold flag (including fleet/merchant holds)
   const buildActions = () => {
@@ -617,26 +620,27 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     if (isTerminal) return [];
     // If held by a higher scope (fleet or merchant), no payout-level actions — hold is managed at a higher level
     if (isHeldByHigherScope) return [
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      { label: "Cancel", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowCancel(true) },
     ];
-    // If payout is individually on hold, show Release Hold + Abandon regardless of underlying status
+    // If payout is individually on hold, show Release Hold + Cancel regardless of underlying status
     if (payout.hold) return [
       { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { hold: false }); } },
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      { label: "Cancel", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowCancel(true) },
     ];
     const map = {
       "Ready for Review": [
         { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
         { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+        { label: "Cancel", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowCancel(true) },
       ],
       "Ready for Transfer": [
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
         { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+        { label: "Cancel", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowCancel(true) },
       ],
       "Failed": [
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+        { label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } },
+        { label: "Cancel", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowCancel(true) },
       ],
     };
     return map[payout.status] || [];
@@ -651,16 +655,16 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     addToast({ type: "warning", title: "Hold placed", message: `${payout.id} — ${reason}` });
     onStatusChange(payout.id, payout.status, { hold: true });
   };
-  const handleAbandon = (reason) => {
-    addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been permanently cancelled.` });
-    onStatusChange(payout.id, "Abandoned");
+  const handleCancel = (reason) => {
+    addToast({ type: "error", title: "Payout cancelled", message: `${payout.id} has been permanently cancelled.` });
+    onStatusChange(payout.id, "Cancelled");
   };
 
   return (
     <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
       <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
-      <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
+      <CancelPayoutDialog open={showCancel} onClose={() => setShowCancel(false)} payout={payout} onConfirm={handleCancel} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
@@ -688,13 +692,13 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       )}
 
       {isFailed && (<Alert type="error" title="Transfer failed">{failedTransfer ? failedTransfer.failureReason + "." : "Transfer details unavailable. Check audit log for more information."}</Alert>)}
-      {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
+      {isCancelled && (<Alert type="warning" title="Payout cancelled">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} amount={payout.amount} /></div>
           {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
@@ -1119,7 +1123,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Cancelled") setSelectedPayout(null); }} fleetHold={fleetHold} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
   const searched = searchQuery.trim() ? statusFiltered.filter((p) => p.id.toLowerCase().includes(searchQuery.toLowerCase()) || p.amount.toLowerCase().includes(searchQuery.toLowerCase()) || (p.merchantName && p.merchantName.toLowerCase().includes(searchQuery.toLowerCase())) || (p.mid && p.mid.toLowerCase().includes(searchQuery.toLowerCase()))) : statusFiltered;
@@ -1166,7 +1170,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold}  /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1206,7 +1210,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} merchantHold={merchantHold} merchantName={merchantName} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Cancelled") setSelectedPayout(null); }} fleetHold={fleetHold} merchantHold={merchantHold} merchantName={merchantName} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1238,7 +1242,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold}  /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1376,7 +1380,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
             <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0 mt-0.5"><span className="text-amber-600"><Icons.Refresh /></span></div>
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-semibold text-gray-800 mb-1">Reset Payout Data</h3>
-              <p className="text-sm text-gray-500 mb-3">Restores all payout statuses to their original mock values. Use this after testing Approve, Hold, or Abandon flows to start fresh.</p>
+              <p className="text-sm text-gray-500 mb-3">Restores all payout statuses to their original mock values. Use this after testing Approve, Hold, or Cancel flows to start fresh.</p>
               {changedPayouts.length > 0 ? (
                 <div className="mb-3 p-3 bg-amber-50 rounded-lg border border-amber-200">
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
@@ -1410,7 +1414,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
               <div className="flex-1 min-w-0">
                 <h3 className="text-sm font-semibold text-gray-800 mb-1">Current Data Summary</h3>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-2">{
-                  ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Abandoned"].map((status) => {
+                  ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Cancelled"].map((status) => {
                     const count = payouts.filter((p) => p.status === status).length;
                     return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
                   }).filter(Boolean)
@@ -1434,7 +1438,7 @@ const uxArtefactsList = [
   { id: "ux-flows", title: "UX Flow Diagrams (All-in-One)", description: "All 4 core flow diagrams in a tabbed view — Payout Lifecycle, E2E Journey, Action Flows, and Permissions", type: "React Component", icon: "flow", component: UXFlowDiagrams },
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
-  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
+  { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Cancel, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
   { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
@@ -2385,7 +2389,7 @@ export default function MSPSupportDashboard() {
         // Merge extra flags (hold, etc.)
         if (extra && typeof extra === "object") Object.assign(updated, extra);
         // Clear hold flag when transitioning to terminal states
-        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.hold = false;
+        if (["Transferring", "Completed", "Cancelled"].includes(newStatus)) updated.hold = false;
         return updated;
       });
     });
