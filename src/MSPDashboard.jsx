@@ -694,27 +694,46 @@ const mockUnassignedMLEs = [
 function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
   const [settlementDate, setSettlementDate] = useState("");
+  const [selectedMids, setSelectedMids] = useState(new Set());
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Filter MLEs: if a date is entered, include all DTE files on or before that date; if empty, include all DTE files before today
+  // Filter MLEs by date: on or before selected date, or all if empty
   const todayISO = new Date().toISOString().split("T")[0];
   const cutoffDate = settlementDate || todayISO;
   const filteredMLEs = allMLEs.filter((mle) => mle.date <= cutoffDate);
 
-  // Group by merchant — payouts apply to all merchants with DTE files
+  // Group by merchant
   const merchantGroups = {};
   filteredMLEs.forEach((mle) => {
     if (!merchantGroups[mle.mid]) merchantGroups[mle.mid] = { merchant: mle.merchant, mid: mle.mid, mles: [], total: 0 };
     merchantGroups[mle.mid].mles.push(mle);
     merchantGroups[mle.mid].total += mle.amount;
   });
-  const groups = Object.values(merchantGroups);
+  const allGroups = Object.values(merchantGroups);
+
+  // Only create payouts for selected merchants
+  const selectedGroups = allGroups.filter((g) => selectedMids.has(g.mid));
+
+  // When date changes, auto-select all available merchants
+  useEffect(() => {
+    setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+  }, [settlementDate, filteredMLEs.length]);
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setSettlementDate(""); setCreating(false); }
+    if (open) { setSettlementDate(""); setCreating(false); setSelectedMids(new Set(allGroups.map((g) => g.mid))); }
   }, [open]);
+
+  const toggleMid = (mid) => {
+    setSelectedMids((prev) => {
+      const next = new Set(prev);
+      if (next.has(mid)) next.delete(mid); else next.add(mid);
+      return next;
+    });
+  };
+  const selectAll = () => setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+  const deselectAll = () => setSelectedMids(new Set());
 
   const handleCreate = () => {
     setCreating(true);
@@ -723,7 +742,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
       const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
       const timeStr = today.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
       const createdAt = `${dateStr}, ${timeStr}`;
-      const newPayouts = groups.map((g, i) => ({
+      const newPayouts = selectedGroups.map((g, i) => ({
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
         createdAt,
@@ -750,10 +769,38 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
           <p className="text-xs text-gray-400 mt-1.5">Includes all DTE files with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
         </div>
 
+        {/* Merchant multi-select */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-semibold text-gray-700">Merchants <span className="font-normal text-gray-400">({selectedMids.size} of {allGroups.length} selected)</span></label>
+            <div className="flex gap-2">
+              <button type="button" onClick={selectAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Select all</button>
+              <span className="text-xs text-gray-300">|</span>
+              <button type="button" onClick={deselectAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Deselect all</button>
+            </div>
+          </div>
+          {allGroups.length > 0 ? (
+            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[240px] overflow-y-auto">
+              {allGroups.map((g) => (
+                <label key={g.mid} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMids.has(g.mid) ? "bg-indigo-50/50" : ""}`}>
+                  <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
+                  </div>
+                  <div className="text-sm font-semibold text-gray-700 flex-shrink-0">${g.total.toFixed(2)}</div>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-lg px-3 py-4 text-center text-sm text-gray-400">No merchants with DTE files for the selected date.</div>
+          )}
+        </div>
+
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={groups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
-            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : "Prepare payout"}
+          <Button variant="solid" colorScheme="brand" size="md" disabled={selectedGroups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : `Prepare payout (${selectedMids.size})`}
           </Button>
         </div>
       </div>
