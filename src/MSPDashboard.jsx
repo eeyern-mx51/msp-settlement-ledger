@@ -383,18 +383,13 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed" },
-  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", status: "Ready for Transfer", hold: true },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed" },
-  // 19 Feb
-  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", status: "Cancelled" },
-  { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", status: "Completed" },
+
   // 18 Feb
   { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", status: "Completed" },
   { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", status: "Completed" },
   { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", status: "Completed" },
   // 17 Feb
-  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", status: "Cancelled" },
+
 ];
 
 // ─── Per-payout audit logs ───
@@ -497,6 +492,52 @@ const defaultAuditLog = (payout) => [
   { ts: payout.date + ", 6:01 AM", version: 2, action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
 ];
 
+// ─── Per-payout transfers ───
+const transfersByPayout = {
+  "PO-2026-0222-001": [
+    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
+  ],
+  "PO-2026-0222-002": [
+    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
+  ],
+  "PO-2026-0222-003": [
+    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null },
+  ],
+  "PO-2026-0221-001": [
+    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
+    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
+  ],
+  "PO-2026-0221-002": [
+    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
+  ],
+  "PO-2026-0221-003": [
+    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
+  ],
+  "PO-2026-0223-003": [
+    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null },
+  ],
+  "PO-2026-0220-001": [
+    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit" },
+  ],
+  "PO-2026-0220-003": [
+    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA" },
+  ],
+  "PO-2026-0219-002": [
+    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
+  ],
+  "PO-2026-0218-001": [
+    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
+    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
+    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null },
+  ],
+  "PO-2026-0218-002": [
+    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
+  ],
+  "PO-2026-0218-003": [
+    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
+    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null },
+  ],
+};
 
 // ─── Adjustments — expanded ───
 // initiatedBy: FinOps username (manual) | "System" (auto-generated)
@@ -551,6 +592,14 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   const isCancelled = payout.status === "Cancelled";
   const isTerminal = isCompleted || isCancelled;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
+  const storedTransfers = transfersByPayout[payout.id] || [];
+  // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
+  const transfers = storedTransfers.length > 0 ? storedTransfers : (
+    ["Transferring", "Completed"].includes(payout.status)
+      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null }]
+      : []
+  );
+  const failedTransfer = transfers.find(t => t.status === "Failed");
 
   // Determine effective hold state — fleet overrides merchant overrides payout-level
   const effectiveHoldScope = !isTerminal && fleetHold ? "fleet" : !isTerminal && merchantHold ? "merchant" : payout.hold ? "payout" : null;
@@ -638,6 +687,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         </div>
       )}
 
+      {isFailed && (<Alert type="error" title="Transfer failed">{failedTransfer ? failedTransfer.failureReason + "." : "Transfer details unavailable. Check audit log for more information."}</Alert>)}
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isCancelled && (<Alert type="warning" title="Payout cancelled">This payout has been permanently cancelled. A new payout must be prepared to settle the affected transactions.</Alert>)}
 
@@ -652,6 +702,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} amount={payout.amount} />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
             {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope}  />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
@@ -953,13 +1004,15 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [typeFilter, setTypeFilter] = useState("all");
   const canWrite = role === ROLES.FINOPS_T1;
   const PAGE_SIZE = 20;
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
 
-  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
-  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const filteredAdj = typeFilter === "all" ? adjustments : typeFilter === "system" ? adjustments.filter(a => a.initiatedBy === "System") : typeFilter === "manual" ? adjustments.filter(a => a.initiatedBy !== "System") : adjustments.filter(a => a.entryType === typeFilter);
+  const totalPages = Math.max(1, Math.ceil(filteredAdj.length / PAGE_SIZE));
+  const paginatedAdj = filteredAdj.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
@@ -971,9 +1024,23 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
+      <div className="flex flex-wrap gap-2">
+        {[{ key: "all", label: "All" }, { key: "manual", label: "Manual" }, { key: "system", label: "System" }, { key: "Debit deferral", label: "Debit deferral" }, { key: "Debit rollover", label: "Debit rollover" }].map(f => (
+          <button key={f.key} onClick={() => { setTypeFilter(f.key); setCurrentPage(1); }} className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${typeFilter === f.key ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{f.label} ({f.key === "all" ? adjustments.length : f.key === "system" ? adjustments.filter(a => a.initiatedBy === "System").length : f.key === "manual" ? adjustments.filter(a => a.initiatedBy !== "System").length : adjustments.filter(a => a.entryType === f.key).length})</button>
+        ))}
+      </div>
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const totalPositive = adjustments.filter(a => !a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const totalNegative = adjustments.filter(a => a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const net = totalPositive + totalNegative; return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Net adjustments" value={`${net >= 0 ? "$" : "-$"}${Math.abs(net).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass={net >= 0 ? "text-emerald-600" : "text-red-600"} />
+          <HeroMetric heading="Credits" value={`$${totalPositive.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Debits" value={`-$${Math.abs(totalNegative).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
+
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filteredAdj.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1064,7 +1131,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} />
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = payouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = payouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = payouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = payouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
+          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
+          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
 
       <Card>
         <CardHeader>
@@ -1139,7 +1215,16 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
       {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
 
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} />
+
+      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = merchantPayouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = merchantPayouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = merchantPayouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = merchantPayouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
+        <div className="flex flex-wrap gap-6 pb-1">
+          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
+          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
+          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
+          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
+        </div>
+      ); })()}
 
       <Card>
         <CardHeader>
@@ -1157,6 +1242,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
+            {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
             {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
