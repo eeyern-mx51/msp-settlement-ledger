@@ -1029,8 +1029,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} />
-
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
       <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { onFleetHoldChange(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
@@ -1043,7 +1041,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
           <div className="flex items-center gap-2">
-            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
             {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
           </div>
         </CardHeader>
