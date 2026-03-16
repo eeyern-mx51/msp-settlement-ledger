@@ -691,23 +691,18 @@ const mockUnassignedMLEs = [
   { id: "MLE-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
 ];
 
-function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, preselectedMid }) {
+function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
-  const [step, setStep] = useState(1); // 1=parameters, 2=confirm
-  const [fromDate, setFromDate] = useState("2026-02-24");
-  const [toDate, setToDate] = useState("2026-02-25");
-  const [selectedMid, setSelectedMid] = useState(preselectedMid || "");
-  const [confirmed, setConfirmed] = useState(false);
+  const [settlementDate, setSettlementDate] = useState("");
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Get unique MIDs for the optional filter
-  const availableMids = [...new Set(allMLEs.map(m => m.mid))].sort();
+  // Filter MLEs: if a date is entered, include all DTE files on or before that date; if empty, include all DTE files before today
+  const todayISO = new Date().toISOString().split("T")[0];
+  const cutoffDate = settlementDate || todayISO;
+  const filteredMLEs = allMLEs.filter((mle) => mle.date <= cutoffDate);
 
-  // Filter MLEs by selected date range + optional MID
-  const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate && (!selectedMid || mle.mid === selectedMid));
-
-  // Group by merchant
+  // Group by merchant — payouts apply to all merchants with DTE files
   const merchantGroups = {};
   filteredMLEs.forEach((mle) => {
     if (!merchantGroups[mle.mid]) merchantGroups[mle.mid] = { merchant: mle.merchant, mid: mle.mid, mles: [], total: 0 };
@@ -718,8 +713,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setStep(1); setConfirmed(false); setCreating(false); setSelectedMid(preselectedMid || ""); }
-  }, [open, preselectedMid]);
+    if (open) { setSettlementDate(""); setCreating(false); }
+  }, [open]);
 
   const handleCreate = () => {
     setCreating(true);
@@ -732,11 +727,11 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
         createdAt,
-        settlementDate: `${fromDate.split("-").reverse().join("/")}–${toDate.split("-").reverse().join("/")}`,
+        settlementDate: settlementDate ? new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : dateStr,
         merchantName: g.merchant,
         mid: g.mid,
         amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-               status: g.total <= 0 ? "Completed" : "Ready for Review",
+        status: g.total <= 0 ? "Completed" : "Ready for Review",
       }));
       onCreatePayouts(newPayouts);
       addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared and set to Ready for Review.` });
@@ -747,88 +742,46 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={step === 1 ? "Prepare payout" : "Prepare payout — Confirm"} width="max-w-xl">
+    <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-lg">
       <div className="space-y-4">
-        {/* ── Step 1: Parameters ── */}
-        {step === 1 && (<>
-          <Alert type="info" title="Manual payout preparation">Select the DTE date range and optionally target specific MIDs. All unsettled merchant ledger entries matching the criteria will be grouped into payout records per merchant.</Alert>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date (DTE date)</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date (DTE date)</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">MID filter <span className="font-normal text-gray-400">(optional)</span></label>
-            <select value={selectedMid} onChange={(e) => setSelectedMid(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-              <option value="">All merchants (where acquirer = Cuscal)</option>
-              {availableMids.map(m => <option key={m} value={m}>{m} — {allMLEs.find(x => x.mid === m)?.merchant || m}</option>)}
-            </select>
-            <p className="text-xs text-gray-400 mt-1">Leave blank to prepare payouts for all eligible merchants, or select a specific MID to target.</p>
-          </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all DTE files with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
+        </div>
 
-          {/* Preview summary */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-700">Preview</span>
-              <span className="text-xs text-gray-400">{filteredMLEs.length} MLE{filteredMLEs.length !== 1 ? "s" : ""} across {groups.length} merchant{groups.length !== 1 ? "s" : ""}</span>
-            </div>
-            {groups.length > 0 ? (
-              <div className="space-y-2">
-                {groups.map((g) => (
-                  <div key={g.mid} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
-                      <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
-                      <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Zero/negative — auto-complete" : "→ Ready for Review"}</div>
-                    </div>
+        {/* Preview */}
+        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-semibold text-gray-700">Preview</span>
+            <span className="text-xs text-gray-400">{filteredMLEs.length} MLE{filteredMLEs.length !== 1 ? "s" : ""} across {groups.length} merchant{groups.length !== 1 ? "s" : ""}</span>
+          </div>
+          {groups.length > 0 ? (
+            <div className="space-y-2">
+              {groups.map((g) => (
+                <div key={g.mid} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-2">No transactions found for the selected criteria.</p>
-            )}
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={groups.length === 0} onClick={() => setStep(2)} leftIcon={<Icons.ChevronRight />}>Review &amp; confirm</Button>
-          </div>
-        </>)}
-
-        {/* ── Step 2: Confirmation ── */}
-        {step === 2 && (<>
-          <Alert type="warning" title={`${groups.length} payout${groups.length > 1 ? "s" : ""} will be created`}>Merchant ledger entries will be swept into payout records. Each payout will be set to "Ready for Review" and require FinOps approval before transfer.</Alert>
-
-          <div className="space-y-2">
-            {groups.map((g) => (
-              <div key={g.mid} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-800 truncate">{g.merchant}</div>
-                  <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
+                  <div className="text-right flex-shrink-0">
+                    <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
+                    <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Zero-balance" : "→ Ready for Review"}</div>
+                  </div>
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
-                  <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Auto-complete (zero balance)" : "→ Ready for Review"}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-2">No DTE files found for the selected date.</p>
+          )}
+        </div>
 
-          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-            <p className="text-xs text-blue-700">This is a <strong>manual preparation</strong>. In production, this step can be automated (e.g. scheduled job running daily at 8:30 AM).</p>
-          </div>
-
-          <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to prepare these payouts.</span></label>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => { setStep(1); setConfirmed(false); }}>Back</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={!confirmed || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
-              {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating payouts...</span>) : "Create payouts"}
-            </Button>
-          </div>
-        </>)}
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={groups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : "Prepare payout"}
+          </Button>
+        </div>
       </div>
     </Modal>
   );
@@ -1132,7 +1085,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
+      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} />
 
       <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" merchantName={merchantName || "this merchant"} onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Hold placed", message: `All payouts for ${merchantName || "this merchant"} are now on hold — ${holdInfo.reason}.` }); }} />
 
