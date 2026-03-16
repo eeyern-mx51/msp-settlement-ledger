@@ -859,7 +859,7 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
           </div>
           {(() => {
             const parsed = parseFloat(amount);
-            if (!amount || isNaN(parsed) || parsed === 0) return <p className="text-xs text-gray-400 mt-1">Use a negative value for debits, positive for credits.</p>;
+            if (!amount || isNaN(parsed) || parsed === 0) return null;
             const abs = Math.abs(parsed).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             if (parsed < 0) return <p className="text-xs text-amber-600 mt-1">The merchant will receive an amount of <span className="font-semibold">${abs}</span> less.</p>;
             return <p className="text-xs text-emerald-600 mt-1">The merchant will receive an extra amount of <span className="font-semibold">${abs}</span>.</p>;
