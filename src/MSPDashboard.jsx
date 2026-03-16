@@ -667,28 +667,22 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
 // ═══════════════════════════════════════════════════════════
 // PREPARE PAYOUT DIALOG
 // ═══════════════════════════════════════════════════════════
-// Mock unassigned merchant ledger entries for the prepare payout flow
+// Mock unsettled DTE files — one file per merchant per date.
+// If a payout is not prepared, DTE files accumulate across dates.
 const mockUnassignedMLEs = [
-  { id: "MLE-40001", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 142.50, card: "MC •••4829" },
-  { id: "MLE-40002", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 89.95, card: "Visa •••1677" },
-  { id: "MLE-40003", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Refund", amount: -45.00, card: "Visa •••8844" },
-  { id: "MLE-40004", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 312.80, card: "MC •••5512" },
-  { id: "MLE-40005", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 487.50, card: "Visa •••9021" },
-  { id: "MLE-40006", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 1245.00, card: "Visa •••3301" },
-  { id: "MLE-40007", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 899.50, card: "MC •••7788" },
-  { id: "MLE-40008", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Refund", amount: -120.00, card: "Visa •••3301" },
-  { id: "MLE-40009", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 567.25, card: "MC •••6633" },
-  { id: "MLE-40010", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 67.20, card: "MC •••7788" },
-  { id: "MLE-40011", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 234.80, card: "Visa •••2200" },
-  { id: "MLE-40012", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 158.40, card: "MC •••4411" },
-  { id: "MLE-40013", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 76.30, card: "MC •••2109" },
-  { id: "MLE-40014", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 520.00, card: "Visa •••8102" },
-  { id: "MLE-40015", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 189.75, card: "MC •••5544" },
-  { id: "MLE-40016", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Refund", amount: -35.00, card: "Visa •••8102" },
-  { id: "MLE-40017", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 342.90, card: "Visa •••7711" },
-  { id: "MLE-40018", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 128.60, card: "MC •••9900" },
-  { id: "MLE-40019", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 445.10, card: "Visa •••0044" },
-  { id: "MLE-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
+  // 25 Feb — today's DTE files (just ingested)
+  { id: "DTE-20260225-12345", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: 987.75, txnCount: 14 },
+  { id: "DTE-20260225-12346", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2591.75, txnCount: 8 },
+  { id: "DTE-20260225-12347", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: 460.40, txnCount: 6 },
+  { id: "DTE-20260225-12348", date: "2026-02-25", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: 674.75, txnCount: 5 },
+  { id: "DTE-20260225-12349", date: "2026-02-25", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: 471.50, txnCount: 3 },
+  // 24 Feb — not yet prepared, accumulating
+  { id: "DTE-20260224-12345", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: 1064.05, txnCount: 18 },
+  { id: "DTE-20260224-12348", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: 674.75, txnCount: 7 },
+  { id: "DTE-20260224-12349", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: 342.90, txnCount: 4 },
+  // 23 Feb — older unprepared DTE files (accumulated)
+  { id: "DTE-20260223-12347", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: 445.10, txnCount: 5 },
+  { id: "DTE-20260223-12346", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2150.00, txnCount: 6 },
 ];
 
 function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
@@ -698,17 +692,18 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Filter MLEs by date: on or before selected date, or all if empty
+  // Filter DTE files by date: on or before selected date, or all if empty
   const todayISO = new Date().toISOString().split("T")[0];
   const cutoffDate = settlementDate || todayISO;
-  const filteredMLEs = allMLEs.filter((mle) => mle.date <= cutoffDate);
+  const filteredDTEs = allMLEs.filter((dte) => dte.date <= cutoffDate);
 
-  // Group by merchant
+  // Group by merchant — one payout per merchant, accumulating DTE files across dates
   const merchantGroups = {};
-  filteredMLEs.forEach((mle) => {
-    if (!merchantGroups[mle.mid]) merchantGroups[mle.mid] = { merchant: mle.merchant, mid: mle.mid, mles: [], total: 0 };
-    merchantGroups[mle.mid].mles.push(mle);
-    merchantGroups[mle.mid].total += mle.amount;
+  filteredDTEs.forEach((dte) => {
+    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], total: 0, txnCount: 0 };
+    merchantGroups[dte.mid].dteFiles.push(dte);
+    merchantGroups[dte.mid].total += dte.amount;
+    merchantGroups[dte.mid].txnCount += dte.txnCount || 0;
   });
   const allGroups = Object.values(merchantGroups);
 
@@ -718,7 +713,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   // When date changes, auto-select all available merchants
   useEffect(() => {
     setSelectedMids(new Set(allGroups.map((g) => g.mid)));
-  }, [settlementDate, filteredMLEs.length]);
+  }, [settlementDate, filteredDTEs.length]);
 
   // Reset on close/open
   useEffect(() => {
@@ -786,7 +781,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
                   <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
-                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
+                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.dteFiles.length} DTE file{g.dteFiles.length > 1 ? "s" : ""} · {g.txnCount} txns</div>
                   </div>
                   <div className="text-sm font-semibold text-gray-700 flex-shrink-0">${g.total.toFixed(2)}</div>
                 </label>
