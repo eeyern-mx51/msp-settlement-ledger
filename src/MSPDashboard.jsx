@@ -857,12 +857,18 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">AUD</span>
             <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
           </div>
-          <p className="text-xs text-gray-400 mt-1">Use negative for debits.</p>
+          {(() => {
+            const parsed = parseFloat(amount);
+            if (!amount || isNaN(parsed) || parsed === 0) return <p className="text-xs text-gray-400 mt-1">Use a negative value for debits, positive for credits.</p>;
+            const abs = Math.abs(parsed).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (parsed < 0) return <p className="text-xs text-amber-600 mt-1">The merchant will receive an amount of <span className="font-semibold">${abs}</span> less.</p>;
+            return <p className="text-xs text-emerald-600 mt-1">The merchant will receive an extra amount of <span className="font-semibold">${abs}</span>.</p>;
+          })()}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
           <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
-          <p className="text-xs text-gray-400 mt-1">Adjustment will be included in a payout settled on or before this date.</p>
+          <p className="text-xs text-gray-400 mt-1">The adjustment will be included in a payout with a settlement date on or after this date. Up to 7 days in advance.</p>
         </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${info.length >= 500 ? "border-red-400" : "border-gray-300"}`} /><p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p></div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
@@ -950,20 +956,18 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Adjustment ID", "Amount", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Amount", "Initiated by", "Type"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
             {paginatedAdj.map((a) => (
                 <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.requestedSettlementDate || "—"}</td>
-                  <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : a.initiatedBy}</td>
                   <td className="py-3 px-3">{a.entryType ? <Badge colorScheme={a.entryType === "Debit deferral" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>}</td>
-                  <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
-            {adjustments.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
+            {adjustments.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
