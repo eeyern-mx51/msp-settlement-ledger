@@ -543,7 +543,7 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName, fromFleet }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
@@ -607,23 +607,13 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     onStatusChange(payout.id, "Abandoned");
   };
 
-  const merchantFacilityTabs = ["Overview", "Terminals", "Transactions", "Payouts", "Adjustments", "Disputes"];
-
-  const payoutContent = (
-    <>
+  return (
+    <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
       <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
-      {!fromFleet && <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>}
-
-      {fromFleet && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-200">
-          <Icons.Info />
-          <span className="text-sm text-indigo-800">You're viewing this payout from the fleet-level payouts table.</span>
-          <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
-        </div>
-      )}
+      <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
       {effectiveHoldScope === "fleet" && (
         <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
@@ -670,39 +660,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       </Card>
 
       <Card><CardHeader><span className="text-lg font-semibold text-gray-800">Audit log</span></CardHeader><Divider /><CardBody className="pt-4"><AuditTimeline entries={auditLog} /></CardBody></Card>
-    </>
-  );
-
-  if (fromFleet) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-            <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> <span>All payouts</span></button>
-            <span className="text-gray-300 mx-1">|</span>
-            <Icons.Store />
-            <span className="text-sm font-medium text-indigo-600">POS Pay Pty Ltd</span>
-            <Icons.ChevronRight />
-            <span className="text-sm font-medium text-gray-800">{payout.merchantName}</span>
-            <span className="ml-1"><Badge colorScheme="neutral" size="md">{payout.mid}</Badge></span>
-            <span className="ml-1"><Badge colorScheme="success" size="md">Active</Badge></span>
-          </div>
-          <div className="px-4 py-1 flex gap-1">
-            {merchantFacilityTabs.map((tab) => (
-              <span key={tab} className={`px-4 py-2 text-sm font-medium rounded-lg ${tab === "Payouts" ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98]"}`}>{tab}</span>
-            ))}
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto bg-[#F9FAFB] p-6 space-y-5">
-          {payoutContent}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 space-y-5">
-      {payoutContent}
     </div>
   );
 }
@@ -1089,6 +1046,57 @@ function MerchantAdjustmentsTab({ role, mid }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// FLEET → MERCHANT FACILITY VIEW (shown when clicking a payout from fleet table)
+// ═══════════════════════════════════════════════════════════
+function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold }) {
+  const [activeTab, setActiveTab] = useState("payouts");
+  const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
+  const merchantMid = payout.mid || "POSPAY00012345";
+  const merchantName = payout.merchantName || "Unknown Merchant";
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="bg-white border-b border-gray-200">
+        <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100">
+          <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> <span>Fleet payouts</span></button>
+          <span className="text-gray-300 mx-1">|</span>
+          <Icons.Store />
+          <span className="text-sm font-medium text-indigo-600">POS Pay Pty Ltd</span>
+          <Icons.ChevronRight />
+          <span className="text-sm font-medium text-gray-800">{merchantName}</span>
+          <span className="ml-1"><Badge colorScheme="neutral" size="md">{merchantMid}</Badge></span>
+          <span className="ml-1"><Badge colorScheme="success" size="md">Active</Badge></span>
+        </div>
+        <div className="px-4 py-1 flex gap-1">
+          {tabs.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98] hover:bg-gray-50 hover:text-gray-700"}`}>{tab.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
+        {activeTab === "payouts" && (
+          <>
+            <div className="mx-6 mt-5">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-200">
+                <Icons.Info />
+                <span className="text-sm text-indigo-800">You're viewing this merchant from the fleet-level payouts table.</span>
+                <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
+              </div>
+            </div>
+            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} fleetHold={fleetHold} />
+          </>
+        )}
+        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "terminals" && <TerminalsTab />}
+        {activeTab === "transactions" && <TransactionsTab />}
+        {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={merchantMid} />}
+        {activeTab === "disputes" && <DisputesTab />}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, onFleetHoldChange }) {
@@ -1125,7 +1133,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} fromFleet />;
+  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
