@@ -584,7 +584,7 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName, fromFleet }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
@@ -656,13 +656,23 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     onStatusChange(payout.id, "Abandoned");
   };
 
-  return (
-    <div className="p-6 space-y-5">
+  const merchantFacilityTabs = ["Overview", "Terminals", "Transactions", "Payouts", "Adjustments", "Disputes"];
+
+  const payoutContent = (
+    <>
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
       <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
-      <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
+      {!fromFleet && <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>}
+
+      {fromFleet && (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-200">
+          <Icons.Info />
+          <span className="text-sm text-indigo-800">You're viewing this payout from the fleet-level payouts table.</span>
+          <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
+        </div>
+      )}
 
       {effectiveHoldScope === "fleet" && (
         <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
@@ -710,6 +720,39 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       </Card>
 
       <Card><CardHeader><span className="text-lg font-semibold text-gray-800">Audit log</span></CardHeader><Divider /><CardBody className="pt-4"><AuditTimeline entries={auditLog} /></CardBody></Card>
+    </>
+  );
+
+  if (fromFleet) {
+    return (
+      <div className="flex flex-col h-full">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100">
+            <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> <span>All payouts</span></button>
+            <span className="text-gray-300 mx-1">|</span>
+            <Icons.Store />
+            <span className="text-sm font-medium text-indigo-600">POS Pay Pty Ltd</span>
+            <Icons.ChevronRight />
+            <span className="text-sm font-medium text-gray-800">{payout.merchantName}</span>
+            <span className="ml-1"><Badge colorScheme="neutral" size="md">{payout.mid}</Badge></span>
+            <span className="ml-1"><Badge colorScheme="success" size="md">Active</Badge></span>
+          </div>
+          <div className="px-4 py-1 flex gap-1">
+            {merchantFacilityTabs.map((tab) => (
+              <span key={tab} className={`px-4 py-2 text-sm font-medium rounded-lg ${tab === "Payouts" ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98]"}`}>{tab}</span>
+            ))}
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto bg-[#F9FAFB] p-6 space-y-5">
+          {payoutContent}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6 space-y-5">
+      {payoutContent}
     </div>
   );
 }
@@ -938,12 +981,18 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">AUD</span>
             <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
           </div>
-          <p className="text-xs text-gray-400 mt-1">Use negative for debits.</p>
+          {(() => {
+            const parsed = parseFloat(amount);
+            if (!amount || isNaN(parsed) || parsed === 0) return null;
+            const abs = Math.abs(parsed).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            if (parsed < 0) return <p className="text-xs text-amber-600 mt-1">The merchant will receive an amount of <span className="font-semibold">${abs}</span> less.</p>;
+            return <p className="text-xs text-emerald-600 mt-1">The merchant will receive an extra amount of <span className="font-semibold">${abs}</span>.</p>;
+          })()}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
           <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
-          <p className="text-xs text-gray-400 mt-1">Adjustment will be included in a payout settled on or before this date.</p>
+          <p className="text-xs text-gray-400 mt-1">The adjustment will be included in a payout with a settlement date on or after this date. Up to 7 days in advance.</p>
         </div>
         <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${info.length >= 500 ? "border-red-400" : "border-gray-300"}`} /><p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p></div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
@@ -1114,7 +1163,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} fromFleet />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
