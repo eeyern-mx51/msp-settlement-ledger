@@ -309,7 +309,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   return (
     <Modal open={open} onClose={onClose} title="Abandon payout">
       <div className="space-y-5">
-        <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently stop it. The merchant's funds will not be transferred. A new payout must be prepared to settle these transactions.</Alert>
+        <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently stop it. The merchant's funds will not be transferred. All transactions will be returned to the ledger and allocated to the next payout preparation.</Alert>
         {payout.status === "Failed" && (
           <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
         )}
@@ -481,13 +481,13 @@ const auditLogs = {
     { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
     { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Funds returned to merchant ledger." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
   "PO-2026-0217-001": [
     { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
     { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
 };
 
@@ -603,7 +603,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     onStatusChange(payout.id, payout.status, { hold: true });
   };
   const handleAbandon = (reason) => {
-    addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been permanently abandoned.` });
+    addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
   };
 
@@ -649,7 +649,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       )}
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
-      {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. A new payout must be prepared to settle the affected transactions.</Alert>)}
+      {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
 
