@@ -465,8 +465,11 @@ const auditLogs = {
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
     { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Payout returned to Ready for Transfer for retry." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure detected. Payout automatically moved back to Ready for Transfer. Transfer ID: TRF-2026-0220-003." },
+    { ts: "20 Feb 2026, 1:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer re-initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 1:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
+    { ts: "20 Feb 2026, 1:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003b. Manual resubmission required." },
   ],
   // On Hold
   "PO-2026-0220-002": [
@@ -502,18 +505,20 @@ const defaultAuditLog = (payout) => [
 // initiatedBy: FinOps username (manual) | "System" (auto-generated)
 // entryType: null (default) | "Debt deferral" (system negative) | "Debt rollover" (system balancing positive)
 // System-initiated negative amounts always come in pairs: Debt deferral (negative) + Debt rollover (positive)
+// Adjustment statuses: "Pending Approval" (manual only), "Approved", "Rejected"
+// System-initiated adjustments are auto-approved. Manual adjustments require a 2nd user to approve.
 const mockAdjustments = [
-  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", requestedSettlementDate: "28 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
-  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
-  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
-  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
-  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
-  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", requestedSettlementDate: "24 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
-  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
-  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
-  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", requestedSettlementDate: "28 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", status: "Pending Approval", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", status: "Approved", approvedBy: "Tom Wright", approvedAt: "23 Feb 2026, 2:15 PM", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
+  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0223-002", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
+  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0223-002", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
+  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0222-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
+  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0222-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", requestedSettlementDate: "24 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", status: "Rejected", rejectedBy: "Sarah Chen", rejectedAt: "22 Feb 2026, 3:00 PM", rejectionReason: "Investigation found settlement amounts were correct — merchant miscounted transactions.", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", status: "Approved", approvedBy: "Tom Wright", approvedAt: "21 Feb 2026, 11:30 AM", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
+  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0220-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
+  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0220-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", status: "Approved", approvedBy: "Sarah Chen", approvedAt: "18 Feb 2026, 11:00 AM", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
 ];
 
 // ─── Transactions — expanded ───
@@ -900,11 +905,12 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
         initiatedBy: "Tom Wright",
         entryType: null,
         payoutId: "—",
+        status: "Pending Approval",
         internalNote: info,
         mid: mid || "POSPAY00012345",
       };
       onCreateAdjustment(newAdj);
-      addToast({ type: "success", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} has been created.` });
+      addToast({ type: "info", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} is pending approval.` });
       onClose();
     }, 500);
   };
@@ -946,31 +952,95 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ═══════════════════════════════════════════════════════════
 // ADJUSTMENT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function AdjustmentDetailView({ adj, onBack }) {
+function AdjustmentDetailView({ adj, onBack, onApprove, onReject, role }) {
+  const { addToast } = useToast();
   const isSystem = adj.initiatedBy === "System";
+  const canWrite = role === ROLES.FINOPS_T1;
+  const isPending = adj.status === "Pending Approval";
+  const isRejected = adj.status === "Rejected";
+  const isApproved = adj.status === "Approved";
+
+  // Can only approve/reject if: FinOps Admin, pending, and not the person who created it
+  const canApproveReject = canWrite && isPending;
+
+  const [showRejectDialog, setShowRejectDialog] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+
+  const handleApprove = () => {
+    onApprove(adj.id);
+    addToast({ type: "success", title: "Adjustment approved", message: `${adj.id} for ${adj.amount} has been approved.` });
+  };
+  const handleReject = () => {
+    onReject(adj.id, rejectReason);
+    setShowRejectDialog(false);
+    setRejectReason("");
+    addToast({ type: "error", title: "Adjustment rejected", message: `${adj.id} has been rejected.` });
+  };
+
+  // Build audit entries
   const auditEntries = isSystem ? [
     { ts: adj.date + ", 6:00 AM", version: 1, action: "Adjustment auto-generated", user: "System", detail: `${adj.entryType || "Adjustment"} of ${adj.amount} created automatically during payout preparation.` },
-    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 2, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
+    { ts: adj.date + ", 6:00 AM", version: 2, action: "Auto-approved", user: "System", detail: "System-initiated adjustments are automatically approved." },
+    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 3, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
   ] : [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Admin)", detail: `Manual adjustment of ${adj.amount} created.` },
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Admin)", detail: `Manual adjustment of ${adj.amount} created. Status: Pending Approval.` },
+    ...(isApproved && adj.approvedBy ? [{ ts: adj.approvedAt || adj.date + ", 2:00 PM", version: 2, action: "Approved", user: adj.approvedBy + " (FinOps Admin)", detail: `Adjustment approved. Will be included in next payout with settlement date on or after ${adj.requestedSettlementDate || "N/A"}.` }] : []),
+    ...(isRejected && adj.rejectedBy ? [{ ts: adj.rejectedAt || adj.date + ", 2:00 PM", version: 2, action: "Rejected", user: adj.rejectedBy + " (FinOps Admin)", detail: `Adjustment rejected. Reason: ${adj.rejectionReason || "No reason provided."}` }] : []),
   ];
+
+  const statusBadge = isPending ? <Badge colorScheme="warning" size="sm">Pending Approval</Badge> : isApproved ? <Badge colorScheme="success" size="sm">Approved</Badge> : isRejected ? <Badge colorScheme="error" size="sm">Rejected</Badge> : <Badge colorScheme="neutral" size="sm">{adj.status}</Badge>;
 
   return (
     <div className="p-6 space-y-5">
+      {showRejectDialog && (
+        <Modal open={showRejectDialog} onClose={() => setShowRejectDialog(false)} title="Reject adjustment">
+          <div className="space-y-4">
+            <Alert type="warning" title="This adjustment will be rejected">The adjustment will not be applied to the merchant's balance. The initiator will be notified.</Alert>
+            <div className="bg-amber-50 rounded-lg p-4 space-y-2 border border-amber-100">
+              {[["Adjustment ID", adj.id], ["Amount", adj.amount], ["Initiated by", adj.initiatedBy]].map(([label, value]) => (
+                <div key={label} className="flex justify-between text-sm"><span className="text-amber-700 font-medium">{label}</span><span className="text-amber-900 font-semibold">{value}</span></div>
+              ))}
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for rejection <span className="text-red-500">*</span></label>
+              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} placeholder="Provide a reason for rejecting this adjustment..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+              <Button variant="outline" colorScheme="neutral" size="md" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
+              <Button variant="solid" colorScheme="error" size="md" onClick={handleReject} disabled={!rejectReason.trim()}>Reject adjustment</Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to adjustments</button>
+
+      {isRejected && (
+        <Alert type="error" title="Adjustment rejected">This adjustment was rejected by {adj.rejectedBy}. Reason: {adj.rejectionReason || "No reason provided."}</Alert>
+      )}
+
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span>{statusBadge}</div>
+          {canApproveReject && (
+            <div className="flex gap-2">
+              <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} onClick={handleApprove}>Approve</Button>
+              <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowRejectDialog(true)}>Reject</Button>
+            </div>
+          )}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date created", adj.date], ["Requested settlement date", adj.requestedSettlementDate || "—"], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debt deferral" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Status", statusBadge], ["Date created", adj.date], ["Requested settlement date", adj.requestedSettlementDate || "—"], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debt deferral" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.approvedBy && isApproved ? [["Approved by", adj.approvedBy]] : []), ...(adj.rejectedBy && isRejected ? [["Rejected by", adj.rejectedBy]] : []), ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
           <div className="mt-6 space-y-4">
             <div><h4 className="text-sm font-semibold text-gray-700 mb-1">Internal note</h4><div className="text-sm text-gray-600 bg-gray-50 rounded-lg p-3 border border-gray-100">{adj.internalNote}</div></div>
+            {isRejected && adj.rejectionReason && (
+              <div><h4 className="text-sm font-semibold text-red-700 mb-1">Rejection reason</h4><div className="text-sm text-red-600 bg-red-50 rounded-lg p-3 border border-red-100">{adj.rejectionReason}</div></div>
+            )}
           </div>
         </CardBody>
       </Card>
@@ -993,13 +1063,19 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const PAGE_SIZE = 20;
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
+  const handleApprove = (adjId) => {
+    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: "Approved", approvedBy: "Tom Wright", approvedAt: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase() } : a));
+  };
+  const handleReject = (adjId, reason) => {
+    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: "Rejected", rejectedBy: "Tom Wright", rejectedAt: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase(), rejectionReason: reason } : a));
+  };
 
   const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
   const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
-  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} />;
+  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} onApprove={handleApprove} onReject={handleReject} role={role} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1017,18 +1093,19 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Amount", "Initiated by", "Type"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Amount", "Initiated by", "Type", "Status"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
             {paginatedAdj.map((a) => (
-                <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
+                <tr key={a.id} onClick={() => setSelectedAdj(a)} className={`border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${a.status === "Pending Approval" ? "bg-amber-50/30" : a.status === "Rejected" ? "bg-red-50/30" : ""}`}>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.requestedSettlementDate || "—"}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : a.initiatedBy}</td>
                   <td className="py-3 px-3">{a.entryType ? <Badge colorScheme={a.entryType === "Debt deferral" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>}</td>
+                  <td className="py-3 px-3">{a.status === "Pending Approval" ? <Badge colorScheme="warning" size="sm">Pending Approval</Badge> : a.status === "Approved" ? <Badge colorScheme="success" size="sm">Approved</Badge> : a.status === "Rejected" ? <Badge colorScheme="error" size="sm">Rejected</Badge> : <Badge colorScheme="neutral" size="sm">{a.status || "—"}</Badge>}</td>
                 </tr>
             ))}
-            {adjustments.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
+            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
