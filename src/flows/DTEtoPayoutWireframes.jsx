@@ -466,7 +466,7 @@ const STEPS = [
   },
   {
     id: 7, phase: "Transfer", title: "Begin transfer → NPP → Merchant",
-    actor: "FinOps Admin / System (automated)", type: "both",
+    actor: "Toby / System (automated)", type: "both",
     description: "Approved payout transfers are initiated — sending payment via Cuscal Payment API → NPP (New Payments Platform) → merchant's bank account. Transfer status is tracked via webhooks. Success → Completed. Transient failure → auto-retry. Persistent failure → Failed + alert.",
     wireframe: WireframeTransfer,
     uiReq: true, reqLabel: "Begin transfer, Status tracking, Failure handling",

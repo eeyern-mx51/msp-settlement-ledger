@@ -219,7 +219,7 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
   return (
     <Modal open={open} onClose={onClose} title="Place hold on payout">
       <div className="space-y-5">
-        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Admin user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
+        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a Toby user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
@@ -263,7 +263,7 @@ function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
   const confirmLabel = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
   const handleConfirm = () => {
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (FinOps Admin)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
+    setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (Toby)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
   };
   return (
     <Modal open={open} onClose={onClose} title={dialogTitle}>
@@ -359,7 +359,7 @@ function PayoutStatusBadge({ status, hold, amount }) {
 }
 
 // ─── Global role context (simulated) ───
-const ROLES = { FINOPS_T1: "FinOps Admin", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
+const ROLES = { FINOPS_T1: "Toby", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
 const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
 const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
@@ -417,27 +417,27 @@ const auditLogs = {
   "PO-2026-0223-001": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (Toby)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
   ],
   "PO-2026-0223-002": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (Toby)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
   ],
   // Transferring — in progress
   "PO-2026-0223-003": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (Toby)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (Toby)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
     { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
   ],
   // Completed — full lifecycle
   "PO-2026-0222-001": [
     { ts: "22 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
     { ts: "22 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (Toby)", detail: "Status changed to Ready for Transfer." },
+    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Begin transfer", user: "Tom Wright (Toby)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
     { ts: "22 Feb 2026, 10:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
     { ts: "22 Feb 2026, 1:45 PM", version: 6, action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
     { ts: "22 Feb 2026, 1:45 PM", version: 7, action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
@@ -445,8 +445,8 @@ const auditLogs = {
   "PO-2026-0221-001": [
     { ts: "21 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
     { ts: "21 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
-    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "2 transfers initiated (split by account)." },
+    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (Toby)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
+    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (Toby)", detail: "2 transfers initiated (split by account)." },
     { ts: "21 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
     { ts: "21 Feb 2026, 2:30 PM", version: 6, action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
     { ts: "21 Feb 2026, 2:35 PM", version: 7, action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
@@ -456,19 +456,19 @@ const auditLogs = {
   "PO-2026-0220-001": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
+    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (Toby)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (Toby)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
     { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Payout moved to Failed." },
     { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
   ],
   "PO-2026-0220-003": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (Toby)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (Toby)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
     { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
     { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure detected. Payout automatically moved back to Ready for Transfer. Transfer ID: TRF-2026-0220-003." },
-    { ts: "20 Feb 2026, 1:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer re-initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 1:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (Toby)", detail: "Transfer re-initiated to BSB 013-140 / Acc 99887766." },
     { ts: "20 Feb 2026, 1:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
     { ts: "20 Feb 2026, 1:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003b. Manual resubmission required." },
   ],
@@ -476,21 +476,21 @@ const auditLogs = {
   "PO-2026-0220-002": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (Toby)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (Toby)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
     { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
   ],
   // Abandoned
   "PO-2026-0219-001": [
     { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
     { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (Toby)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
     { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
   "PO-2026-0217-001": [
     { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
     { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (Toby)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
     { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
 };
@@ -647,7 +647,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
+      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a Toby user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
@@ -961,7 +961,7 @@ function AdjustmentDetailView({ adj, onBack, onApprove, onReject, role }) {
   const isRejected = adj.status === "Rejected";
   const isApproved = adj.status === "Approved";
 
-  // Can only approve/reject if: FinOps Admin, pending, and not the person who created it
+  // Can only approve/reject if: Toby, pending, and not the person who created it
   const canApproveReject = canWrite && isPending;
 
   const [showRejectDialog, setShowRejectDialog] = useState(false);
@@ -984,9 +984,9 @@ function AdjustmentDetailView({ adj, onBack, onApprove, onReject, role }) {
     { ts: adj.date + ", 6:00 AM", version: 2, action: "Auto-approved", user: "System", detail: "System-initiated adjustments are automatically approved." },
     ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 3, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
   ] : [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Admin)", detail: `Manual adjustment of ${adj.amount} created. Status: Pending Approval.` },
-    ...(isApproved && adj.approvedBy ? [{ ts: adj.approvedAt || adj.date + ", 2:00 PM", version: 2, action: "Approved", user: adj.approvedBy + " (FinOps Admin)", detail: `Adjustment approved. Will be included in next payout with settlement date on or after ${adj.requestedSettlementDate || "N/A"}.` }] : []),
-    ...(isRejected && adj.rejectedBy ? [{ ts: adj.rejectedAt || adj.date + ", 2:00 PM", version: 2, action: "Rejected", user: adj.rejectedBy + " (FinOps Admin)", detail: `Adjustment rejected. Reason: ${adj.rejectionReason || "No reason provided."}` }] : []),
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (Toby)", detail: `Manual adjustment of ${adj.amount} created. Status: Pending Approval.` },
+    ...(isApproved && adj.approvedBy ? [{ ts: adj.approvedAt || adj.date + ", 2:00 PM", version: 2, action: "Approved", user: adj.approvedBy + " (Toby)", detail: `Adjustment approved. Will be included in next payout with settlement date on or after ${adj.requestedSettlementDate || "N/A"}.` }] : []),
+    ...(isRejected && adj.rejectedBy ? [{ ts: adj.rejectedAt || adj.date + ", 2:00 PM", version: 2, action: "Rejected", user: adj.rejectedBy + " (Toby)", detail: `Adjustment rejected. Reason: ${adj.rejectionReason || "No reason provided."}` }] : []),
   ];
 
   const statusBadge = isPending ? <Badge colorScheme="warning" size="sm">Pending Approval</Badge> : isApproved ? <Badge colorScheme="success" size="sm">Approved</Badge> : isRejected ? <Badge colorScheme="error" size="sm">Rejected</Badge> : <Badge colorScheme="neutral" size="sm">{adj.status}</Badge>;
@@ -1514,7 +1514,7 @@ const uxArtefactsList = [
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for Toby, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Framework for Hold/Release Hold model — scope levels (fleet/merchant/payout), automation switches, failure controls, and resolved decisions", type: "React Component", icon: "controls", component: PayoutProgressionControls },
@@ -2416,7 +2416,7 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span>Role:</span>
           <select value={role} onChange={(e) => onRoleChange(e.target.value)} className="text-xs bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-300">
-            <option value={ROLES.FINOPS_T1}>FinOps Admin</option>
+            <option value={ROLES.FINOPS_T1}>Toby</option>
             <option value={ROLES.FINOPS_T2}>FinOps View only</option>
             <option value={ROLES.ADMIN}>Administrator</option>
           </select>
