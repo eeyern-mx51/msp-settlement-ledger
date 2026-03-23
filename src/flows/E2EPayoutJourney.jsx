@@ -74,7 +74,7 @@ const STEPS = [
     id: 7,
     phase: "Transfer",
     title: "Begin transfer",
-    actor: "Toby (manual) / Automated",
+    actor: "FinOps Administrator (manual) / Automated",
     type: "both",
     description: "The approved payout transfer is initiated — triggering a payment via NPP (New Payments Platform) to the merchant's bank account. Status set to Transferring before the NPP request.",
     uiReq: true,

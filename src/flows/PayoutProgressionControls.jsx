@@ -23,19 +23,19 @@ function StepTag({ step }) {
 
 /* ─── Data ─── */
 const SCENARIOS = [
-  { scenario: "Platform incident — DTE files are corrupted today", level: "global", outcome: "Toby activates fleet hold. All automation stops, all manual actions blocked. Fix the data, release hold." },
-  { scenario: "Merchant under fraud investigation", level: "merchant", outcome: "Toby clicks \"Hold payouts\" on the merchant page → dialog confirms \"Hold payouts for [Merchant Name]\". Other merchants keep flowing. Investigation concludes, release hold." },
-  { scenario: "One payout has unusual amounts — need to verify", level: "payout", outcome: "Toby places a hold on that payout. Rest of the merchant's payouts keep flowing. Verified? Release hold." },
+  { scenario: "Platform incident — DTE files are corrupted today", level: "global", outcome: "FinOps Administrator activates fleet hold. All automation stops, all manual actions blocked. Fix the data, release hold." },
+  { scenario: "Merchant under fraud investigation", level: "merchant", outcome: "FinOps Administrator clicks \"Hold payouts\" on the merchant page → dialog confirms \"Hold payouts for [Merchant Name]\". Other merchants keep flowing. Investigation concludes, release hold." },
+  { scenario: "One payout has unusual amounts — need to verify", level: "payout", outcome: "FinOps Administrator places a hold on that payout. Rest of the merchant's payouts keep flowing. Verified? Release hold." },
   { scenario: "Moving to auto-approval but want to keep manual transfers", level: "global", outcome: "Turn on auto-approval. Leave auto-transfer off. Preparation is already manual (POC). Gradual rollout." },
   { scenario: "New FinOps Viewer joins — shouldn't approve payouts", level: "permission", outcome: "Not a toggle — View-only role simply doesn't have approve/begin transfer buttons. No configuration needed." },
-  { scenario: "Bank holiday — don't want transfers going out", level: "global", outcome: "Toby turns off auto-transfer for the day. Payouts can still be prepared and approved, transfers just won't initiate." },
-  { scenario: "NPP gateway experiencing intermittent timeouts", level: "global", outcome: "Toby activates fleet hold to prevent transfers accumulating retryable failures. Resume once NPP stabilises." },
+  { scenario: "Bank holiday — don't want transfers going out", level: "global", outcome: "FinOps Administrator turns off auto-transfer for the day. Payouts can still be prepared and approved, transfers just won't initiate." },
+  { scenario: "NPP gateway experiencing intermittent timeouts", level: "global", outcome: "FinOps Administrator activates fleet hold to prevent transfers accumulating retryable failures. Resume once NPP stabilises." },
 ];
 
 const AUTOMATION_STEPS = [
-  { step: "Preparation", auto_on: "System runs daily at 8:30 AM, auto-creates payouts from unsettled MLEs", auto_off: "FinOps manually triggers \"Prepare payout\" (current POC behaviour)", who: "Toby only" },
-  { step: "Approval", auto_on: "System auto-approves payouts that pass validation rules", auto_off: "FinOps manually reviews and clicks \"Approve\" (current POC behaviour)", who: "Toby only" },
-  { step: "Transfer", auto_on: "System auto-initiates transfer once approved", auto_off: "FinOps manually clicks \"Begin transfer\" (current POC behaviour)", who: "Toby only" },
+  { step: "Preparation", auto_on: "System runs daily at 8:30 AM, auto-creates payouts from unsettled MLEs", auto_off: "FinOps manually triggers \"Prepare payout\" (current POC behaviour)", who: "FinOps Administrator only" },
+  { step: "Approval", auto_on: "System auto-approves payouts that pass validation rules", auto_off: "FinOps manually reviews and clicks \"Approve\" (current POC behaviour)", who: "FinOps Administrator only" },
+  { step: "Transfer", auto_on: "System auto-initiates transfer once approved", auto_off: "FinOps manually clicks \"Begin transfer\" (current POC behaviour)", who: "FinOps Administrator only" },
 ];
 
 /* ─── Expandable section ─── */
@@ -164,10 +164,10 @@ export default function PayoutProgressionControls() {
         <SectionHeading num="2">Manual vs automatic — who gets stopped?</SectionHeading>
 
         <div className="grid grid-cols-2 gap-3 mb-2">
-          {/* Toby */}
+          {/* FinOps Administrator */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-              <span>🔑</span> Toby
+              <span>🔑</span> FinOps Administrator
             </h3>
             <ul className="space-y-1.5 text-sm text-gray-700">
               <li className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-indigo-600 flex-shrink-0" />Can activate/release fleet hold</li>
@@ -371,7 +371,7 @@ export default function PayoutProgressionControls() {
           <div className="border-t border-gray-100 pt-4">
             <h3 className="text-sm font-bold text-gray-900 mb-2">Retry governance (POC — manual-first)</h3>
             <ul className="space-y-2 text-sm text-gray-600">
-              <li className="flex items-start gap-2"><span className="text-gray-400">1.</span><span>All retries manually initiated by Toby — no auto-retry in POC phase</span></li>
+              <li className="flex items-start gap-2"><span className="text-gray-400">1.</span><span>All retries manually initiated by FinOps Administrator — no auto-retry in POC phase</span></li>
               <li className="flex items-start gap-2"><span className="text-gray-400">2.</span><span>Maximum 3 attempts before escalation recommended (amber at 3, red at 5)</span></li>
               <li className="flex items-start gap-2"><span className="text-gray-400">3.</span><span>GATEWAY_TIMEOUT requires reconciliation check before retry (ambiguous outcome)</span></li>
               <li className="flex items-start gap-2"><span className="text-gray-400">4.</span><span>Non-retryable failures require merchant contact and data correction before resolution</span></li>
@@ -411,7 +411,7 @@ export default function PayoutProgressionControls() {
           </li>
           <li className="flex items-start gap-2">
             <span className="text-emerald-500 font-bold mt-0.5">✓</span>
-            <span><strong>Retry model:</strong> Manual-first for POC. All retries initiated by Toby. Automation noted for future phases.</span>
+            <span><strong>Retry model:</strong> Manual-first for POC. All retries initiated by FinOps Administrator. Automation noted for future phases.</span>
           </li>
         </ul>
       </div>
