@@ -1430,8 +1430,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || selectedGroups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
-            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : `Prepare payout (${selectedMids.size})`}
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || selectedGroups.length === 0 || creating} onClick={handleCreate}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : `Create payout (${selectedMids.size})`}
           </Button>
         </div>
       </div>
@@ -1515,8 +1515,8 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || (filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0) || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
-            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : "Prepare payout"}
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || (filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0) || creating} onClick={handleCreate}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create payout"}
           </Button>
         </div>
       </div>
