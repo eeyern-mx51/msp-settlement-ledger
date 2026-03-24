@@ -810,13 +810,15 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid })
   const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
   let isHeld = hold;
   if (holdRecords && payoutId && mid) {
-    isHeld = isProgressionBlocked(holdRecords, payoutId, mid, status);
-    if (isHeld) console.log("[HOLD DEBUG] PayoutStatusBadge: payout", payoutId, "is ON HOLD (holdRecords:", holdRecords.filter(h => h.active).length, "active)");
+    // Show On-hold for ANY active hold affecting this payout (preparation or progression, any level)
+    const effective = getEffectiveHolds(holdRecords, payoutId, mid);
+    isHeld = effective.any;
   }
+  const isTerminal = status === "Completed" || status === "Abandoned";
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {isHeld && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
+      {isHeld && !isTerminal && <Badge colorScheme="warning" size="sm">On-hold</Badge>}
       {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
@@ -1075,7 +1077,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   // Check if progression is blocked by holds
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
-  const effectiveHolds = holdRecords ? getEffectiveHolds(holdRecords, payout.id, payout.mid) : { any: false };
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
@@ -1144,7 +1145,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} />], ...(effectiveHolds.any ? [["Hold scope", <span className="inline-flex items-center gap-1.5 flex-wrap">{effectiveHolds.fleet.length > 0 && <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">Fleet-level hold</span>}{effectiveHolds.merchant.length > 0 && <span className="text-xs font-medium bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">Merchant-level hold — {merchantName || payout.merchantName}</span>}{effectiveHolds.payout.length > 0 && <span className="text-xs font-medium bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Payout-level hold</span>}</span>]] : [])].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} />]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
