@@ -108,108 +108,106 @@
 <div class="container">
 
   <h1>Payout Progression Controls</h1>
-  <p class="subtitle">How do we control who and what can move a payout forward? A framework for discussion.</p>
+  <p class="subtitle">Implementation guide. Updated 25 Mar 2026.</p>
 
   <!-- Core concept -->
   <div class="concept-box">
-    <h2>The simple idea</h2>
-    <p>Every payout step (prepare, approve, transfer) can happen <strong>manually</strong> (human clicks a button) or <strong>automatically</strong> (system does it on schedule). We need controls to turn each off — at different scopes — without making everyone's head spin.</p>
+    <h2>Three-pillar control model</h2>
+    <p>Payout progression is controlled by three independent systems: <strong>Holds</strong> (block any progression), <strong>Automation Config</strong> (enable/disable auto-progression), and <strong>Permissions</strong> (who can act). Holds always override automation.</p>
   </div>
 
   <!-- Mental model -->
   <div class="mental-model">
-    <h2>The payout pipeline</h2>
+    <h2>Holds block progression; Automation drives it forward</h2>
     <div class="mm-flow">
-      <div class="mm-step s1">Preparation<div class="mode">Manual / Auto</div></div>
+      <div class="mm-step s1">Preparation Hold<div class="mode">Blocks prep + auto-prep</div></div>
       <div class="mm-arrow">→</div>
-      <div class="mm-step s2">Approval<div class="mode">Manual / Auto</div></div>
-      <div class="mm-arrow">→</div>
-      <div class="mm-step s3">Transfer<div class="mode">Manual / Auto</div></div>
+      <div class="mm-step s3">Progression Hold<div class="mode">Blocks approval + transfer + auto</div></div>
     </div>
-    <p class="mm-note">Each step has <strong>two switches</strong>: one for humans, one for the system.<br>Each switch can be flipped at <strong>three scopes</strong>: global, merchant, or individual payout.</p>
+    <p class="mm-note">Two hold types across <strong>three scopes</strong> (fleet, merchant, payout).<br>Automation Config is separate: enables auto-progression when no holds block it.<br><strong>Holds always win.</strong></p>
   </div>
 
-  <!-- Section 1: Scopes -->
+  <!-- Section 1: Holds Model -->
   <div class="model-section">
-    <h2><span class="num">1</span> Three scopes — widest wins</h2>
+    <h2><span class="num">1</span> Holds — three scopes, two types, widest wins</h2>
 
     <div class="levels-stack">
       <div class="level-row global">
-        <div class="level-label">Global<div class="scope">Entire fleet</div></div>
+        <div class="level-label">Fleet<div class="scope">Entire fleet</div></div>
         <div class="level-content">
-          <div class="what">Stop everything across all merchants</div>
-          "Pause fleet payouts" — the emergency brake. Blocks <span class="tag all">all steps</span> for every merchant.<br>
-          <span style="font-size:12px; color:#9ca3af;">e.g. System incident, regulatory hold, suspected platform-wide issue</span>
+          <div class="what">Block all payout progression fleet-wide</div>
+          <span class="tag prep">Preparation</span> <span class="tag transfer">Progression</span> — blocks both prep and progression across all merchants.<br>
+          <span style="font-size:12px; color:#9ca3af;">e.g. System incident, regulatory freeze, platform-wide data issue</span>
         </div>
       </div>
       <div class="level-row merchant">
         <div class="level-label">Merchant<div class="scope">Single MID</div></div>
         <div class="level-content">
-          <div class="what">Stop payouts for one merchant</div>
-          "Pause merchant payouts" — blocks <span class="tag all">all steps</span> for a specific MID.<br>
-          <span style="font-size:12px; color:#9ca3af;">e.g. Fraud investigation on one merchant, bank details changing</span>
+          <div class="what">Block payout progression for one merchant</div>
+          <span class="tag prep">Preparation</span> <span class="tag transfer">Progression</span> — blocks prep or progression for specific MID only.<br>
+          <span style="font-size:12px; color:#9ca3af;">e.g. Fraud investigation, KYC pending, bank details verification</span>
         </div>
       </div>
       <div class="level-row payout">
         <div class="level-label">Payout<div class="scope">Single payout</div></div>
         <div class="level-content">
-          <div class="what">Hold one specific payout</div>
-          "Place on hold" — blocks the <em>next</em> step for this payout only. Other payouts for the same merchant keep flowing.<br>
-          <span style="font-size:12px; color:#9ca3af;">e.g. Amounts look wrong, need to verify with merchant before approving</span>
+          <div class="what">Block one specific payout from progressing</div>
+          <span class="tag prep">Preparation</span> <span class="tag transfer">Progression</span> — blocks prep or progression for this payout only. Siblings keep flowing.<br>
+          <span style="font-size:12px; color:#9ca3af;">e.g. Amount anomaly, verification needed, settlement delay</span>
         </div>
       </div>
     </div>
 
     <div class="cascade">
-      <h3>Override rule</h3>
+      <h3>Hold cascade rule</h3>
       <div class="cascade-visual">
-        <div class="cascade-box g">Global<div class="lbl">broadest</div></div>
+        <div class="cascade-box g">Fleet<div class="lbl">broadest</div></div>
         <div class="cascade-box m">Merchant<div class="lbl">narrows</div></div>
         <div class="cascade-box p">Payout<div class="lbl">most specific</div></div>
       </div>
-      <p class="cascade-rule"><strong>If any wider scope is paused, narrower scopes can't override it.</strong><br>A merchant-level resume can't bypass a global pause. A payout-level hold release can't bypass a merchant pause.</p>
+      <p class="cascade-rule"><strong>If any wider scope has a hold, narrower scopes cannot override it.</strong><br>Merchant-level hold cannot bypass fleet hold. Payout-level release cannot bypass merchant hold.</p>
     </div>
-    <p class="note">Think of it like a circuit breaker: if the main switch is off, flipping individual room switches does nothing.</p>
+    <p class="note">Holds are hierarchical: fleet-level holds the entire pipeline; merchant-level holds one MID; payout-level holds one tx.</p>
   </div>
 
-  <!-- Section 2: Manual vs Auto -->
+  <!-- Section 2: Permissions & Automation Config -->
   <div class="model-section">
-    <h2><span class="num">2</span> Manual vs Automatic — who gets stopped?</h2>
+    <h2><span class="num">2</span> Permissions & Automation Config — independent of holds</h2>
 
     <div class="permissions-grid">
       <div class="perm-card t1">
         <h3><span class="role-icon">🔑</span> FinOps Tier 1 (senior)</h3>
         <ul>
-          <li>Can toggle global pause on/off</li>
-          <li>Can toggle merchant pause on/off</li>
-          <li>Can place/release payout holds</li>
-          <li>Can disable/enable automation per step</li>
-          <li>Can still act manually even when auto is off</li>
+          <li>Can place/release holds (fleet, merchant, payout)</li>
+          <li>Can toggle automation per-phase (fleet, merchant)</li>
+          <li>Can manually trigger progression (prep, approve, execute)</li>
+          <li>Can view hold reasons and audit trail</li>
+          <li>Can resubmit failed payouts (if no progression hold)</li>
         </ul>
       </div>
       <div class="perm-card t2">
         <h3><span class="role-icon">👁</span> FinOps Tier 2 (junior)</h3>
         <ul>
-          <li class="no">Cannot change global pause</li>
-          <li class="no">Cannot change merchant pause</li>
           <li class="no">Cannot place/release holds</li>
-          <li class="no">Cannot change automation settings</li>
-          <li>Can view payouts (read-only)</li>
+          <li class="no">Cannot change automation config</li>
+          <li class="no">Cannot manually trigger progression</li>
+          <li>Can view payouts and holds (read-only)</li>
+          <li>Can view hold banners and reasons</li>
         </ul>
       </div>
     </div>
 
-    <p class="note">The key insight: "disabling manual" isn't a toggle — it's a <strong>permission</strong>. Lower-level users simply don't have the buttons. Higher-level users always can, unless a scope-level pause blocks them too.</p>
+    <p class="note">Holds and Automation Config are separate. A hold blocks everything regardless of automation state. Automation Config only applies when no holds are active.</p>
   </div>
 
-  <!-- Section 3: Automation controls -->
+  <!-- Section 3: Automation Config (separate from holds) -->
   <div class="model-section">
-    <h2><span class="num">3</span> Automation switches — per step</h2>
+    <h2><span class="num">3</span> Automation Config — per-phase toggles</h2>
 
     <table class="example-table">
       <thead>
         <tr>
-          <th>Step</th>
+          <th>Phase</th>
           <th>Auto on</th>
           <th>Auto off</th>
           <th>Who can toggle</th>
@@ -218,25 +216,19 @@
       <tbody>
         <tr>
           <td><span class="tag prep">Preparation</span></td>
-          <td style="font-size:13px;">System runs daily at 8:30 AM,<br>auto-creates payouts from unsettled MLEs</td>
-          <td style="font-size:13px;">FinOps manually triggers "Prepare payout"<br><em>(current POC behaviour)</em></td>
+          <td style="font-size:13px;">System auto-creates payouts daily at 8:30 AM from unsettled MLEs</td>
+          <td style="font-size:13px;">FinOps manually triggers "Prepare Payout" dialog</td>
           <td style="font-size:13px;">FinOps T1 only</td>
         </tr>
         <tr>
-          <td><span class="tag approve">Approval</span></td>
-          <td style="font-size:13px;">System auto-approves payouts<br>that pass validation rules</td>
-          <td style="font-size:13px;">FinOps manually reviews and clicks "Approve"<br><em>(current POC behaviour)</em></td>
-          <td style="font-size:13px;">FinOps T1 only</td>
-        </tr>
-        <tr>
-          <td><span class="tag transfer">Transfer</span></td>
-          <td style="font-size:13px;">System auto-initiates transfer<br>once approved</td>
-          <td style="font-size:13px;">FinOps manually clicks "Execute"<br><em>(current POC behaviour)</em></td>
+          <td><span class="tag transfer">Progression<br>(Approval + Begin Transfer)</span></td>
+          <td style="font-size:13px;">System auto-approves (if rules pass) and initiates transfer</td>
+          <td style="font-size:13px;">FinOps manually approves and executes via UI</td>
           <td style="font-size:13px;">FinOps T1 only</td>
         </tr>
       </tbody>
     </table>
-    <p class="note">Automation toggles are independent of pause controls. You can have automation on but the merchant paused — automation just won't run for that merchant.</p>
+    <p class="note"><strong>Holds always override automation.</strong> If a Progression hold is active, manual progression is also blocked and resubmit is disabled. Automation Config shows hold warnings in the panel.</p>
   </div>
 
   <!-- Section 4: Real examples -->
@@ -247,54 +239,59 @@
       <thead>
         <tr>
           <th style="width:30%;">Scenario</th>
-          <th style="width:15%;">Scope</th>
+          <th style="width:15%;">Tool</th>
           <th>What happens</th>
         </tr>
       </thead>
       <tbody>
         <tr>
-          <td class="scenario">Platform incident — DTE files are corrupted today</td>
-          <td><span class="level-tag g">Global</span></td>
-          <td>FinOps T1 flips global pause. All automation stops, all manual actions blocked. Fix the data, resume.</td>
+          <td class="scenario">Platform incident — data corruption</td>
+          <td><span class="level-tag g">Fleet Hold</span></td>
+          <td>FinOps T1 places fleet-level Preparation + Progression holds. All prep and progression blocked. Auto is irrelevant. Fix data, release holds.</td>
         </tr>
         <tr>
           <td class="scenario">Merchant under fraud investigation</td>
-          <td><span class="level-tag m">Merchant</span></td>
-          <td>FinOps T1 pauses that MID. Other merchants keep flowing. Investigation concludes, resume merchant.</td>
+          <td><span class="level-tag m">Merchant Hold</span></td>
+          <td>FinOps T1 places merchant-level hold (prep or progression). That MID is frozen. Other merchants keep flowing. Investigation done? Release hold.</td>
         </tr>
         <tr>
-          <td class="scenario">One payout has unusual amounts — need to check</td>
-          <td><span class="level-tag p">Payout</span></td>
-          <td>FinOps T1 places a hold on that payout. Rest of the merchant's payouts keep flowing. Verified? Release hold.</td>
+          <td class="scenario">One payout has unusual amounts — need to verify</td>
+          <td><span class="level-tag p">Payout Hold</span></td>
+          <td>FinOps T1 places payout-level Progression hold. That payout cannot advance. Siblings for same merchant flow. Amount verified? Release hold.</td>
         </tr>
         <tr>
-          <td class="scenario">Moving to auto-approval but want to keep manual transfers for now</td>
-          <td><span class="level-tag g">Global</span></td>
-          <td>Turn on auto-approval. Leave auto-transfer off. Preparation is already manual (POC). Gradual rollout.</td>
+          <td class="scenario">Failed payout needs resubmit but is stuck in progression</td>
+          <td><span class="level-tag p">Payout Hold</span></td>
+          <td>Progression hold blocks resubmit. FinOps T1 must release the hold first, then resubmit is available.</td>
         </tr>
         <tr>
-          <td class="scenario">New FinOps T2 joins — shouldn't approve payouts</td>
+          <td class="scenario">Gradually rolling out auto-progression</td>
+          <td><span class="level-tag g">Automation Config</span></td>
+          <td>FinOps T1 turns on Progression auto in gear panel. Payouts with no holds auto-progress. Preparation stays manual. Phased rollout.</td>
+        </tr>
+        <tr>
+          <td class="scenario">Bank holiday — no transfers today</td>
+          <td><span class="level-tag g">Automation Config</span></td>
+          <td>FinOps T1 turns off Progression auto for the day in gear panel. Prep and approval can happen, transfers will not auto-execute. Payouts can be approved and manually held until next day.</td>
+        </tr>
+        <tr>
+          <td class="scenario">New FinOps T2 joins the team</td>
           <td><span style="font-size:10px; color:#6b7280;">Permission</span></td>
-          <td>Not a toggle — T2 role simply doesn't have approve/execute buttons. No configuration needed.</td>
-        </tr>
-        <tr>
-          <td class="scenario">Bank holiday — don't want transfers going out</td>
-          <td><span class="level-tag g">Global</span></td>
-          <td>FinOps T1 turns off auto-transfer for the day. Payouts can still be prepared and approved, just won't execute.</td>
+          <td>T2 role has no hold/automation/manual buttons visible. Read-only view of holds and payouts. No config needed.</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- Discussion questions -->
+  <!-- Implementation notes -->
   <div class="questions">
-    <h2>Open questions for discussion</h2>
+    <h2>Current implementation</h2>
     <ol>
-      <li><strong>Payout-level hold:</strong> Is this needed for POC, or can we ship with global + merchant scope only?</li>
-      <li><strong>Automation granularity:</strong> Do we need per-step auto toggles (prep/approve/transfer separately), or is a single "enable automation" toggle enough for now?</li>
-      <li><strong>Merchant-level auto overrides:</strong> Should a specific merchant be able to have different automation settings than the fleet default? (e.g. auto-approve for trusted merchants only)</li>
-      <li><strong>Pause reason:</strong> Should placing a pause/hold require a mandatory reason? (Useful for audit trail)</li>
-      <li><strong>Terminology:</strong> Pause / Hold / Disable progression — which term resonates best with the team?</li>
+      <li><strong>Hold banners:</strong> ActiveHoldBanners groups Approval + Begin Transfer holds into single "Progression" row. Shows logical hold count. Collapsible detail with level badges (Fleet/Merchant/Payout).</li>
+      <li><strong>Preparation hold:</strong> Blocks "Prepare Payout" dialog. Manual prep cannot proceed. Auto prep is blocked.</li>
+      <li><strong>Progression hold:</strong> Blocks approval, transfer, and resubmit. UI shows hold reason. Manual progression and resubmit are disabled.</li>
+      <li><strong>Payout preview:</strong> "Prepare Payout" dialog includes mandatory settlement date, payout breakdown preview, and "Create" button.</li>
+      <li><strong>Automation Config:</strong> Gear icon panel shows Preparation toggle and Progression toggle (fleet + merchant level). Hold warnings displayed. "Holds always override automation" note visible.</li>
     </ol>
   </div>
 
