@@ -1604,7 +1604,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
