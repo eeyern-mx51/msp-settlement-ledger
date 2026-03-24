@@ -347,13 +347,16 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
   }, [isOpen]);
 
   const createHoldRecords = (phases, reason, note) => {
+    console.log("[HOLD DEBUG] createHoldRecords called:", { phases, level, entity, reason });
     setLoading(true);
     setTimeout(() => {
       phases.forEach(phase => {
-        onCreateHold({
+        const record = {
           id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual",
           reason, note: note || null, createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
-        });
+        };
+        console.log("[HOLD DEBUG] Calling onCreateHold with:", record.id, record.level, record.phase);
+        onCreateHold(record);
       });
       addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} — ${reason}` });
       setLoading(false);
@@ -541,6 +544,7 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid })
   let isHeld = hold;
   if (holdRecords && payoutId && mid) {
     isHeld = isProgressionBlocked(holdRecords, payoutId, mid);
+    if (isHeld) console.log("[HOLD DEBUG] PayoutStatusBadge: payout", payoutId, "is ON HOLD (holdRecords:", holdRecords.filter(h => h.active).length, "active)");
   }
 
   return (
@@ -1369,7 +1373,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
+          <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} holdRecords={holdRecords || []} />
+          <div className="mt-3 overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Merchant", "Amount", "Status"].includes(h);
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
@@ -1437,7 +1442,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
+          <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} holdRecords={holdRecords || []} />
+          <div className="mt-3 overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Amount", "Status"].includes(h);
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
@@ -2598,6 +2604,9 @@ export default function MSPSupportDashboard() {
     });
   }, []);
 
+  // Debug: log holdRecords on every render of root component
+  console.log("[HOLD DEBUG] MSPSupportDashboard render — holdRecords:", holdRecords.length, "active:", holdRecords.filter(h => h.active).length, "fleet holds:", holdRecords.filter(h => h.active && h.level === "fleet").length);
+
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
     setUnassignedMLEs([...mockUnassignedMLEs]);
@@ -2611,7 +2620,12 @@ export default function MSPSupportDashboard() {
 
   const handleCreateHold = useCallback((holdRecord) => {
     // Accepts a complete hold record object from HoldTogglesPanel
-    setHoldRecords((prev) => [...prev, holdRecord]);
+    console.log("[HOLD DEBUG] Creating hold record:", JSON.stringify(holdRecord));
+    setHoldRecords((prev) => {
+      const next = [...prev, holdRecord];
+      console.log("[HOLD DEBUG] holdRecords count after add:", next.length, "active:", next.filter(h => h.active).length);
+      return next;
+    });
   }, []);
 
   const handleReleaseHold = useCallback((holdId) => {
