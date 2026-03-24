@@ -362,25 +362,44 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
   const allHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
   if (allHolds.length === 0) return null;
 
-  // Group holds by level for compact summary
+  // Group raw hold records into logical holds (merge approval + begin_transfer into "Progression")
+  const groupHoldsLogical = (holds) => {
+    const logical = [];
+    const prepHolds = holds.filter(h => h.phase === "preparation");
+    const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+    // Group progression holds by reason (approval + begin_transfer with same reason = 1 logical hold)
+    const progByReason = {};
+    progHoldsGroup.forEach(h => {
+      if (!progByReason[h.reason]) progByReason[h.reason] = [];
+      progByReason[h.reason].push(h);
+    });
+    prepHolds.forEach(h => logical.push({ type: "preparation", label: "Preparation", records: [h], reason: h.reason, createdAt: h.createdAt, level: h.level, entity: h.entity }));
+    Object.entries(progByReason).forEach(([reason, records]) => logical.push({ type: "progression", label: "Progression", records, reason, createdAt: records[0].createdAt, level: records[0].level, entity: records[0].entity }));
+    return logical;
+  };
+
+  const allLogical = groupHoldsLogical(allHolds);
+  const currentLogical = groupHoldsLogical(currentLevelHolds);
+
+  // Group logical holds by level for compact summary
   const groups = [];
-  if (fleetHolds.length > 0) groups.push({ label: "Fleet", holds: fleetHolds, inherited: true });
-  if (merchantHolds.length > 0) groups.push({ label: "Merchant", holds: merchantHolds, inherited: level !== "merchant" });
-  if (currentLevelHolds.length > 0) {
+  const fleetLogical = groupHoldsLogical(fleetHolds);
+  const merchantLogical = groupHoldsLogical(merchantHolds);
+  if (fleetLogical.length > 0) groups.push({ label: "Fleet", count: fleetLogical.length });
+  if (merchantLogical.length > 0) groups.push({ label: "Merchant", count: merchantLogical.length });
+  if (currentLogical.length > 0) {
     const currentLabel = level === "fleet" ? "Fleet" : level === "merchant" ? "Merchant" : "Payout";
-    // Don't double-count if current level is fleet and we already have fleet group
-    if (level !== "fleet" || fleetHolds.length === 0) groups.push({ label: currentLabel, holds: currentLevelHolds, inherited: false });
+    if (level !== "fleet" || fleetLogical.length === 0) groups.push({ label: currentLabel, count: currentLogical.length });
   }
 
-  // Deduplicate unique reasons across all holds for the summary line
-  const uniqueReasons = [...new Set(allHolds.map(h => h.reason))];
+  const uniqueReasons = [...new Set(allLogical.map(h => h.reason))];
   const summaryText = uniqueReasons.length <= 2
     ? uniqueReasons.join(" · ")
     : `${uniqueReasons[0]} + ${uniqueReasons.length - 1} more`;
 
-  const releaseHolds = (holds) => {
-    holds.forEach(h => onReleaseHold(h.id));
-    addToast({ type: "success", title: "Hold released", message: `${holds.length} hold${holds.length !== 1 ? "s" : ""} released.` });
+  const releaseLogical = (logical) => {
+    logical.records.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `${logical.label} hold released.` });
   };
 
   return (
@@ -392,10 +411,10 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
       >
         <Icons.Shield />
         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-bold text-amber-900">{allHolds.length} hold{allHolds.length !== 1 ? "s" : ""} active</span>
+          <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
           <span className="text-xs text-amber-600">—</span>
           {groups.map(g => (
-            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.holds.length})</Badge>
+            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.count})</Badge>
           ))}
           <span className="text-xs text-amber-700 truncate">{summaryText}</span>
         </div>
@@ -408,17 +427,16 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
       {expanded && (
         <div className="px-4 pb-4 pt-1 border-t border-amber-200">
           <div className="space-y-2">
-            {allHolds.map((hold) => {
-              const isCurrentLevel = hold.level === level && (level === "fleet" || hold.entity === entity);
-              const levelLabel = hold.level === "fleet" ? "Fleet" : hold.level === "merchant" ? "Merchant" : "Payout";
-              const phaseLabel = hold.phase === "preparation" ? "Prep" : hold.phase === "approval" ? "Approval" : "Transfer";
+            {allLogical.map((logical, idx) => {
+              const isCurrentLevel = logical.level === level && (level === "fleet" || logical.entity === entity);
+              const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
 
               return (
-                <div key={hold.id} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
+                <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
                   <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
-                  <Badge colorScheme="neutral" size="sm">{phaseLabel}</Badge>
-                  <span className="text-sm font-medium text-amber-900 flex-1 truncate">{hold.reason}</span>
-                  <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline">{hold.createdAt}</span>
+                  <Badge colorScheme="neutral" size="sm">{logical.label}</Badge>
+                  <span className="text-sm font-medium text-amber-900 flex-1 truncate">{logical.reason}</span>
+                  <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline">{logical.createdAt}</span>
                   {isCurrentLevel && canWrite ? (
                     <Button
                       variant="outline"
@@ -426,14 +444,13 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (hold.phase === "preparation") { releaseHolds([hold]); }
-                        else { releaseHolds(progHolds.length > 0 ? progHolds : [hold]); }
+                        releaseLogical(logical);
                       }}
                     >
                       Release
                     </Button>
                   ) : !isCurrentLevel ? (
-                    <span className="text-xs text-gray-400 flex-shrink-0">Release from {hold.level === "fleet" ? "Fleet" : "Merchant"} page</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">Release from {logical.level === "fleet" ? "Fleet" : "Merchant"} page</span>
                   ) : null}
                 </div>
               );
@@ -1276,6 +1293,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 7);
+  const maxDateStr = maxDate.toISOString().split("T")[0];
   const hasDate = settlementDate !== "";
   const cutoffDate = settlementDate;
   const filteredDTEs = hasDate ? allMLEs.filter((dte) => dte.date <= cutoffDate) : [];
@@ -1345,8 +1364,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
-          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date.</p>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>
         </div>
 
         {!hasDate && (
@@ -1429,6 +1448,8 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
+  const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 7);
+  const maxDateStr = maxDate.toISOString().split("T")[0];
   const hasDate = settlementDate !== "";
   const cutoffDate = settlementDate;
   const filteredDTEs = hasDate ? allMLEs.filter((dte) => dte.date <= cutoffDate) : [];
@@ -1476,8 +1497,8 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
-          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date.</p>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>
         </div>
 
         {!hasDate && (
