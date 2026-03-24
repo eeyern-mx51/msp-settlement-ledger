@@ -829,7 +829,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   // Get effective holds for this payout
   const effectiveHolds = getEffectiveHolds(holdRecords || [], payout.id, payout.mid);
+  // For badge display: status-aware (hides badge on Failed/Completed/Abandoned)
   const progressionBlocked = isProgressionBlocked(holdRecords || [], payout.id, payout.mid, payout.status);
+  // For action blocking: raw check without status filter — holds should block Resubmit on Failed payouts too
+  const anyProgressionHold = isProgressionBlocked(holdRecords || [], payout.id, payout.mid);
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
@@ -839,7 +842,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const buildActions = () => {
     // Terminal states have no actions
     if (isTerminal) return [];
-    // If progression is blocked, only show Abandon
+    // Ready for Review / Ready for Transfer: if progression is blocked, only show Abandon
     if (progressionBlocked) return [
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
     ];
@@ -852,7 +855,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
-      "Failed": [
+      // Failed: if progression hold is active, block Resubmit (payout would re-enter the held flow)
+      "Failed": anyProgressionHold ? [
+        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+      ] : [
         { label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
