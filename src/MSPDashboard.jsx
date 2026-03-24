@@ -1160,50 +1160,160 @@ const mockUnassignedMLEs = [
   { id: "DTE-20260223-12346", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2150.00, txnCount: 6 },
 ];
 
+// Mock unsettled chargebacks — pending chargebacks that will be included in payout calculation
+const mockUnsettledChargebacks = [
+  { id: "CB-20260225-001", date: "2026-02-25", mid: "POSPAY00012345", amount: -120.00, reason: "Cardholder dispute — unauthorised transaction", cardLast4: "4829" },
+  { id: "CB-20260224-001", date: "2026-02-24", mid: "POSPAY00012346", amount: -350.00, reason: "Product not received", cardLast4: "1677" },
+  { id: "CB-20260224-002", date: "2026-02-24", mid: "POSPAY00012345", amount: -85.50, reason: "Duplicate charge", cardLast4: "8844" },
+  { id: "CB-20260223-001", date: "2026-02-23", mid: "POSPAY00012348", amount: -42.00, reason: "Service not as described", cardLast4: "5512" },
+];
+
+// Mock unsettled adjustments — manual and system adjustments not yet included in a payout
+const mockUnsettledAdjustments = [
+  // Manual adjustments
+  { id: "UADJ-001", date: "2026-02-25", mid: "POSPAY00012345", amount: 150.00, entryType: null, initiatedBy: "Tom Wright", note: "Chargeback CB-88210 resolved in merchant's favour" },
+  { id: "UADJ-002", date: "2026-02-24", mid: "POSPAY00012346", amount: -200.00, entryType: null, initiatedBy: "Sarah Chen", note: "Scheme fee correction for January billing" },
+  // System debt deferral/rollover pairs — these are auto-created during payout prep when net < 0
+  { id: "UADJ-003a", date: "2026-02-25", mid: "POSPAY00012347", amount: -560.40, entryType: "Debt deferral", initiatedBy: "System", note: "Net negative payout — amount deferred to next cycle" },
+  { id: "UADJ-003b", date: "2026-02-25", mid: "POSPAY00012347", amount: 560.40, entryType: "Debt rollover", initiatedBy: "System", note: "Balancing entry for debt deferral UADJ-003a" },
+  { id: "UADJ-004", date: "2026-02-24", mid: "POSPAY00012349", amount: 75.00, entryType: null, initiatedBy: "Tom Wright", note: "Terminal rental fee refund — double-charged in Feb" },
+];
+
+// ─── Payout Preview Component ───
+// Computes and renders the breakdown: Transactions, Chargebacks, Adjustments (Manual + Debt rollover), Payout Total
+function PayoutPreviewBreakdown({ mid, filteredDTEs, chargebacks, adjustments }) {
+  const txnTotal = filteredDTEs.reduce((sum, d) => sum + d.amount, 0);
+  const txnCount = filteredDTEs.reduce((sum, d) => sum + (d.txnCount || 0), 0);
+  const cbTotal = chargebacks.reduce((sum, c) => sum + c.amount, 0);
+  const cbCount = chargebacks.length;
+
+  const manualAdj = adjustments.filter(a => !a.entryType);
+  const deferralAdj = adjustments.filter(a => a.entryType === "Debt deferral");
+  const rolloverAdj = adjustments.filter(a => a.entryType === "Debt rollover");
+  const manualTotal = manualAdj.reduce((sum, a) => sum + a.amount, 0);
+  const deferralTotal = deferralAdj.reduce((sum, a) => sum + a.amount, 0);
+  const rolloverTotal = rolloverAdj.reduce((sum, a) => sum + a.amount, 0);
+  const adjTotal = manualTotal + deferralTotal + rolloverTotal;
+
+  const payoutTotal = txnTotal + cbTotal + adjTotal;
+  const isZeroOrNegative = payoutTotal <= 0;
+
+  const fmt = (v) => {
+    const sign = v < 0 ? "-" : "";
+    return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`;
+  };
+
+  return (
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payout preview</div>
+      <div className="divide-y divide-gray-100">
+        {/* Transactions */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-gray-800">Transactions</div>
+            <div className="text-xs text-gray-400">{txnCount} transactions from {filteredDTEs.length} DTE file{filteredDTEs.length !== 1 ? "s" : ""}</div>
+          </div>
+          <span className={`text-sm font-semibold ${txnTotal >= 0 ? "text-gray-900" : "text-red-600"}`}>{fmt(txnTotal)}</span>
+        </div>
+        {/* Chargebacks */}
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div>
+            <div className="text-sm font-medium text-gray-800">Chargebacks</div>
+            {cbCount > 0 && <div className="text-xs text-gray-400">{cbCount} pending chargeback{cbCount !== 1 ? "s" : ""}</div>}
+          </div>
+          <span className={`text-sm font-semibold ${cbTotal < 0 ? "text-red-600" : "text-gray-900"}`}>{cbCount > 0 ? fmt(cbTotal) : "$0.00"}</span>
+        </div>
+        {/* Adjustments */}
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-medium text-gray-800">Adjustments</div>
+            <span className={`text-sm font-semibold ${adjTotal < 0 ? "text-red-600" : adjTotal > 0 ? "text-emerald-600" : "text-gray-900"}`}>{fmt(adjTotal)}</span>
+          </div>
+          <div className="mt-2 ml-3 space-y-1.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-gray-500">Manual</span>
+              <span className={`font-medium ${manualTotal < 0 ? "text-red-600" : manualTotal > 0 ? "text-emerald-600" : "text-gray-400"}`}>{manualAdj.length > 0 ? fmt(manualTotal) : "$0.00"}</span>
+            </div>
+            {(deferralAdj.length > 0 || rolloverAdj.length > 0) && (
+              <>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-amber-600 flex items-center gap-1"><Icons.AlertTriangle /> Debt deferral <span className="text-gray-400 font-normal">(will be created)</span></span>
+                  <span className="font-medium text-red-600">{fmt(deferralTotal)}</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-amber-600 flex items-center gap-1"><Icons.AlertTriangle /> Debt rollover <span className="text-gray-400 font-normal">(will be created)</span></span>
+                  <span className="font-medium text-emerald-600">{fmt(rolloverTotal)}</span>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+        {/* Payout Total */}
+        <div className={`px-4 py-3 flex items-center justify-between ${isZeroOrNegative ? "bg-amber-50" : "bg-emerald-50"}`}>
+          <div>
+            <div className="text-sm font-bold text-gray-900">Payout Total</div>
+            {isZeroOrNegative && <div className="text-xs text-amber-600 font-medium mt-0.5">Zero-balance — payout will auto-complete</div>}
+          </div>
+          <span className={`text-base font-bold ${isZeroOrNegative ? "text-amber-700" : "text-emerald-700"}`}>{fmt(payoutTotal)}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Helper: compute preview data for a given MID and cutoff date
+function computePayoutPreview(mid, cutoffDate) {
+  const chargebacks = mockUnsettledChargebacks.filter(c => c.mid === mid && c.date <= cutoffDate);
+  const adjustments = mockUnsettledAdjustments.filter(a => a.mid === mid && a.date <= cutoffDate);
+  return { chargebacks, adjustments };
+}
+
 function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
   const [settlementDate, setSettlementDate] = useState("");
   const [selectedMids, setSelectedMids] = useState(new Set());
+  const [expandedMid, setExpandedMid] = useState(null);
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Filter DTE files by date: on or before selected date, or all if empty
-  const todayISO = new Date().toISOString().split("T")[0];
-  const cutoffDate = settlementDate || todayISO;
-  const filteredDTEs = allMLEs.filter((dte) => dte.date <= cutoffDate);
+  const hasDate = settlementDate !== "";
+  const cutoffDate = settlementDate;
+  const filteredDTEs = hasDate ? allMLEs.filter((dte) => dte.date <= cutoffDate) : [];
 
-  // Group by merchant — one payout per merchant, accumulating DTE files across dates
+  // Group by merchant
   const merchantGroups = {};
   filteredDTEs.forEach((dte) => {
-    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], total: 0, txnCount: 0 };
+    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], txnTotal: 0, txnCount: 0 };
     merchantGroups[dte.mid].dteFiles.push(dte);
-    merchantGroups[dte.mid].total += dte.amount;
+    merchantGroups[dte.mid].txnTotal += dte.amount;
     merchantGroups[dte.mid].txnCount += dte.txnCount || 0;
   });
+  // Enrich with chargebacks + adjustments
+  Object.values(merchantGroups).forEach((g) => {
+    const preview = computePayoutPreview(g.mid, cutoffDate);
+    g.chargebacks = preview.chargebacks;
+    g.adjustments = preview.adjustments;
+    const cbTotal = g.chargebacks.reduce((s, c) => s + c.amount, 0);
+    const adjTotal = g.adjustments.reduce((s, a) => s + a.amount, 0);
+    g.payoutTotal = g.txnTotal + cbTotal + adjTotal;
+  });
   const allGroups = Object.values(merchantGroups);
-
-  // Only create payouts for selected merchants
   const selectedGroups = allGroups.filter((g) => selectedMids.has(g.mid));
 
-  // When date changes, auto-select all available merchants
   useEffect(() => {
-    setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+    if (hasDate) setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+    else setSelectedMids(new Set());
   }, [settlementDate, filteredDTEs.length]);
 
-  // Reset on close/open
   useEffect(() => {
-    if (open) { setSettlementDate(""); setCreating(false); setSelectedMids(new Set(allGroups.map((g) => g.mid))); }
+    if (open) { setSettlementDate(""); setCreating(false); setSelectedMids(new Set()); setExpandedMid(null); }
   }, [open]);
 
-  const toggleMid = (mid) => {
-    setSelectedMids((prev) => {
-      const next = new Set(prev);
-      if (next.has(mid)) next.delete(mid); else next.add(mid);
-      return next;
-    });
-  };
+  const toggleMid = (mid) => { setSelectedMids((prev) => { const next = new Set(prev); if (next.has(mid)) next.delete(mid); else next.add(mid); return next; }); };
   const selectAll = () => setSelectedMids(new Set(allGroups.map((g) => g.mid)));
   const deselectAll = () => setSelectedMids(new Set());
+
+  const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
   const handleCreate = () => {
     setCreating(true);
@@ -1216,14 +1326,14 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
         createdAt,
-        settlementDate: settlementDate ? new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : dateStr,
+        settlementDate: new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
         merchantName: g.merchant,
         mid: g.mid,
-        amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-        status: g.total <= 0 ? "Completed" : "Ready for Review",
+        amount: fmt(g.payoutTotal),
+        status: g.payoutTotal <= 0 ? "Completed" : "Ready for Review",
       }));
       onCreatePayouts(newPayouts);
-      addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared and set to Ready for Review.` });
+      addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared.` });
       onClose();
     }, 800);
   };
@@ -1231,45 +1341,77 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-lg">
+    <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-2xl">
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
           <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all DTE files with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
+          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date.</p>
         </div>
 
-        {/* Merchant multi-select */}
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-semibold text-gray-700">Merchants <span className="font-normal text-gray-400">({selectedMids.size} of {allGroups.length} selected)</span></label>
-            <div className="flex gap-2">
-              <button type="button" onClick={selectAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Select all</button>
-              <span className="text-xs text-gray-300">|</span>
-              <button type="button" onClick={deselectAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Deselect all</button>
+        {!hasDate && (
+          <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">Select a settlement date to see payout preview.</p></div>
+        )}
+
+        {hasDate && (
+          <>
+            {/* Merchant multi-select with preview */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-semibold text-gray-700">Merchants <span className="font-normal text-gray-400">({selectedMids.size} of {allGroups.length} selected)</span></label>
+                <div className="flex gap-2">
+                  <button type="button" onClick={selectAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Select all</button>
+                  <span className="text-xs text-gray-300">|</span>
+                  <button type="button" onClick={deselectAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Deselect all</button>
+                </div>
+              </div>
+              {allGroups.length > 0 ? (
+                <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
+                  {allGroups.map((g) => (
+                    <div key={g.mid}>
+                      <div className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMids.has(g.mid) ? "bg-indigo-50/50" : ""}`}>
+                        <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
+                        <div className="flex-1 min-w-0" onClick={() => setExpandedMid(expandedMid === g.mid ? null : g.mid)}>
+                          <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                          <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.txnCount} txns · {g.dteFiles.length} DTE file{g.dteFiles.length !== 1 ? "s" : ""}</div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {g.payoutTotal <= 0 && <Badge colorScheme="warning" size="sm">Zero-bal</Badge>}
+                          <span className={`text-sm font-semibold ${g.payoutTotal <= 0 ? "text-amber-700" : "text-gray-900"}`}>{fmt(g.payoutTotal)}</span>
+                          <button onClick={() => setExpandedMid(expandedMid === g.mid ? null : g.mid)} className={`text-gray-400 hover:text-gray-600 transition-transform ${expandedMid === g.mid ? "rotate-180" : ""}`}><Icons.ChevronDown /></button>
+                        </div>
+                      </div>
+                      {expandedMid === g.mid && (
+                        <div className="px-3 pb-3 pt-0 ml-8">
+                          <PayoutPreviewBreakdown mid={g.mid} filteredDTEs={g.dteFiles} chargebacks={g.chargebacks} adjustments={g.adjustments} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="border border-gray-200 rounded-lg px-3 py-4 text-center text-sm text-gray-400">No merchants with ledger entries for the selected date.</div>
+              )}
             </div>
-          </div>
-          {allGroups.length > 0 ? (
-            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[240px] overflow-y-auto">
-              {allGroups.map((g) => (
-                <label key={g.mid} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMids.has(g.mid) ? "bg-indigo-50/50" : ""}`}>
-                  <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
-                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.dteFiles.length} DTE file{g.dteFiles.length > 1 ? "s" : ""} · {g.txnCount} txns</div>
-                  </div>
-                  <div className="text-sm font-semibold text-gray-700 flex-shrink-0">${g.total.toFixed(2)}</div>
-                </label>
-              ))}
-            </div>
-          ) : (
-            <div className="border border-gray-200 rounded-lg px-3 py-4 text-center text-sm text-gray-400">No merchants with DTE files for the selected date.</div>
-          )}
-        </div>
+
+            {/* Fleet-level summary */}
+            {selectedGroups.length > 0 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-gray-700">Fleet total ({selectedGroups.length} merchant{selectedGroups.length !== 1 ? "s" : ""})</span>
+                  <span className="text-base font-bold text-gray-900">{fmt(selectedGroups.reduce((s, g) => s + g.payoutTotal, 0))}</span>
+                </div>
+                {selectedGroups.some(g => g.payoutTotal <= 0) && (
+                  <div className="text-xs text-amber-600 mt-1">{selectedGroups.filter(g => g.payoutTotal <= 0).length} merchant{selectedGroups.filter(g => g.payoutTotal <= 0).length !== 1 ? "s" : ""} with zero/negative balance — will auto-complete</div>
+                )}
+              </div>
+            )}
+          </>
+        )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={selectedGroups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || selectedGroups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : `Prepare payout (${selectedMids.size})`}
           </Button>
         </div>
@@ -1279,7 +1421,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
 }
 
 // ═══════════════════════════════════════════════════════════
-// MERCHANT-LEVEL PREPARE PAYOUT (single merchant, no multi-select)
+// MERCHANT-LEVEL PREPARE PAYOUT (single merchant, with preview)
 // ═══════════════════════════════════════════════════════════
 function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, mid, merchantName }) {
   const allMLEs = (mlePool || mockUnassignedMLEs).filter((dte) => dte.mid === mid);
@@ -1287,11 +1429,17 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  const todayISO = new Date().toISOString().split("T")[0];
-  const cutoffDate = settlementDate || todayISO;
-  const filteredDTEs = allMLEs.filter((dte) => dte.date <= cutoffDate);
-  const totalAmount = filteredDTEs.reduce((sum, dte) => sum + dte.amount, 0);
-  const totalTxns = filteredDTEs.reduce((sum, dte) => sum + (dte.txnCount || 0), 0);
+  const hasDate = settlementDate !== "";
+  const cutoffDate = settlementDate;
+  const filteredDTEs = hasDate ? allMLEs.filter((dte) => dte.date <= cutoffDate) : [];
+  const { chargebacks, adjustments } = hasDate ? computePayoutPreview(mid, cutoffDate) : { chargebacks: [], adjustments: [] };
+
+  const txnTotal = filteredDTEs.reduce((sum, dte) => sum + dte.amount, 0);
+  const cbTotal = chargebacks.reduce((sum, c) => sum + c.amount, 0);
+  const adjTotal = adjustments.reduce((sum, a) => sum + a.amount, 0);
+  const payoutTotal = txnTotal + cbTotal + adjTotal;
+
+  const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
   useEffect(() => { if (open) { setSettlementDate(""); setCreating(false); } }, [open]);
 
@@ -1305,14 +1453,14 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
         id: `PO-2026-0225-${String(Math.floor(Math.random() * 900) + 100)}`,
         date: dateStr,
         createdAt: `${dateStr}, ${timeStr}`,
-        settlementDate: settlementDate ? new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : dateStr,
+        settlementDate: new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
         merchantName: merchantName || filteredDTEs[0]?.merchant || "Unknown",
         mid,
-        amount: `$${Math.abs(totalAmount).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-        status: totalAmount <= 0 ? "Completed" : "Ready for Review",
+        amount: fmt(payoutTotal),
+        status: payoutTotal <= 0 ? "Completed" : "Ready for Review",
       };
       onCreatePayouts([newPayout]);
-      addToast({ type: "success", title: "Payout prepared", message: `${newPayout.id} for ${newPayout.amount} is now Ready for Review.` });
+      addToast({ type: "success", title: "Payout prepared", message: `${newPayout.id} for ${newPayout.amount} is now ${newPayout.status}.` });
       onClose();
     }, 800);
   };
@@ -1322,15 +1470,31 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   return (
     <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-lg">
       <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
-          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          <Icons.Store /><span className="font-medium text-gray-800">{merchantName}</span><Badge colorScheme="neutral" size="sm">{mid}</Badge>
         </div>
+
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date.</p>
+        </div>
+
+        {!hasDate && (
+          <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">Select a settlement date to see payout preview.</p></div>
+        )}
+
+        {hasDate && filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0 && (
+          <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">No ledger entries found for this date.</p></div>
+        )}
+
+        {hasDate && (filteredDTEs.length > 0 || chargebacks.length > 0 || adjustments.length > 0) && (
+          <PayoutPreviewBreakdown mid={mid} filteredDTEs={filteredDTEs} chargebacks={chargebacks} adjustments={adjustments} />
+        )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={filteredDTEs.length === 0 || creating} onClick={handleCreate}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || (filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0) || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : "Prepare payout"}
           </Button>
         </div>
