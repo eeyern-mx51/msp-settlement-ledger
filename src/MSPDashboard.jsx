@@ -2609,20 +2609,9 @@ export default function MSPSupportDashboard() {
     setUnassignedMLEs((prev) => [...prev, ...newMLEs]);
   }, []);
 
-  const handleCreateHold = useCallback((level, entity, phase, trigger, reason, note) => {
-    const newHold = {
-      id: generateHoldId(),
-      level,
-      entity,
-      phase,
-      trigger,
-      reason,
-      note,
-      createdBy: "Current User",
-      createdAt: nowTimestamp(),
-      active: true,
-    };
-    setHoldRecords((prev) => [...prev, newHold]);
+  const handleCreateHold = useCallback((holdRecord) => {
+    // Accepts a complete hold record object from HoldTogglesPanel
+    setHoldRecords((prev) => [...prev, holdRecord]);
   }, []);
 
   const handleReleaseHold = useCallback((holdId) => {
