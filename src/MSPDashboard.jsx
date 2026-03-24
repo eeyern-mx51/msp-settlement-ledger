@@ -207,298 +207,280 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function HoldInheritanceBanners({ holdRecords, payoutId, mid, merchantName }) {
-  // Show read-only banners for holds from higher levels (fleet and merchant)
-  const fleetHolds = holdRecords.filter(h => h.active && h.level === "fleet");
-  const merchantHolds = holdRecords.filter(h => h.active && h.level === "merchant" && h.entity === mid);
+function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold }) {
+  // Collect ALL active holds affecting current view (inherited + own level)
+  const { addToast } = useToast();
+  const hr = holdRecords || [];
+
+  // Inherited: fleet holds shown on merchant/payout pages, merchant holds shown on payout pages
+  const fleetHolds = level !== "fleet" ? hr.filter(h => h.active && h.level === "fleet") : [];
+  const merchantHolds = level === "payout" ? hr.filter(h => h.active && h.level === "merchant" && h.entity === mid) : [];
+
+  // Current level holds
+  const currentLevelHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+  const prepHold = currentLevelHolds.find(h => h.phase === "preparation");
+  const progHolds = currentLevelHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+  const hasProgHold = progHolds.length > 0;
+
+  // Combine all active holds
+  const allHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
+  if (allHolds.length === 0) return null;
+
+  const releaseProgression = () => {
+    progHolds.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: "Progression hold has been released." });
+  };
+  const releasePreparation = () => {
+    if (prepHold) onReleaseHold(prepHold.id);
+    addToast({ type: "success", title: "Hold released", message: "Preparation hold has been released." });
+  };
+
+  // Helper to format hold level tag and determine if it's releasable from current view
+  const formatHoldLine = (hold) => {
+    const isCurrentLevel = hold.level === level && (level === "fleet" || hold.entity === entity);
+    const levelLabel = hold.level === "fleet" ? "Fleet-level" : hold.level === "merchant" ? "Merchant-level" : "Payout-level";
+
+    return (
+      <div key={hold.id} className="border-t border-amber-200 pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
+              <span className="text-sm font-semibold text-amber-900">{hold.reason}</span>
+            </div>
+            <p className="text-xs text-amber-700 mt-1">{hold.createdBy} · {hold.createdAt}</p>
+            {!isCurrentLevel && <p className="text-xs text-gray-500 mt-1">Must be released from the {hold.level === "fleet" ? "Fleet Payouts" : "Merchant Payouts"} page.</p>}
+          </div>
+          {isCurrentLevel && canWrite && (
+            <Button
+              variant="outline"
+              colorScheme="error"
+              size="sm"
+              onClick={() => {
+                if (hold.phase === "preparation") releasePreparation();
+                else if (hold.phase === "approval" || hold.phase === "begin_transfer") releaseProgression();
+              }}
+            >
+              Release
+            </Button>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <>
-      {fleetHolds.map(h => (
-        <div key={h.id} className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span>
-              <span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span>
-            </div>
-            <p className="text-sm text-red-700">{h.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {h.createdBy} · {h.createdAt}{h.note ? ` · "${h.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This hold must be released from the Fleet Payouts page.</p>
-          </div>
+    <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-amber-300 bg-amber-50">
+      <div className="mt-0.5 flex-shrink-0"><Icons.Shield /></div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-bold text-amber-900">{allHolds.length} hold{allHolds.length !== 1 ? "s" : ""} active</span>
         </div>
-      ))}
-      {merchantHolds.map(h => (
-        <div key={h.id} className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-sm font-bold text-red-800">Payouts for {merchantName} are on hold</span>
-              <span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Merchant-level</span>
-            </div>
-            <p className="text-sm text-red-700">{h.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {h.createdBy} · {h.createdAt}{h.note ? ` · "${h.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This hold must be released from the Merchant Payouts page.</p>
-          </div>
+        <div className="space-y-3">
+          {fleetHolds.map(h => formatHoldLine(h))}
+          {merchantHolds.map(h => formatHoldLine(h))}
+          {prepHold && formatHoldLine(prepHold)}
+          {progHolds.map(h => formatHoldLine(h))}
         </div>
-      ))}
-    </>
+      </div>
+    </div>
+  );
+}
+
+function HoldReasonForm({ onConfirm, onCancel, loading, level }) {
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const reasonOptions = [
+    "Pending merchant verification", "Suspicious activity review", "Bank details under review",
+    "Regulatory hold", "Internal audit", "DTE data issue",
+    ...(level === "fleet" ? ["Suspected fraud across merchants", "System maintenance", "Payout engine bug"] : ["Suspected fraud"]),
+    "Other"
+  ];
+  return (
+    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">Reason</label>
+        <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+          <option value="">Select a reason...</option>
+          {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+      </div>
+      <div className="flex gap-2">
+        <Button variant="solid" colorScheme="brand" size="sm" onClick={() => onConfirm(reason, note)} disabled={!reason || loading}>{loading ? "Placing..." : "Confirm hold"}</Button>
+        <Button variant="outline" colorScheme="neutral" size="sm" onClick={onCancel} disabled={loading}>Cancel</Button>
+      </div>
+    </div>
   );
 }
 
 function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHold, onReleaseHold, canWrite, showPreparation }) {
   const { addToast } = useToast();
-  const [showReasonForm, setShowReasonForm] = useState(null); // "preparation" or "progression"
-  const [selectedReason, setSelectedReason] = useState("");
-  const [selectedNote, setSelectedNote] = useState("");
+  const [isOpen, setIsOpen] = useState(false);
+  const [showReasonFor, setShowReasonFor] = useState(null); // "preparation" | "progression" | "everything"
   const [loading, setLoading] = useState(false);
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
+  const hr = holdRecords || [];
 
-  const reasonOptions = [
-    "Pending merchant verification",
-    "Suspicious activity review",
-    "Bank details under review",
-    "Regulatory hold",
-    "Internal audit",
-    level === "fleet" ? "Suspected fraud across merchants" : "Suspected fraud",
-    level === "fleet" ? "System maintenance" : null,
-    "Other"
-  ].filter(Boolean);
+  // Query current holds at this level
+  const currentHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+  const prepHold = currentHolds.find(h => h.phase === "preparation");
+  const progHolds = currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+  const hasProgHold = progHolds.length > 0;
+  const hasAnyHold = !!prepHold || hasProgHold;
 
-  const getPreparationHold = () => {
-    return holdRecords.find(h => h.active && h.level === level && h.phase === "preparation" && (level === "fleet" || h.entity === entity));
-  };
+  // Close panel when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
 
-  const getProgressionHolds = () => {
-    return holdRecords.filter(h => h.active && h.phase === ("approval" || "begin_transfer") && h.level === level && (level === "fleet" || h.entity === entity));
-  };
-
-  const handleCreateHold = (phase) => {
+  const createHoldRecords = (phases, reason, note) => {
     setLoading(true);
     setTimeout(() => {
-      const isProgression = phase === "approval" || phase === "begin_transfer";
-      if (isProgression) {
-        // Create both approval and begin_transfer holds
-        const phases = ["approval", "begin_transfer"];
-        phases.forEach(p => {
-          onCreateHold({
-            id: generateHoldId(),
-            level,
-            entity: level === "fleet" ? null : entity,
-            phase: p,
-            trigger: "manual",
-            reason: selectedReason,
-            note: selectedNote || null,
-            createdBy: "Sarah Chen (FinOps Administrator)",
-            createdAt: nowTimestamp(),
-            active: true
-          });
-        });
-        addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "this entity"} — ${selectedReason}` });
-      } else {
-        // Create preparation hold
+      phases.forEach(phase => {
         onCreateHold({
-          id: generateHoldId(),
-          level,
-          entity: level === "fleet" ? null : entity,
-          phase: "preparation",
-          trigger: "manual",
-          reason: selectedReason,
-          note: selectedNote || null,
-          createdBy: "Sarah Chen (FinOps Administrator)",
-          createdAt: nowTimestamp(),
-          active: true
+          id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual",
+          reason, note: note || null, createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
         });
-        addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "this entity"} — ${selectedReason}` });
-      }
+      });
+      addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} — ${reason}` });
       setLoading(false);
-      setShowReasonForm(null);
-      setSelectedReason("");
-      setSelectedNote("");
-    }, 800);
+      setShowReasonFor(null);
+    }, 600);
   };
 
-  const handleReleaseHolds = (phase) => {
-    const heldRecords = holdRecords.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity) && (phase === "all" || h.phase === phase));
-    heldRecords.forEach(h => onReleaseHold(h.id));
-    addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "this entity"} has been released.` });
+  const releasePhases = (phases) => {
+    const toRelease = currentHolds.filter(h => phases.includes(h.phase));
+    toRelease.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "entity"} has been released.` });
   };
 
-  const preparationHold = showPreparation ? getPreparationHold() : null;
-  const progressionHolds = getProgressionHolds();
-  const hasProgressionHold = progressionHolds.length > 0;
+  const handleTogglePreparation = (checked) => {
+    if (checked) setShowReasonFor("preparation");
+    else releasePhases(["preparation"]);
+  };
 
+  const handleToggleProgression = (checked) => {
+    if (checked) setShowReasonFor("progression");
+    else releasePhases(["approval", "begin_transfer"]);
+  };
+
+  const handleConfirm = (reason, note) => {
+    if (showReasonFor === "preparation") createHoldRecords(["preparation"], reason, note);
+    else if (showReasonFor === "progression") createHoldRecords(["approval", "begin_transfer"], reason, note);
+    else if (showReasonFor === "everything") createHoldRecords(["preparation", "approval", "begin_transfer"], reason, note);
+  };
+
+  // Small button with optional red dot indicator
   return (
-    <Card>
-      <CardHeader className="bg-gray-50">
-        <span className="text-sm font-semibold text-gray-800">Hold Controls{entityLabel ? ` — ${entityLabel}` : ""}</span>
-      </CardHeader>
-      <CardBody className="space-y-4">
-        {showPreparation && (
-          <div>
-            <Toggle
-              checked={!!preparationHold}
-              onChange={(checked) => {
-                if (checked) {
-                  setShowReasonForm("preparation");
-                } else {
-                  handleReleaseHolds("preparation");
-                }
-              }}
-              label="Stop preparation"
-              description="Prevents new payouts from being created"
-              disabled={!canWrite}
-            />
-            {showReasonForm === "preparation" && (
-              <div className="mt-3 ml-11 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Select reason</label>
-                  <select
-                    value={selectedReason}
-                    onChange={(e) => setSelectedReason(e.target.value)}
-                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+          hasAnyHold
+            ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
+        }`}
+        title="Hold controls"
+      >
+        <Icons.Shield />
+        {hasAnyHold && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-red-500 text-white text-xs font-semibold">
+            {(prepHold ? 1 : 0) + (hasProgHold ? 1 : 0)}
+          </span>
+        )}
+      </button>
+
+      {/* Dropdown panel */}
+      {isOpen && (
+        <div
+          ref={panelRef}
+          className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-700">Hold Controls</span>
+            <button
+              onClick={() => { setIsOpen(false); setShowReasonFor(null); }}
+              className="text-gray-400 hover:text-gray-600"
+              title="Close"
+            >
+              <Icons.X />
+            </button>
+          </div>
+
+          <div className="px-4 py-4 space-y-4">
+            {showPreparation && (
+              <div>
+                <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "preparation" ? "opacity-40 pointer-events-none" : ""}`}>
+                  <button
+                    onClick={() => handleTogglePreparation(!prepHold)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${prepHold ? "bg-red-500" : "bg-gray-300"}`}
                   >
-                    <option value="">Choose a reason...</option>
-                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                  </select>
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prepHold ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <div>
+                    <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Stop preparation</span>
+                    <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
+                    {prepHold && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                        <p className="text-gray-600">{prepHold.reason}</p>
+                        <p className="text-gray-500 mt-0.5">{prepHold.createdBy} · {prepHold.createdAt}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
-                  <textarea
-                    value={selectedNote}
-                    onChange={(e) => setSelectedNote(e.target.value)}
-                    maxLength={300}
-                    rows={2}
-                    placeholder="Add context..."
-                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none"
-                  />
+                {showReasonFor === "preparation" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
+              </div>
+            )}
+
+            <div>
+              <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "progression" ? "opacity-40 pointer-events-none" : ""}`}>
+                <button
+                  onClick={() => handleToggleProgression(!hasProgHold)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${hasProgHold ? "bg-red-500" : "bg-gray-300"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${hasProgHold ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+                <div className="flex-1">
+                  <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Stop progression</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
+                  {hasProgHold && progHolds.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                      <p className="text-gray-600">{progHolds[0].reason}</p>
+                      <p className="text-gray-500 mt-0.5">{progHolds[0].createdBy} · {progHolds[0].createdAt}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="flex gap-2">
-                  <Button
-                    variant="solid"
-                    colorScheme="brand"
-                    size="sm"
-                    onClick={() => handleCreateHold("preparation")}
-                    disabled={!selectedReason || loading}
-                  >
-                    {loading ? "Placing..." : "Confirm"}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    colorScheme="neutral"
-                    size="sm"
-                    onClick={() => { setShowReasonForm(null); setSelectedReason(""); setSelectedNote(""); }}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                </div>
+              </div>
+              {showReasonFor === "progression" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
+            </div>
+
+            {level === "fleet" && !prepHold && !hasProgHold && (
+              <div className="pt-2 border-t border-gray-100">
+                {showReasonFor !== "everything" ? (
+                  <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowReasonFor("everything")} disabled={!canWrite}>Stop everything</Button>
+                ) : (
+                  <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />
+                )}
               </div>
             )}
           </div>
-        )}
-
-        <div>
-          <Toggle
-            checked={hasProgressionHold}
-            onChange={(checked) => {
-              if (checked) {
-                setShowReasonForm("progression");
-              } else {
-                handleReleaseHolds("approval");
-              }
-            }}
-            label="Stop progression"
-            description="Blocks approval and begin transfer"
-            disabled={!canWrite}
-          />
-          {hasProgressionHold && !showReasonForm && (
-            <div className="mt-2 ml-11 p-2 bg-red-50 rounded border border-red-100">
-              <p className="text-xs font-medium text-red-700">Reason: {progressionHolds[0]?.reason}</p>
-              <p className="text-xs text-red-600 mt-1">{progressionHolds[0]?.createdBy} · {progressionHolds[0]?.createdAt}</p>
-            </div>
-          )}
-          {showReasonForm === "progression" && (
-            <div className="mt-3 ml-11 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Select reason</label>
-                <select
-                  value={selectedReason}
-                  onChange={(e) => setSelectedReason(e.target.value)}
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
-                >
-                  <option value="">Choose a reason...</option>
-                  {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
-                <textarea
-                  value={selectedNote}
-                  onChange={(e) => setSelectedNote(e.target.value)}
-                  maxLength={300}
-                  rows={2}
-                  placeholder="Add context..."
-                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none"
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="solid"
-                  colorScheme="brand"
-                  size="sm"
-                  onClick={() => handleCreateHold("approval")}
-                  disabled={!selectedReason || loading}
-                >
-                  {loading ? "Placing..." : "Confirm"}
-                </Button>
-                <Button
-                  variant="outline"
-                  colorScheme="neutral"
-                  size="sm"
-                  onClick={() => { setShowReasonForm(null); setSelectedReason(""); setSelectedNote(""); }}
-                  disabled={loading}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          )}
         </div>
-
-        {level === "fleet" && (
-          <Button
-            variant="outline"
-            colorScheme="error"
-            size="sm"
-            leftIcon={<Icons.Ban />}
-            onClick={() => {
-              setLoading(true);
-              setTimeout(() => {
-                ["preparation", "approval", "begin_transfer"].forEach(phase => {
-                  onCreateHold({
-                    id: generateHoldId(),
-                    level: "fleet",
-                    entity: null,
-                    phase,
-                    trigger: "manual",
-                    reason: "Stop everything",
-                    note: "All operations halted",
-                    createdBy: "Sarah Chen (FinOps Administrator)",
-                    createdAt: nowTimestamp(),
-                    active: true
-                  });
-                });
-                setLoading(false);
-                addToast({ type: "error", title: "All operations stopped", message: "Fleet is completely halted." });
-              }, 800);
-            }}
-            disabled={!canWrite}
-          >
-            Stop everything
-          </Button>
-        )}
-      </CardBody>
-    </Card>
+      )}
+    </div>
   );
 }
 
@@ -868,7 +850,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      <HoldInheritanceBanners holdRecords={holdRecords || []} payoutId={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} />
+      <ActiveHoldBanners holdRecords={holdRecords || []} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
@@ -878,8 +860,11 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} amount={payout.amount} /></div>
-          {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
-          {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
+          <div className="flex items-center gap-2">
+            {!isTerminal && <HoldTogglesPanel level="payout" entity={payout.id} entityLabel={payout.id} holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />}
+            {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
+            {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
+          </div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
@@ -1375,13 +1360,12 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
-
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <ActiveHoldBanners holdRecords={holdRecords || []} level="fleet" entity={null} mid={null} merchantName={null} canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
+          <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
@@ -1441,16 +1425,13 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
-      <HoldInheritanceBanners holdRecords={holdRecords || []} payoutId={null} mid={mid} merchantName={merchantName} />
-
-      <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
-
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <ActiveHoldBanners holdRecords={holdRecords || []} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
+            <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
           </div>
         </CardHeader>
