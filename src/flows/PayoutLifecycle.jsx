@@ -125,11 +125,11 @@ export default function PayoutLifecycle() {
             </tr></thead>
             <tbody>{[
               ["1", "\u2014", "Ready for Review", "Prepare payout", "Auto", "Daily sweep creates payout when merchant balance > 0"],
-              ["2", "Ready for Review", "Ready for Transfer", "Approve", "Manual", "FinOps Admin reviews and approves"],
+              ["2", "Ready for Review", "Ready for Transfer", "Approve", "Manual", "FinOps Administrator reviews and approves"],
               ["3", "Ready for Review", "Completed", "Zero/neg balance", "Auto", "Debt deferred \u2014 no transfer needed"],
-              ["4", "Ready for Review", "Abandoned", "Abandon", "Manual", "FinOps Admin cancels before approval"],
+              ["4", "Ready for Review", "Abandoned", "Abandon", "Manual", "FinOps Administrator cancels before approval"],
               ["5", "Ready for Transfer", "Transferring", "Begin transfer", "Manual/Auto", "NPP transfer initiated"],
-              ["6", "Ready for Transfer", "Abandoned", "Abandon", "Manual", "FinOps Admin cancels before execution"],
+              ["6", "Ready for Transfer", "Abandoned", "Abandon", "Manual", "FinOps Administrator cancels before execution"],
               ["7", "Transferring", "Completed", "NPP success", "Auto", "Merchant bank confirms receipt"],
               ["8", "Transferring", "Failed (retryable)", "NPP transient failure", "Auto", "Auto-transitions to Ready for Transfer"],
               ["9", "Transferring", "Failed (non-retryable)", "NPP persistent failure", "Auto", "Manual intervention required"],

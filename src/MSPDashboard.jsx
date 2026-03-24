@@ -7,6 +7,7 @@ import DTEtoPayoutWireframes from "./flows/DTEtoPayoutWireframes";
 import PayoutDataDictionary from "./flows/PayoutDataDictionary";
 import UXFlowDiagrams from "./flows/UXFlowDiagrams";
 import PayoutProgressionControls from "./flows/PayoutProgressionControls";
+import AuditLogsReference from "./flows/AuditLogsReference";
 
 // ─── Icon Components ───
 const Icons = {
@@ -94,11 +95,11 @@ const PAYOUT_FILTER_STEPS = [
   { key: "Abandoned", label: "Abandoned", color: "gray" },
 ];
 
-function PayoutProgressionFilter({ active, onChange, payouts }) {
+function PayoutProgressionFilter({ active, onChange, payouts, holdRecords }) {
   const counts = {};
   payouts.forEach((p) => {
-    if (p.hold) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
-    counts[p.status] = (counts[p.status] || 0) + 1;
+    if (holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid)) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
+    else { counts[p.status] = (counts[p.status] || 0) + 1; }
   });
   const total = payouts.length;
 
@@ -206,93 +207,298 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
-  const [reason, setReason] = useState("");
-  const [note, setNote] = useState("");
-  const [loading, setLoading] = useState(false);
-  const handleConfirm = () => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(reason, note); onClose(); setReason(""); setNote(""); }, 1000);
-  };
-  if (!payout) return null;
+function HoldInheritanceBanners({ holdRecords, payoutId, mid, merchantName }) {
+  // Show read-only banners for holds from higher levels (fleet and merchant)
+  const fleetHolds = holdRecords.filter(h => h.active && h.level === "fleet");
+  const merchantHolds = holdRecords.filter(h => h.active && h.level === "merchant" && h.entity === mid);
+
   return (
-    <Modal open={open} onClose={onClose} title="Place hold on payout">
-      <div className="space-y-5">
-        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Admin user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
-            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
-          ))}
+    <>
+      {fleetHolds.map(h => (
+        <div key={h.id} className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+          <div className="mt-0.5"><Icons.Shield /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span>
+              <span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span>
+            </div>
+            <p className="text-sm text-red-700">{h.reason}</p>
+            <p className="text-xs text-red-500 mt-1">Placed by {h.createdBy} · {h.createdAt}{h.note ? ` · "${h.note}"` : ""}</p>
+            <p className="text-xs text-gray-500 mt-2">This hold must be released from the Fleet Payouts page.</p>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-            <option value="">Select a reason...</option>
-            <option>Pending merchant verification</option>
-            <option>Suspicious activity review</option>
-            <option>Bank details under review</option>
-            <option>Regulatory hold</option>
-            <option>Internal audit</option>
-            <option>Other</option>
-          </select>
+      ))}
+      {merchantHolds.map(h => (
+        <div key={h.id} className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
+          <div className="mt-0.5"><Icons.Shield /></div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-bold text-red-800">Payouts for {merchantName} are on hold</span>
+              <span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Merchant-level</span>
+            </div>
+            <p className="text-sm text-red-700">{h.reason}</p>
+            <p className="text-xs text-red-500 mt-1">Placed by {h.createdBy} · {h.createdAt}{h.note ? ` · "${h.note}"` : ""}</p>
+            <p className="text-xs text-gray-500 mt-2">This hold must be released from the Merchant Payouts page.</p>
+          </div>
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
-        </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : "Place hold"}</Button>
-        </div>
-      </div>
-    </Modal>
+      ))}
+    </>
   );
 }
 
-function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
-  // scope: "fleet" or "merchant"
-  const [reason, setReason] = useState("");
-  const [note, setNote] = useState("");
+function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHold, onReleaseHold, canWrite, showPreparation }) {
+  const { addToast } = useToast();
+  const [showReasonForm, setShowReasonForm] = useState(null); // "preparation" or "progression"
+  const [selectedReason, setSelectedReason] = useState("");
+  const [selectedNote, setSelectedNote] = useState("");
   const [loading, setLoading] = useState(false);
-  const isFleet = scope === "fleet";
-  const dialogTitle = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
-  const alertTitle = isFleet ? "All fleet payouts will be placed on hold" : `All payouts for ${merchantName || "this merchant"} will be placed on hold`;
-  const alertBody = isFleet ? "No payouts across this fleet will be transferred until the hold is released. Payouts already in Transferring status will not be affected." : `No payouts for ${merchantName || "this merchant"} will be transferred until the hold is released. Payouts already in Transferring status will not be affected.`;
-  const confirmLabel = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
-  const handleConfirm = () => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (FinOps Admin)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
+
+  const reasonOptions = [
+    "Pending merchant verification",
+    "Suspicious activity review",
+    "Bank details under review",
+    "Regulatory hold",
+    "Internal audit",
+    level === "fleet" ? "Suspected fraud across merchants" : "Suspected fraud",
+    level === "fleet" ? "System maintenance" : null,
+    "Other"
+  ].filter(Boolean);
+
+  const getPreparationHold = () => {
+    return holdRecords.find(h => h.active && h.level === level && h.phase === "preparation" && (level === "fleet" || h.entity === entity));
   };
+
+  const getProgressionHolds = () => {
+    return holdRecords.filter(h => h.active && h.phase === ("approval" || "begin_transfer") && h.level === level && (level === "fleet" || h.entity === entity));
+  };
+
+  const handleCreateHold = (phase) => {
+    setLoading(true);
+    setTimeout(() => {
+      const isProgression = phase === "approval" || phase === "begin_transfer";
+      if (isProgression) {
+        // Create both approval and begin_transfer holds
+        const phases = ["approval", "begin_transfer"];
+        phases.forEach(p => {
+          onCreateHold({
+            id: generateHoldId(),
+            level,
+            entity: level === "fleet" ? null : entity,
+            phase: p,
+            trigger: "manual",
+            reason: selectedReason,
+            note: selectedNote || null,
+            createdBy: "Sarah Chen (FinOps Administrator)",
+            createdAt: nowTimestamp(),
+            active: true
+          });
+        });
+        addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "this entity"} — ${selectedReason}` });
+      } else {
+        // Create preparation hold
+        onCreateHold({
+          id: generateHoldId(),
+          level,
+          entity: level === "fleet" ? null : entity,
+          phase: "preparation",
+          trigger: "manual",
+          reason: selectedReason,
+          note: selectedNote || null,
+          createdBy: "Sarah Chen (FinOps Administrator)",
+          createdAt: nowTimestamp(),
+          active: true
+        });
+        addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "this entity"} — ${selectedReason}` });
+      }
+      setLoading(false);
+      setShowReasonForm(null);
+      setSelectedReason("");
+      setSelectedNote("");
+    }, 800);
+  };
+
+  const handleReleaseHolds = (phase) => {
+    const heldRecords = holdRecords.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity) && (phase === "all" || h.phase === phase));
+    heldRecords.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "this entity"} has been released.` });
+  };
+
+  const preparationHold = showPreparation ? getPreparationHold() : null;
+  const progressionHolds = getProgressionHolds();
+  const hasProgressionHold = progressionHolds.length > 0;
+
   return (
-    <Modal open={open} onClose={onClose} title={dialogTitle}>
-      <div className="space-y-5">
-        <Alert type="warning" title={alertTitle}>{alertBody}</Alert>
+    <Card>
+      <CardHeader className="bg-gray-50">
+        <span className="text-sm font-semibold text-gray-800">Hold Controls{entityLabel ? ` — ${entityLabel}` : ""}</span>
+      </CardHeader>
+      <CardBody className="space-y-4">
+        {showPreparation && (
+          <div>
+            <Toggle
+              checked={!!preparationHold}
+              onChange={(checked) => {
+                if (checked) {
+                  setShowReasonForm("preparation");
+                } else {
+                  handleReleaseHolds("preparation");
+                }
+              }}
+              label="Stop preparation"
+              description="Prevents new payouts from being created"
+              disabled={!canWrite}
+            />
+            {showReasonForm === "preparation" && (
+              <div className="mt-3 ml-11 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Select reason</label>
+                  <select
+                    value={selectedReason}
+                    onChange={(e) => setSelectedReason(e.target.value)}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+                  >
+                    <option value="">Choose a reason...</option>
+                    {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
+                  <textarea
+                    value={selectedNote}
+                    onChange={(e) => setSelectedNote(e.target.value)}
+                    maxLength={300}
+                    rows={2}
+                    placeholder="Add context..."
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="solid"
+                    colorScheme="brand"
+                    size="sm"
+                    onClick={() => handleCreateHold("preparation")}
+                    disabled={!selectedReason || loading}
+                  >
+                    {loading ? "Placing..." : "Confirm"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    colorScheme="neutral"
+                    size="sm"
+                    onClick={() => { setShowReasonForm(null); setSelectedReason(""); setSelectedNote(""); }}
+                    disabled={loading}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-            <option value="">Select a reason...</option>
-            <option>Pending merchant verification</option>
-            <option>Suspicious activity review</option>
-            <option>Bank details under review</option>
-            <option>Regulatory hold</option>
-            <option>Internal audit</option>
-            <option>Suspected fraud across merchants</option>
-            <option>System maintenance</option>
-            <option>Other</option>
-          </select>
+          <Toggle
+            checked={hasProgressionHold}
+            onChange={(checked) => {
+              if (checked) {
+                setShowReasonForm("progression");
+              } else {
+                handleReleaseHolds("approval");
+              }
+            }}
+            label="Stop progression"
+            description="Blocks approval and begin transfer"
+            disabled={!canWrite}
+          />
+          {hasProgressionHold && !showReasonForm && (
+            <div className="mt-2 ml-11 p-2 bg-red-50 rounded border border-red-100">
+              <p className="text-xs font-medium text-red-700">Reason: {progressionHolds[0]?.reason}</p>
+              <p className="text-xs text-red-600 mt-1">{progressionHolds[0]?.createdBy} · {progressionHolds[0]?.createdAt}</p>
+            </div>
+          )}
+          {showReasonForm === "progression" && (
+            <div className="mt-3 ml-11 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Select reason</label>
+                <select
+                  value={selectedReason}
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400"
+                >
+                  <option value="">Choose a reason...</option>
+                  {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
+                <textarea
+                  value={selectedNote}
+                  onChange={(e) => setSelectedNote(e.target.value)}
+                  maxLength={300}
+                  rows={2}
+                  placeholder="Add context..."
+                  className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="solid"
+                  colorScheme="brand"
+                  size="sm"
+                  onClick={() => handleCreateHold("approval")}
+                  disabled={!selectedReason || loading}
+                >
+                  {loading ? "Placing..." : "Confirm"}
+                </Button>
+                <Button
+                  variant="outline"
+                  colorScheme="neutral"
+                  size="sm"
+                  onClick={() => { setShowReasonForm(null); setSelectedReason(""); setSelectedNote(""); }}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
-        </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : confirmLabel}</Button>
-        </div>
-      </div>
-    </Modal>
+
+        {level === "fleet" && (
+          <Button
+            variant="outline"
+            colorScheme="error"
+            size="sm"
+            leftIcon={<Icons.Ban />}
+            onClick={() => {
+              setLoading(true);
+              setTimeout(() => {
+                ["preparation", "approval", "begin_transfer"].forEach(phase => {
+                  onCreateHold({
+                    id: generateHoldId(),
+                    level: "fleet",
+                    entity: null,
+                    phase,
+                    trigger: "manual",
+                    reason: "Stop everything",
+                    note: "All operations halted",
+                    createdBy: "Sarah Chen (FinOps Administrator)",
+                    createdAt: nowTimestamp(),
+                    active: true
+                  });
+                });
+                setLoading(false);
+                addToast({ type: "error", title: "All operations stopped", message: "Fleet is completely halted." });
+              }, 800);
+            }}
+            disabled={!canWrite}
+          >
+            Stop everything
+          </Button>
+        )}
+      </CardBody>
+    </Card>
   );
 }
 
@@ -344,23 +550,30 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, hold, amount }) {
+function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid }) {
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   const numAmt = amount ? parseFloat(String(amount).replace(/[^0-9.\-]/g, "")) : null;
   const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
+
+  // Check if progression is blocked using holdRecords, fallback to hold prop
+  let isHeld = hold;
+  if (holdRecords && payoutId && mid) {
+    isHeld = isProgressionBlocked(holdRecords, payoutId, mid);
+  }
+
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {hold && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
+      {isHeld && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
       {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
 }
 
 // ─── Global role context (simulated) ───
-const ROLES = { FINOPS_T1: "FinOps Admin", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
+const ROLES = { FINOPS_T1: "FinOps Administrator", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
 const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
-const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
+const getStatusOrder = (payout) => (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA — Expanded
@@ -383,13 +596,68 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", status: "Completed" },
   // 20 Feb — failures and issues
-
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed" },
+  { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", status: "Ready for Transfer" },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed" },
+  // 19 Feb
+  { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", status: "Abandoned" },
+  { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", status: "Completed" },
   // 18 Feb
   { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", status: "Completed" },
   { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", status: "Completed" },
   { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", status: "Completed" },
   // 17 Feb
+  { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", status: "Abandoned" },
+];
 
+// ─── HOLD SYSTEM HELPERS ───
+let holdIdCounter = 100;
+const generateHoldId = () => `hold-${++holdIdCounter}`;
+const nowTimestamp = () => new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+
+function getActiveHoldsForAction(holdRecords, action, payoutId, mid) {
+  // action: "preparation" | "approval" | "begin_transfer"
+  // Returns all active hold records that block this action for this payout
+  return holdRecords.filter(h => {
+    if (!h.active) return false;
+    if (h.phase !== action) return false;
+    if (h.level === "fleet") return true;
+    if (h.level === "merchant" && h.entity === mid) return true;
+    if (h.level === "payout" && h.entity === payoutId) return true;
+    return false;
+  });
+}
+
+function isActionBlocked(holdRecords, action, payoutId, mid) {
+  return getActiveHoldsForAction(holdRecords, action, payoutId, mid).length > 0;
+}
+
+function getHoldsForEntity(holdRecords, level, entity) {
+  return holdRecords.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+}
+
+function isPreparationBlocked(holdRecords, mid) {
+  // Check fleet-level OR merchant-level preparation holds
+  return holdRecords.some(h => h.active && h.phase === "preparation" && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
+}
+
+function isProgressionBlocked(holdRecords, payoutId, mid) {
+  // Check if either approval or begin_transfer is blocked at any level
+  return isActionBlocked(holdRecords, "approval", payoutId, mid) || isActionBlocked(holdRecords, "begin_transfer", payoutId, mid);
+}
+
+function getEffectiveHolds(holdRecords, payoutId, mid) {
+  // Get all active holds that affect a specific payout, grouped by source
+  const fleet = holdRecords.filter(h => h.active && h.level === "fleet");
+  const merchant = holdRecords.filter(h => h.active && h.level === "merchant" && h.entity === mid);
+  const payout = holdRecords.filter(h => h.active && h.level === "payout" && h.entity === payoutId);
+  return { fleet, merchant, payout, any: fleet.length + merchant.length + payout.length > 0 };
+}
+
+// ─── INITIAL HOLD RECORDS ───
+const initialHoldRecords = [
+  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
 ];
 
 // ─── Per-payout audit logs ───
@@ -411,27 +679,27 @@ const auditLogs = {
   "PO-2026-0223-001": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
   ],
   "PO-2026-0223-002": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
   ],
   // Transferring — in progress
   "PO-2026-0223-003": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
     { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
   ],
   // Completed — full lifecycle
   "PO-2026-0222-001": [
     { ts: "22 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
     { ts: "22 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
     { ts: "22 Feb 2026, 10:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
     { ts: "22 Feb 2026, 1:45 PM", version: 6, action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
     { ts: "22 Feb 2026, 1:45 PM", version: 7, action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
@@ -439,8 +707,8 @@ const auditLogs = {
   "PO-2026-0221-001": [
     { ts: "21 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
     { ts: "21 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
-    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "2 transfers initiated (split by account)." },
+    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
+    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "2 transfers initiated (split by account)." },
     { ts: "21 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
     { ts: "21 Feb 2026, 2:30 PM", version: 6, action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
     { ts: "21 Feb 2026, 2:35 PM", version: 7, action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
@@ -450,38 +718,41 @@ const auditLogs = {
   "PO-2026-0220-001": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Admin)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
+    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
     { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Payout moved to Failed." },
     { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
   ],
   "PO-2026-0220-003": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Admin)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Payout returned to Ready for Transfer for retry." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003." },
+    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
+    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure detected. Payout automatically moved back to Ready for Transfer. Transfer ID: TRF-2026-0220-003." },
+    { ts: "20 Feb 2026, 1:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer re-initiated to BSB 013-140 / Acc 99887766." },
+    { ts: "20 Feb 2026, 1:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
+    { ts: "20 Feb 2026, 1:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003b. Manual resubmission required." },
   ],
   // On Hold
   "PO-2026-0220-002": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Admin)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Admin)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Administrator)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
     { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
   ],
   // Abandoned
   "PO-2026-0219-001": [
     { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
     { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Admin)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
+    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Administrator)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
     { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
   "PO-2026-0217-001": [
     { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
     { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Admin)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
+    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Administrator)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
     { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
   ],
 };
@@ -492,71 +763,23 @@ const defaultAuditLog = (payout) => [
   { ts: payout.date + ", 6:01 AM", version: 2, action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
 ];
 
-// ─── Per-payout transfers ───
-const transfersByPayout = {
-  "PO-2026-0222-001": [
-    { id: "TRF-2026-0222-001", date: "22 Feb 2026, 10:00 AM", amount: "$3,617.80", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0222-002": [
-    { id: "TRF-2026-0222-002", date: "22 Feb 2026, 10:15 AM", amount: "$8,990.25", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
-  ],
-  "PO-2026-0222-003": [
-    { id: "TRF-2026-0222-003", date: "22 Feb 2026, 10:20 AM", amount: "$2,640.15", status: "Completed", bsb: "013-140", account: "99887766", failureReason: null },
-  ],
-  "PO-2026-0221-001": [
-    { id: "TRF-2026-0221-001", date: "21 Feb 2026, 11:00 AM", amount: "$10,204.60", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
-    { id: "TRF-2026-0221-002", date: "21 Feb 2026, 11:00 AM", amount: "$5,000.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
-  ],
-  "PO-2026-0221-002": [
-    { id: "TRF-2026-0221-003", date: "21 Feb 2026, 11:30 AM", amount: "$2,945.30", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0221-003": [
-    { id: "TRF-2026-0221-004", date: "21 Feb 2026, 12:00 PM", amount: "$4,310.75", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
-  ],
-  "PO-2026-0223-003": [
-    { id: "TRF-2026-0223-001", date: "23 Feb 2026, 11:00 AM", amount: "$7,215.60", status: "Pending", bsb: "084-004", account: "56781234", failureReason: null },
-  ],
-  "PO-2026-0220-001": [
-    { id: "TRF-2026-0220-001", date: "20 Feb 2026, 11:15 AM", amount: "$6,112.75", status: "Failed", bsb: "062-999", account: "87654321", failureReason: "Invalid BSB — bank rejected the DE credit" },
-  ],
-  "PO-2026-0220-003": [
-    { id: "TRF-2026-0220-003", date: "20 Feb 2026, 12:30 PM", amount: "$1,925.40", status: "Failed", bsb: "013-140", account: "99887766", failureReason: "Timeout — Cuscal gateway did not respond within SLA" },
-  ],
-  "PO-2026-0219-002": [
-    { id: "TRF-2026-0219-001", date: "19 Feb 2026, 11:00 AM", amount: "$3,780.50", status: "Completed", bsb: "124-001", account: "33221100", failureReason: null },
-  ],
-  "PO-2026-0218-001": [
-    { id: "TRF-2026-0218-001", date: "18 Feb 2026, 10:00 AM", amount: "$10,000.00", status: "Completed", bsb: "033-001", account: "44556677", failureReason: null },
-    { id: "TRF-2026-0218-002", date: "18 Feb 2026, 10:00 AM", amount: "$8,640.00", status: "Completed", bsb: "033-001", account: "44556688", failureReason: null },
-    { id: "TRF-2026-0218-003", date: "18 Feb 2026, 10:00 AM", amount: "$4,000.00", status: "Completed", bsb: "033-002", account: "44556699", failureReason: null },
-  ],
-  "PO-2026-0218-002": [
-    { id: "TRF-2026-0218-004", date: "18 Feb 2026, 10:30 AM", amount: "$4,190.25", status: "Completed", bsb: "062-000", account: "12345678", failureReason: null },
-  ],
-  "PO-2026-0218-003": [
-    { id: "TRF-2026-0218-005", date: "18 Feb 2026, 10:30 AM", amount: "$6,000.00", status: "Completed", bsb: "084-004", account: "56781234", failureReason: null },
-    { id: "TRF-2026-0218-006", date: "18 Feb 2026, 10:30 AM", amount: "$5,405.80", status: "Completed", bsb: "084-004", account: "56781235", failureReason: null },
-  ],
-};
 
 // ─── Adjustments — expanded ───
 // initiatedBy: FinOps username (manual) | "System" (auto-generated)
-// entryType: null (default) | "Debit deferral" (system negative) | "Debit rollover" (system balancing positive)
-// System-initiated negative amounts always come in pairs: Debit deferral (negative) + Debit rollover (positive)
-// Adjustment statuses: "Pending Approval" (manual only), "Approved", "Rejected"
-// System-initiated adjustments are auto-approved. Manual adjustments require a 2nd user to approve.
+// entryType: null (default) | "Debt deferral" (system negative) | "Debt rollover" (system balancing positive)
+// System-initiated negative amounts always come in pairs: Debt deferral (negative) + Debt rollover (positive)
 const mockAdjustments = [
-  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", requestedSettlementDate: "28 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", status: "Pending Approval", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
-  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", status: "Approved", approvedBy: "Tom Wright", approvedAt: "23 Feb 2026, 2:15 PM", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
-  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debit deferral", payoutId: "PO-2026-0223-002", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
-  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0223-002", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
-  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debit deferral", payoutId: "PO-2026-0222-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
-  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0222-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
-  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", requestedSettlementDate: "24 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", status: "Rejected", rejectedBy: "Sarah Chen", rejectedAt: "22 Feb 2026, 3:00 PM", rejectionReason: "Investigation found settlement amounts were correct — merchant miscounted transactions.", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
-  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", status: "Approved", approvedBy: "Tom Wright", approvedAt: "21 Feb 2026, 11:30 AM", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
-  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debit deferral", payoutId: "PO-2026-0220-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
-  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debit rollover", payoutId: "PO-2026-0220-001", status: "Approved", approvedBy: "System", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
-  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", status: "Approved", approvedBy: "Sarah Chen", approvedAt: "18 Feb 2026, 11:00 AM", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
+  { id: "ADJ-2026-0224-001", date: "24 Feb 2026", requestedSettlementDate: "28 Feb 2026", amount: "$350.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0224-001", internalNote: "Chargeback CB-88210 was resolved in merchant's favour. Returning deducted amount." },
+  { id: "ADJ-2026-0223-001", date: "23 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$125.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0223-001", internalNote: "Customer complained about delayed settlement on 3 transactions. Approved by ops manager." },
+  { id: "ADJ-2026-0223-002a", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "-$82.30", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002b", internalNote: "Visa scheme fee rebate for Q4 2025 applied automatically. Ref: VSR-2026-Q4-0012." },
+  { id: "ADJ-2026-0223-002b", date: "23 Feb 2026", requestedSettlementDate: "23 Feb 2026", amount: "$82.30", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0223-002", linkedAdjId: "ADJ-2026-0223-002a", internalNote: "Balancing entry for ADJ-2026-0223-002a. Visa scheme fee rebate rollover." },
+  { id: "ADJ-2026-0222-001a", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "-$45.50", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001b", internalNote: "Surcharge fee was incorrectly applied at 1.5% instead of 1.2% on 6 transactions." },
+  { id: "ADJ-2026-0222-001b", date: "22 Feb 2026", requestedSettlementDate: "22 Feb 2026", amount: "$45.50", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0222-001", linkedAdjId: "ADJ-2026-0222-001a", internalNote: "Balancing entry for ADJ-2026-0222-001a. Surcharge fee correction rollover." },
+  { id: "ADJ-2026-0222-002", date: "22 Feb 2026", requestedSettlementDate: "24 Feb 2026", amount: "$500.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0222-002", internalNote: "Merchant claimed $500 missing from settlement. Investigation found amounts correct — merchant miscounted transactions." },
+  { id: "ADJ-2026-0221-001", date: "21 Feb 2026", requestedSettlementDate: "25 Feb 2026", amount: "$200.00", initiatedBy: "Sarah Chen", entryType: null, payoutId: "PO-2026-0221-002", internalNote: "Part of Feb 2026 onboarding promotion. Reference: PROMO-FEB26-COFFEE." },
+  { id: "ADJ-2026-0220-001a", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "-$1,200.00", initiatedBy: "System", entryType: "Debt deferral", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001b", internalNote: "Chargeback CB-77104 — cardholder dispute for unauthorised transaction. Deducted from merchant payout." },
+  { id: "ADJ-2026-0220-001b", date: "20 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$1,200.00", initiatedBy: "System", entryType: "Debt rollover", payoutId: "PO-2026-0220-001", linkedAdjId: "ADJ-2026-0220-001a", internalNote: "Balancing entry for ADJ-2026-0220-001a. Chargeback recovery rollover." },
+  { id: "ADJ-2026-0218-001", date: "18 Feb 2026", requestedSettlementDate: "20 Feb 2026", amount: "$75.00", initiatedBy: "Tom Wright", entryType: null, payoutId: "PO-2026-0218-001", internalNote: "Terminal rental fee was double-charged in January billing cycle." },
 ];
 
 // ─── Transactions — expanded ───
@@ -586,7 +809,7 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName, fromFleet }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
@@ -594,46 +817,30 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   const isAbandoned = payout.status === "Abandoned";
   const isTerminal = isCompleted || isAbandoned;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
-  const storedTransfers = transfersByPayout[payout.id] || [];
-  // Auto-generate a pending transfer when status is Transferring/Completed but no transfer records exist
-  const transfers = storedTransfers.length > 0 ? storedTransfers : (
-    ["Transferring", "Completed"].includes(payout.status)
-      ? [{ id: `TRF-${payout.id.replace("PO-", "")}`, date: payout.createdAt || payout.date, amount: payout.amount, status: payout.status === "Completed" ? "Completed" : "Pending", bsb: "062-000", account: "••••5678", failureReason: null }]
-      : []
-  );
-  const failedTransfer = transfers.find(t => t.status === "Failed");
 
-  // Determine effective hold state — fleet overrides merchant overrides payout-level
-  const effectiveHoldScope = !isTerminal && fleetHold ? "fleet" : !isTerminal && merchantHold ? "merchant" : payout.hold ? "payout" : null;
-  const isHeldByHigherScope = effectiveHoldScope === "fleet" || effectiveHoldScope === "merchant";
+  // Get effective holds for this payout
+  const effectiveHolds = getEffectiveHolds(holdRecords || [], payout.id, payout.mid);
+  const progressionBlocked = isProgressionBlocked(holdRecords || [], payout.id, payout.mid);
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
-  const [showHold, setShowHold] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
   // Build actions based on status + hold flag (including fleet/merchant holds)
   const buildActions = () => {
     // Terminal states have no actions
     if (isTerminal) return [];
-    // If held by a higher scope (fleet or merchant), no payout-level actions — hold is managed at a higher level
-    if (isHeldByHigherScope) return [
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ];
-    // If payout is individually on hold, show Release Hold + Abandon regardless of underlying status
-    if (payout.hold) return [
-      { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { hold: false }); } },
+    // If progression is blocked, only show Abandon
+    if (progressionBlocked) return [
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
     ];
     const map = {
       "Ready for Review": [
         { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
-        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Ready for Transfer": [
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
-        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
@@ -649,72 +856,35 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
     onStatusChange(payout.id, "Ready for Transfer");
   };
-  const handleHold = (reason, note) => {
-    addToast({ type: "warning", title: "Hold placed", message: `${payout.id} — ${reason}` });
-    onStatusChange(payout.id, payout.status, { hold: true });
-  };
   const handleAbandon = (reason) => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
   };
 
-  const merchantFacilityTabs = ["Overview", "Terminals", "Transactions", "Payouts", "Adjustments", "Disputes"];
-
-  const payoutContent = (
-    <>
+  return (
+    <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
-      <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
-      {!fromFleet && <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>}
+      <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      {fromFleet && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-200">
-          <Icons.Info />
-          <span className="text-sm text-indigo-800">You're viewing this payout from the fleet-level payouts table.</span>
-          <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
-        </div>
-      )}
+      <HoldInheritanceBanners holdRecords={holdRecords || []} payoutId={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} />
 
-      {effectiveHoldScope === "fleet" && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div>
-            <p className="text-sm text-red-700">{fleetHold.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the fleet-level hold is released from the Payouts page.</p>
-          </div>
-        </div>
-      )}
-      {effectiveHoldScope === "merchant" && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || payout.merchantName} are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Merchant-level</span></div>
-            <p className="text-sm text-red-700">{merchantHold.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the merchant-level hold is released.</p>
-          </div>
-        </div>
-      )}
-
-      {isFailed && (<Alert type="error" title="Transfer failed">{failedTransfer ? failedTransfer.failureReason + "." : "Transfer details unavailable. Check audit log for more information."}</Alert>)}
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Admin user to perform actions.</span></div>)}
+      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Administrator user to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} amount={payout.amount} /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} amount={payout.amount} /></div>
           {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
           {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Transfer count", payout.transferCount], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold || isHeldByHigherScope} amount={payout.amount} />], ...(isHeldByHigherScope ? [["Hold scope", <span className="text-xs font-medium bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{effectiveHoldScope === "fleet" ? "Fleet-level hold" : `Merchant-level hold — ${merchantName || payout.merchantName}`}</span>]] : [])].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} />]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -722,39 +892,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
       </Card>
 
       <Card><CardHeader><span className="text-lg font-semibold text-gray-800">Audit log</span></CardHeader><Divider /><CardBody className="pt-4"><AuditTimeline entries={auditLog} /></CardBody></Card>
-    </>
-  );
-
-  if (fromFleet) {
-    return (
-      <div className="flex flex-col h-full">
-        <div className="bg-white border-b border-gray-200">
-          <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100">
-            <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> <span>All payouts</span></button>
-            <span className="text-gray-300 mx-1">|</span>
-            <Icons.Store />
-            <span className="text-sm font-medium text-indigo-600">POS Pay Pty Ltd</span>
-            <Icons.ChevronRight />
-            <span className="text-sm font-medium text-gray-800">{payout.merchantName}</span>
-            <span className="ml-1"><Badge colorScheme="neutral" size="md">{payout.mid}</Badge></span>
-            <span className="ml-1"><Badge colorScheme="success" size="md">Active</Badge></span>
-          </div>
-          <div className="px-4 py-1 flex gap-1">
-            {merchantFacilityTabs.map((tab) => (
-              <span key={tab} className={`px-4 py-2 text-sm font-medium rounded-lg ${tab === "Payouts" ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98]"}`}>{tab}</span>
-            ))}
-          </div>
-        </div>
-        <div className="flex-1 overflow-y-auto bg-[#F9FAFB] p-6 space-y-5">
-          {payoutContent}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-6 space-y-5">
-      {payoutContent}
     </div>
   );
 }
@@ -762,59 +899,68 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
 // ═══════════════════════════════════════════════════════════
 // PREPARE PAYOUT DIALOG
 // ═══════════════════════════════════════════════════════════
-// Mock unassigned merchant ledger entries for the prepare payout flow
+// Mock unsettled DTE files — one file per merchant per date.
+// If a payout is not prepared, DTE files accumulate across dates.
 const mockUnassignedMLEs = [
-  { id: "MLE-40001", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 142.50, card: "MC •••4829" },
-  { id: "MLE-40002", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 89.95, card: "Visa •••1677" },
-  { id: "MLE-40003", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Refund", amount: -45.00, card: "Visa •••8844" },
-  { id: "MLE-40004", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 312.80, card: "MC •••5512" },
-  { id: "MLE-40005", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 487.50, card: "Visa •••9021" },
-  { id: "MLE-40006", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 1245.00, card: "Visa •••3301" },
-  { id: "MLE-40007", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 899.50, card: "MC •••7788" },
-  { id: "MLE-40008", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Refund", amount: -120.00, card: "Visa •••3301" },
-  { id: "MLE-40009", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 567.25, card: "MC •••6633" },
-  { id: "MLE-40010", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 67.20, card: "MC •••7788" },
-  { id: "MLE-40011", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 234.80, card: "Visa •••2200" },
-  { id: "MLE-40012", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 158.40, card: "MC •••4411" },
-  { id: "MLE-40013", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", type: "Purchase", amount: 76.30, card: "MC •••2109" },
-  { id: "MLE-40014", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 520.00, card: "Visa •••8102" },
-  { id: "MLE-40015", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Purchase", amount: 189.75, card: "MC •••5544" },
-  { id: "MLE-40016", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", type: "Refund", amount: -35.00, card: "Visa •••8102" },
-  { id: "MLE-40017", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 342.90, card: "Visa •••7711" },
-  { id: "MLE-40018", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", type: "Purchase", amount: 128.60, card: "MC •••9900" },
-  { id: "MLE-40019", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", type: "Purchase", amount: 445.10, card: "Visa •••0044" },
-  { id: "MLE-40020", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", type: "Purchase", amount: 2150.00, card: "MC •••1122" },
+  // 25 Feb — today's DTE files (just ingested)
+  { id: "DTE-20260225-12345", date: "2026-02-25", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: 987.75, txnCount: 14 },
+  { id: "DTE-20260225-12346", date: "2026-02-25", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2591.75, txnCount: 8 },
+  { id: "DTE-20260225-12347", date: "2026-02-25", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: 460.40, txnCount: 6 },
+  { id: "DTE-20260225-12348", date: "2026-02-25", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: 674.75, txnCount: 5 },
+  { id: "DTE-20260225-12349", date: "2026-02-25", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: 471.50, txnCount: 3 },
+  // 24 Feb — not yet prepared, accumulating
+  { id: "DTE-20260224-12345", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: 1064.05, txnCount: 18 },
+  { id: "DTE-20260224-12348", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: 674.75, txnCount: 7 },
+  { id: "DTE-20260224-12349", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: 342.90, txnCount: 4 },
+  // 23 Feb — older unprepared DTE files (accumulated)
+  { id: "DTE-20260223-12347", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: 445.10, txnCount: 5 },
+  { id: "DTE-20260223-12346", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2150.00, txnCount: 6 },
 ];
 
-function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, preselectedMid }) {
+function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
   const allMLEs = mlePool || mockUnassignedMLEs;
-  const [step, setStep] = useState(1); // 1=parameters, 2=confirm
-  const [fromDate, setFromDate] = useState("2026-02-24");
-  const [toDate, setToDate] = useState("2026-02-25");
-  const [selectedMid, setSelectedMid] = useState(preselectedMid || "");
-  const [confirmed, setConfirmed] = useState(false);
+  const [settlementDate, setSettlementDate] = useState("");
+  const [selectedMids, setSelectedMids] = useState(new Set());
   const [creating, setCreating] = useState(false);
   const { addToast } = useToast();
 
-  // Get unique MIDs for the optional filter
-  const availableMids = [...new Set(allMLEs.map(m => m.mid))].sort();
+  // Filter DTE files by date: on or before selected date, or all if empty
+  const todayISO = new Date().toISOString().split("T")[0];
+  const cutoffDate = settlementDate || todayISO;
+  const filteredDTEs = allMLEs.filter((dte) => dte.date <= cutoffDate);
 
-  // Filter MLEs by selected date range + optional MID
-  const filteredMLEs = allMLEs.filter((mle) => mle.date >= fromDate && mle.date <= toDate && (!selectedMid || mle.mid === selectedMid));
-
-  // Group by merchant
+  // Group by merchant — one payout per merchant, accumulating DTE files across dates
   const merchantGroups = {};
-  filteredMLEs.forEach((mle) => {
-    if (!merchantGroups[mle.mid]) merchantGroups[mle.mid] = { merchant: mle.merchant, mid: mle.mid, mles: [], total: 0 };
-    merchantGroups[mle.mid].mles.push(mle);
-    merchantGroups[mle.mid].total += mle.amount;
+  filteredDTEs.forEach((dte) => {
+    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], total: 0, txnCount: 0 };
+    merchantGroups[dte.mid].dteFiles.push(dte);
+    merchantGroups[dte.mid].total += dte.amount;
+    merchantGroups[dte.mid].txnCount += dte.txnCount || 0;
   });
-  const groups = Object.values(merchantGroups);
+  const allGroups = Object.values(merchantGroups);
+
+  // Only create payouts for selected merchants
+  const selectedGroups = allGroups.filter((g) => selectedMids.has(g.mid));
+
+  // When date changes, auto-select all available merchants
+  useEffect(() => {
+    setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+  }, [settlementDate, filteredDTEs.length]);
 
   // Reset on close/open
   useEffect(() => {
-    if (open) { setStep(1); setConfirmed(false); setCreating(false); setSelectedMid(preselectedMid || ""); }
-  }, [open, preselectedMid]);
+    if (open) { setSettlementDate(""); setCreating(false); setSelectedMids(new Set(allGroups.map((g) => g.mid))); }
+  }, [open]);
+
+  const toggleMid = (mid) => {
+    setSelectedMids((prev) => {
+      const next = new Set(prev);
+      if (next.has(mid)) next.delete(mid); else next.add(mid);
+      return next;
+    });
+  };
+  const selectAll = () => setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+  const deselectAll = () => setSelectedMids(new Set());
 
   const handleCreate = () => {
     setCreating(true);
@@ -823,15 +969,15 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
       const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
       const timeStr = today.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
       const createdAt = `${dateStr}, ${timeStr}`;
-      const newPayouts = groups.map((g, i) => ({
+      const newPayouts = selectedGroups.map((g, i) => ({
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
         createdAt,
-        settlementDate: `${fromDate.split("-").reverse().join("/")}–${toDate.split("-").reverse().join("/")}`,
+        settlementDate: settlementDate ? new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : dateStr,
         merchantName: g.merchant,
         mid: g.mid,
         amount: `$${Math.abs(g.total).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
-               status: g.total <= 0 ? "Completed" : "Ready for Review",
+        status: g.total <= 0 ? "Completed" : "Ready for Review",
       }));
       onCreatePayouts(newPayouts);
       addToast({ type: "success", title: "Payouts created", message: `${newPayouts.length} new payout${newPayouts.length > 1 ? "s" : ""} prepared and set to Ready for Review.` });
@@ -842,88 +988,109 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   if (!open) return null;
 
   return (
-    <Modal open={open} onClose={onClose} title={step === 1 ? "Prepare payout" : "Prepare payout — Confirm"} width="max-w-xl">
+    <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-lg">
       <div className="space-y-4">
-        {/* ── Step 1: Parameters ── */}
-        {step === 1 && (<>
-          <Alert type="info" title="Manual payout preparation">Select the DTE date range and optionally target specific MIDs. All unsettled merchant ledger entries matching the criteria will be grouped into payout records per merchant.</Alert>
-          <div className="grid grid-cols-2 gap-4">
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">From date (DTE date)</label><input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-            <div><label className="block text-sm font-semibold text-gray-700 mb-1">To date (DTE date)</label><input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" /></div>
-          </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">MID filter <span className="font-normal text-gray-400">(optional)</span></label>
-            <select value={selectedMid} onChange={(e) => setSelectedMid(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-              <option value="">All merchants (where acquirer = Cuscal)</option>
-              {availableMids.map(m => <option key={m} value={m}>{m} — {allMLEs.find(x => x.mid === m)?.merchant || m}</option>)}
-            </select>
-            <p className="text-xs text-gray-400 mt-1">Leave blank to prepare payouts for all eligible merchants, or select a specific MID to target.</p>
-          </div>
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all DTE files with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
+        </div>
 
-          {/* Preview summary */}
-          <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold text-gray-700">Preview</span>
-              <span className="text-xs text-gray-400">{filteredMLEs.length} MLE{filteredMLEs.length !== 1 ? "s" : ""} across {groups.length} merchant{groups.length !== 1 ? "s" : ""}</span>
+        {/* Merchant multi-select */}
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <label className="block text-sm font-semibold text-gray-700">Merchants <span className="font-normal text-gray-400">({selectedMids.size} of {allGroups.length} selected)</span></label>
+            <div className="flex gap-2">
+              <button type="button" onClick={selectAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Select all</button>
+              <span className="text-xs text-gray-300">|</span>
+              <button type="button" onClick={deselectAll} className="text-xs text-gray-500 hover:text-gray-700 font-medium">Deselect all</button>
             </div>
-            {groups.length > 0 ? (
-              <div className="space-y-2">
-                {groups.map((g) => (
-                  <div key={g.mid} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white border border-gray-200">
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
-                      <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
-                      <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Zero/negative — auto-complete" : "→ Ready for Review"}</div>
-                    </div>
+          </div>
+          {allGroups.length > 0 ? (
+            <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[240px] overflow-y-auto">
+              {allGroups.map((g) => (
+                <label key={g.mid} className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMids.has(g.mid) ? "bg-indigo-50/50" : ""}`}>
+                  <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                    <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.dteFiles.length} DTE file{g.dteFiles.length > 1 ? "s" : ""} · {g.txnCount} txns</div>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm text-gray-400 text-center py-2">No transactions found for the selected criteria.</p>
-            )}
-          </div>
+                  <div className="text-sm font-semibold text-gray-700 flex-shrink-0">${g.total.toFixed(2)}</div>
+                </label>
+              ))}
+            </div>
+          ) : (
+            <div className="border border-gray-200 rounded-lg px-3 py-4 text-center text-sm text-gray-400">No merchants with DTE files for the selected date.</div>
+          )}
+        </div>
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={groups.length === 0} onClick={() => setStep(2)} leftIcon={<Icons.ChevronRight />}>Review &amp; confirm</Button>
-          </div>
-        </>)}
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={selectedGroups.length === 0 || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : `Prepare payout (${selectedMids.size})`}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
 
-        {/* ── Step 2: Confirmation ── */}
-        {step === 2 && (<>
-          <Alert type="warning" title={`${groups.length} payout${groups.length > 1 ? "s" : ""} will be created`}>Merchant ledger entries will be swept into payout records. Each payout will be set to "Ready for Review" and require FinOps approval before transfer.</Alert>
+// ═══════════════════════════════════════════════════════════
+// MERCHANT-LEVEL PREPARE PAYOUT (single merchant, no multi-select)
+// ═══════════════════════════════════════════════════════════
+function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool, mid, merchantName }) {
+  const allMLEs = (mlePool || mockUnassignedMLEs).filter((dte) => dte.mid === mid);
+  const [settlementDate, setSettlementDate] = useState("");
+  const [creating, setCreating] = useState(false);
+  const { addToast } = useToast();
 
-          <div className="space-y-2">
-            {groups.map((g) => (
-              <div key={g.mid} className="flex items-center justify-between px-3 py-2.5 rounded-lg bg-gray-50 border border-gray-200">
-                <div className="min-w-0">
-                  <div className="text-sm font-semibold text-gray-800 truncate">{g.merchant}</div>
-                  <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.mles.length} txn{g.mles.length > 1 ? "s" : ""}</div>
-                </div>
-                <div className="text-right flex-shrink-0">
-                  <div className="text-sm font-bold text-gray-800">${g.total.toFixed(2)}</div>
-                  <div className={`text-[10px] font-medium ${g.total <= 0 ? "text-amber-600" : "text-emerald-600"}`}>{g.total <= 0 ? "Auto-complete (zero balance)" : "→ Ready for Review"}</div>
-                </div>
-              </div>
-            ))}
-          </div>
+  const todayISO = new Date().toISOString().split("T")[0];
+  const cutoffDate = settlementDate || todayISO;
+  const filteredDTEs = allMLEs.filter((dte) => dte.date <= cutoffDate);
+  const totalAmount = filteredDTEs.reduce((sum, dte) => sum + dte.amount, 0);
+  const totalTxns = filteredDTEs.reduce((sum, dte) => sum + (dte.txnCount || 0), 0);
 
-          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-            <p className="text-xs text-blue-700">This is a <strong>manual preparation</strong>. In production, this step can be automated (e.g. scheduled job running daily at 8:30 AM).</p>
-          </div>
+  useEffect(() => { if (open) { setSettlementDate(""); setCreating(false); } }, [open]);
 
-          <label className="flex items-start gap-2 cursor-pointer"><input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 rounded border-gray-300" /><span className="text-sm text-gray-700">I confirm I want to prepare these payouts.</span></label>
+  const handleCreate = () => {
+    setCreating(true);
+    setTimeout(() => {
+      const today = new Date();
+      const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
+      const timeStr = today.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
+      const newPayout = {
+        id: `PO-2026-0225-${String(Math.floor(Math.random() * 900) + 100)}`,
+        date: dateStr,
+        createdAt: `${dateStr}, ${timeStr}`,
+        settlementDate: settlementDate ? new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : dateStr,
+        merchantName: merchantName || filteredDTEs[0]?.merchant || "Unknown",
+        mid,
+        amount: `$${Math.abs(totalAmount).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`,
+        status: totalAmount <= 0 ? "Completed" : "Ready for Review",
+      };
+      onCreatePayouts([newPayout]);
+      addToast({ type: "success", title: "Payout prepared", message: `${newPayout.id} for ${newPayout.amount} is now Ready for Review.` });
+      onClose();
+    }, 800);
+  };
 
-          <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-            <Button variant="outline" colorScheme="neutral" size="md" onClick={() => { setStep(1); setConfirmed(false); }}>Back</Button>
-            <Button variant="solid" colorScheme="brand" size="md" disabled={!confirmed || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.DollarSign />}>
-              {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating payouts...</span>) : "Create payouts"}
-            </Button>
-          </div>
-        </>)}
+  if (!open) return null;
+
+  return (
+    <Modal open={open} onClose={onClose} title="Prepare payout" width="max-w-lg">
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">Requested settlement date</label>
+          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
+          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. If left empty, all unsettled entries will be included.</p>
+        </div>
+
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={filteredDTEs.length === 0 || creating} onClick={handleCreate}>
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Preparing...</span>) : "Prepare payout"}
+          </Button>
+        </div>
       </div>
     </Modal>
   );
@@ -965,12 +1132,11 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
         initiatedBy: "Tom Wright",
         entryType: null,
         payoutId: "—",
-        status: "Pending Approval",
         internalNote: info,
         mid: mid || "POSPAY00012345",
       };
       onCreateAdjustment(newAdj);
-      addToast({ type: "info", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} is pending approval.` });
+      addToast({ type: "info", title: "Adjustment created", message: `${newAdj.id} for ${newAdj.amount} has been created.` });
       onClose();
     }, 500);
   };
@@ -1012,93 +1178,26 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ═══════════════════════════════════════════════════════════
 // ADJUSTMENT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function AdjustmentDetailView({ adj, onBack, onApprove, onReject, role }) {
-  const { addToast } = useToast();
+function AdjustmentDetailView({ adj, onBack }) {
   const isSystem = adj.initiatedBy === "System";
-  const canWrite = role === ROLES.FINOPS_T1;
-  const isPending = adj.status === "Pending Approval";
-  const isRejected = adj.status === "Rejected";
-  const isApproved = adj.status === "Approved";
-
-  // Can only approve/reject if: FinOps Admin, pending, and not the person who created it
-  const canApproveReject = canWrite && isPending;
-
-  const [showRejectDialog, setShowRejectDialog] = useState(false);
-  const [rejectReason, setRejectReason] = useState("");
-
-  const handleApprove = () => {
-    onApprove(adj.id);
-    addToast({ type: "success", title: "Adjustment approved", message: `${adj.id} for ${adj.amount} has been approved.` });
-  };
-  const handleReject = () => {
-    onReject(adj.id, rejectReason);
-    setShowRejectDialog(false);
-    setRejectReason("");
-    addToast({ type: "error", title: "Adjustment rejected", message: `${adj.id} has been rejected.` });
-  };
-
-  // Build audit entries
   const auditEntries = isSystem ? [
     { ts: adj.date + ", 6:00 AM", version: 1, action: "Adjustment auto-generated", user: "System", detail: `${adj.entryType || "Adjustment"} of ${adj.amount} created automatically during payout preparation.` },
-    { ts: adj.date + ", 6:00 AM", version: 2, action: "Auto-approved", user: "System", detail: "System-initiated adjustments are automatically approved." },
-    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 3, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debit deferral" ? "A corresponding Debit rollover has been created to offset this deferral." : "This entry offsets the linked Debit deferral."}` }] : []),
+    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 2, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
   ] : [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Admin)", detail: `Manual adjustment of ${adj.amount} created. Status: Pending Approval.` },
-    ...(isApproved && adj.approvedBy ? [{ ts: adj.approvedAt || adj.date + ", 2:00 PM", version: 2, action: "Approved", user: adj.approvedBy + " (FinOps Admin)", detail: `Adjustment approved. Will be included in next payout with settlement date on or after ${adj.requestedSettlementDate || "N/A"}.` }] : []),
-    ...(isRejected && adj.rejectedBy ? [{ ts: adj.rejectedAt || adj.date + ", 2:00 PM", version: 2, action: "Rejected", user: adj.rejectedBy + " (FinOps Admin)", detail: `Adjustment rejected. Reason: ${adj.rejectionReason || "No reason provided."}` }] : []),
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Administrator)", detail: `Manual adjustment of ${adj.amount} created.` },
   ];
-
-  const statusBadge = isPending ? <Badge colorScheme="warning" size="sm">Pending Approval</Badge> : isApproved ? <Badge colorScheme="success" size="sm">Approved</Badge> : isRejected ? <Badge colorScheme="error" size="sm">Rejected</Badge> : <Badge colorScheme="neutral" size="sm">{adj.status}</Badge>;
 
   return (
     <div className="p-6 space-y-5">
-      {showRejectDialog && (
-        <Modal open={showRejectDialog} onClose={() => setShowRejectDialog(false)} title="Reject adjustment">
-          <div className="space-y-4">
-            <Alert type="warning" title="This adjustment will be rejected">The adjustment will not be applied to the merchant's balance. The initiator will be notified.</Alert>
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-              {[["Adjustment ID", adj.id], ["Amount", adj.amount], ["Initiated by", adj.initiatedBy]].map(([label, value]) => (
-                <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
-              ))}
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for rejection <span className="text-red-500">*</span></label>
-              <textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} placeholder="Provide a reason for rejecting this adjustment..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-            </div>
-            <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-              <Button variant="outline" colorScheme="neutral" size="md" onClick={() => setShowRejectDialog(false)}>Cancel</Button>
-              <Button variant="solid" colorScheme="error" size="md" onClick={handleReject} disabled={!rejectReason.trim()}>Reject adjustment</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to adjustments</button>
-
-      {isRejected && (
-        <Alert type="error" title="Adjustment rejected">This adjustment was rejected by {adj.rejectedBy}. Reason: {adj.rejectionReason || "No reason provided."}</Alert>
-      )}
-
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span>{statusBadge}</div>
-          {canApproveReject && (
-            <div className="flex gap-2">
-              <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} onClick={handleApprove}>Approve</Button>
-              <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowRejectDialog(true)}>Reject</Button>
-            </div>
-          )}
-          {!canWrite && isPending && (
-            <div className="flex gap-2">
-              <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Check />} disabled>Approve</Button>
-              <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} disabled>Reject</Button>
-            </div>
-          )}
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Adjustment {adj.id}</span></div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Status", statusBadge], ["Date created", adj.date], ["Requested settlement date", adj.requestedSettlementDate || "—"], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debit deferral" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.approvedBy && isApproved ? [["Approved by", adj.approvedBy]] : []), ...(adj.rejectedBy && isRejected ? [["Rejected by", adj.rejectedBy]] : []), ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
+            {[["Adjustment ID", <span className="font-mono">{adj.id}</span>], ["Date created", adj.date], ["Requested settlement date", adj.requestedSettlementDate || "—"], ["Amount", <span className={`font-semibold ${adj.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{adj.amount}</span>], ["Initiated by", adj.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : adj.initiatedBy], ["Type", adj.entryType ? <Badge colorScheme={adj.entryType === "Debt deferral" ? "error" : "success"} size="sm">{adj.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>], ...(adj.linkedAdjId ? [["Linked adjustment", <span className="font-mono text-indigo-600">{adj.linkedAdjId}</span>]] : []), ["Associated payout", <span className="font-mono text-indigo-600">{adj.payoutId}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1122,25 +1221,17 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [typeFilter, setTypeFilter] = useState("all");
   const canWrite = role === ROLES.FINOPS_T1;
   const PAGE_SIZE = 20;
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
-  const handleApprove = (adjId) => {
-    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: "Approved", approvedBy: "Tom Wright", approvedAt: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase() } : a));
-  };
-  const handleReject = (adjId, reason) => {
-    setAdjustments((prev) => prev.map((a) => a.id === adjId ? { ...a, status: "Rejected", rejectedBy: "Tom Wright", rejectedAt: new Date().toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) + ", " + new Date().toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase(), rejectionReason: reason } : a));
-  };
 
-  const filteredAdj = typeFilter === "all" ? adjustments : typeFilter === "system" ? adjustments.filter(a => a.initiatedBy === "System") : typeFilter === "manual" ? adjustments.filter(a => a.initiatedBy !== "System") : adjustments.filter(a => a.entryType === typeFilter);
-  const totalPages = Math.max(1, Math.ceil(filteredAdj.length / PAGE_SIZE));
-  const paginatedAdj = filteredAdj.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
+  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
-  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} onApprove={handleApprove} onReject={handleReject} role={role} />;
+  if (currentAdj) return <AdjustmentDetailView adj={currentAdj} onBack={() => setSelectedAdj(null)} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1148,23 +1239,9 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
-      <div className="flex flex-wrap gap-2">
-        {[{ key: "all", label: "All" }, { key: "manual", label: "Manual" }, { key: "system", label: "System" }, { key: "Debit deferral", label: "Debit deferral" }, { key: "Debit rollover", label: "Debit rollover" }].map(f => (
-          <button key={f.key} onClick={() => { setTypeFilter(f.key); setCurrentPage(1); }} className={`px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${typeFilter === f.key ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>{f.label} ({f.key === "all" ? adjustments.length : f.key === "system" ? adjustments.filter(a => a.initiatedBy === "System").length : f.key === "manual" ? adjustments.filter(a => a.initiatedBy !== "System").length : adjustments.filter(a => a.entryType === f.key).length})</button>
-        ))}
-      </div>
-
-      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const totalPositive = adjustments.filter(a => !a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const totalNegative = adjustments.filter(a => a.amount.startsWith("-")).reduce((s, a) => s + parseAmt(a.amount), 0); const net = totalPositive + totalNegative; return (
-        <div className="flex flex-wrap gap-6 pb-1">
-          <HeroMetric heading="Net adjustments" value={`${net >= 0 ? "$" : "-$"}${Math.abs(net).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass={net >= 0 ? "text-emerald-600" : "text-red-600"} />
-          <HeroMetric heading="Credits" value={`$${totalPositive.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
-          <HeroMetric heading="Debits" value={`-$${Math.abs(totalNegative).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
-        </div>
-      ); })()}
-
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filteredAdj.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1172,21 +1249,19 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <Divider />
         <CardBody className="pt-4">
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
-            {["Created", "Settlement date", "Adjustment ID", "Amount", "Status", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
+            {["Created", "Settlement date", "Amount", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
             {paginatedAdj.map((a) => (
                 <tr key={a.id} onClick={() => setSelectedAdj(a)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors">
                   <td className="py-3 px-3 text-sm text-gray-700">{a.date}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.requestedSettlementDate || "—"}</td>
-                  <td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{a.id}</td>
                   <td className={`py-3 px-3 text-sm font-semibold text-right ${a.amount.startsWith("-") ? "text-red-600" : "text-emerald-600"}`}>{a.amount}</td>
-                  <td className="py-3 px-3">{a.status === "Pending Approval" ? <Badge colorScheme="warning" size="sm">Pending Approval</Badge> : a.status === "Approved" ? <Badge colorScheme="success" size="sm">Approved</Badge> : a.status === "Rejected" ? <Badge colorScheme="error" size="sm">Rejected</Badge> : <Badge colorScheme="neutral" size="sm">{a.status || "—"}</Badge>}</td>
                   <td className="py-3 px-3 text-sm text-gray-700">{a.initiatedBy === "System" ? <Badge colorScheme="neutral" size="sm">System</Badge> : a.initiatedBy}</td>
-                  <td className="py-3 px-3">{a.entryType ? <Badge colorScheme={a.entryType === "Debit deferral" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>}</td>
+                  <td className="py-3 px-3">{a.entryType ? <Badge colorScheme={a.entryType === "Debt deferral" ? "error" : "success"} size="sm">{a.entryType}</Badge> : <Badge colorScheme="brand" size="sm">Generic</Badge>}</td>
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
-            {adjustments.length === 0 && <tr><td colSpan={8} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
+            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
@@ -1204,11 +1279,61 @@ function MerchantAdjustmentsTab({ role, mid }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// FLEET → MERCHANT FACILITY VIEW (shown when clicking a payout from fleet table)
+// ═══════════════════════════════════════════════════════════
+function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold }) {
+  const [activeTab, setActiveTab] = useState("payouts");
+  const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
+  const merchantMid = payout.mid || "POSPAY00012345";
+  const merchantName = payout.merchantName || "Unknown Merchant";
+
+  return (
+    <div className="flex flex-col h-full">
+      <div className="bg-white border-b border-gray-200">
+        <div className="px-4 py-3 flex items-center gap-2 border-b border-gray-100">
+          <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> <span>Fleet payouts</span></button>
+          <span className="text-gray-300 mx-1">|</span>
+          <Icons.Store />
+          <span className="text-sm font-medium text-indigo-600">POS Pay Pty Ltd</span>
+          <Icons.ChevronRight />
+          <span className="text-sm font-medium text-gray-800">{merchantName}</span>
+          <span className="ml-1"><Badge colorScheme="neutral" size="md">{merchantMid}</Badge></span>
+          <span className="ml-1"><Badge colorScheme="success" size="md">Active</Badge></span>
+        </div>
+        <div className="px-4 py-1 flex gap-1">
+          {tabs.map((tab) => (
+            <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${activeTab === tab.id ? "bg-indigo-50 text-indigo-700" : "text-[#5D6B98] hover:bg-gray-50 hover:text-gray-700"}`}>{tab.label}</button>
+          ))}
+        </div>
+      </div>
+      <div className="flex-1 overflow-y-auto bg-[#F9FAFB]">
+        {activeTab === "payouts" && (
+          <>
+            <div className="mx-6 mt-5">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-indigo-50 border border-indigo-200">
+                <Icons.Info />
+                <span className="text-sm text-indigo-800">You're viewing this merchant from the fleet-level payouts table.</span>
+                <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
+              </div>
+            </div>
+            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />
+          </>
+        )}
+        {activeTab === "overview" && <OverviewTab />}
+        {activeTab === "terminals" && <TerminalsTab />}
+        {activeTab === "transactions" && <TransactionsTab />}
+        {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={merchantMid} />}
+        {activeTab === "disputes" && <DisputesTab />}
+      </div>
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, onFleetHoldChange }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [sortCol, setSortCol] = useState("Status");
@@ -1240,40 +1365,23 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} fromFleet />;
+  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid)) : payouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} />
-
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { onFleetHoldChange(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
+      <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
 
-      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
-
-      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} />
-
-      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = payouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = payouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = payouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = payouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
-        <div className="flex flex-wrap gap-6 pb-1">
-          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
-          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
-          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
-          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
-        </div>
-      ); })()}
+      {/* PayoutProgressionFilter hidden — filters removed for now */}
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
-          <div className="flex items-center gap-2">
-            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
-          </div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
@@ -1291,7 +1399,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm text-gray-700">{p.merchantName}</td>
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} amount={p.amount} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1306,11 +1414,9 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, fleetHold }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
-  const [merchantHold, setMerchantHold] = useState(null); // null or { reason, note, user, timestamp }
-  const [showMerchantHoldDialog, setShowMerchantHoldDialog] = useState(false);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState("Status");
@@ -1320,7 +1426,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.hold) : merchantPayouts.filter((p) => p.status === statusFilter && !p.hold);
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid)) : merchantPayouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
@@ -1329,34 +1435,23 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} merchantHold={merchantHold} merchantName={merchantName} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} />;
 
   return (
     <div className="p-6 space-y-5">
-      <PreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} preselectedMid={mid || "POSPAY00012345"} />
+      <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
-      <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" merchantName={merchantName || "this merchant"} onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Hold placed", message: `All payouts for ${merchantName || "this merchant"} are now on hold — ${holdInfo.reason}.` }); }} />
+      <HoldInheritanceBanners holdRecords={holdRecords || []} payoutId={null} mid={mid} merchantName={merchantName} />
 
-      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
-      {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
+      <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
 
-      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} />
-
-      {(() => { const parseAmt = (a) => parseFloat(a.replace(/[^0-9.\-]/g, "")); const total = merchantPayouts.reduce((s, p) => s + parseAmt(p.amount), 0); const completed = merchantPayouts.filter(p => p.status === "Completed").reduce((s, p) => s + parseAmt(p.amount), 0); const pending = merchantPayouts.filter(p => ["Ready for Review", "Ready for Transfer", "Transferring"].includes(p.status)).reduce((s, p) => s + parseAmt(p.amount), 0); const failed = merchantPayouts.filter(p => p.status === "Failed").reduce((s, p) => s + parseAmt(p.amount), 0); return (
-        <div className="flex flex-wrap gap-6 pb-1">
-          <HeroMetric heading="Total payouts" value={`$${total.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} />
-          <HeroMetric heading="Completed" value={`$${completed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-emerald-600" />
-          <HeroMetric heading="Pending" value={`$${pending.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-amber-600" />
-          <HeroMetric heading="Failed" value={`$${failed.toLocaleString("en-AU", { minimumFractionDigits: 2 })}`} colorClass="text-red-600" />
-        </div>
-      ); })()}
+      {/* PayoutProgressionFilter hidden — filters removed for now */}
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
-            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            {!merchantHold && !fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold payouts</Button>}
+            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
           </div>
         </CardHeader>
         <Divider />
@@ -1367,9 +1462,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm text-gray-600 text-center">{p.transferCount}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
-            {paginatedPayouts.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} amount={p.amount} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1447,7 +1540,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, initialTab, onTabChange }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, initialTab, onTabChange }) {
   const [activeTab, setActiveTab] = useState(initialTab || "transactions");
   const handleTabChange = (tab) => { setActiveTab(tab); if (onTabChange) onTabChange(tab); };
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
@@ -1461,7 +1554,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} fleetHold={fleetHold} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -1470,7 +1563,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
 
 // ═══ Merchant List ═══
 function MerchantFacilitiesListPage({ onSelectMerchant }) {
-  const merchants = [{ mid: "POSPAY00012345", friendlyName: "Joe's Coffee - Sydney CBD", tradingName: "Joe's Coffee House", location: "Sydney NSW", product: "POS Pay Plus", status: "Active" }, { mid: "POSPAY00012346", friendlyName: "Mike's Electronics", tradingName: "Michael's Tech Store", location: "Melbourne VIC", product: "POS Pay Plus", status: "Active" }, { mid: "POSPAY00012347", friendlyName: "Fresh Mart - Brisbane", tradingName: "Fresh Mart Australia", location: "Brisbane QLD", product: "POS Pay", status: "Inactive" }];
+  const merchants = [{ mid: "POSPAY00012345", friendlyName: "Joe's Coffee - Sydney CBD", tradingName: "Joe's Coffee House", location: "Sydney NSW", product: "POS Pay Plus", status: "Active" }, { mid: "POSPAY00012346", friendlyName: "Mike's Electronics", tradingName: "Michael's Tech Store", location: "Melbourne VIC", product: "POS Pay Plus", status: "Active" }, { mid: "POSPAY00012347", friendlyName: "Fresh Mart - Brisbane", tradingName: "Fresh Mart Australia", location: "Brisbane QLD", product: "POS Pay", status: "Inactive" }, { mid: "POSPAY00012348", friendlyName: "Bella's Boutique - Melbourne", tradingName: "Bella's Fashion Pty Ltd", location: "Melbourne VIC", product: "POS Pay Plus", status: "Active" }, { mid: "POSPAY00012349", friendlyName: "Coastal Surf Shop - Gold Coast", tradingName: "Coastal Surf Co", location: "Gold Coast QLD", product: "POS Pay", status: "Active" }];
   return (<div className="p-6"><div className="flex justify-between items-center mb-4"><div /><Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Shop />}>New merchant facility</Button></div>
     <table className="w-full border-collapse bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"><thead><tr className="border-b border-gray-200 bg-gray-50">{["MID", "Friendly name", "Trading name", "Location", "Status", "Product"].map((h) => <th key={h} className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-3 px-4">{h}</th>)}</tr></thead><tbody>
       {merchants.map((m) => (<tr key={m.mid} onClick={() => onSelectMerchant(m)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-4 text-sm font-mono text-gray-700">{m.mid}</td><td className="py-3 px-4 text-sm text-gray-700 flex items-center gap-2"><span className="text-gray-400"><Icons.Terminal /></span>{m.friendlyName}</td><td className="py-3 px-4 text-sm text-gray-600">{m.tradingName}</td><td className="py-3 px-4 text-sm text-gray-600">{m.location}</td><td className="py-3 px-4"><Badge colorScheme={m.status === "Active" ? "success" : "neutral"} size="sm">{m.status}</Badge></td><td className="py-3 px-4 text-sm text-gray-600">{m.product}</td></tr>))}
@@ -1513,7 +1606,7 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                   <p className="text-xs font-medium text-amber-700 mb-2">{changedPayouts.length} payout{changedPayouts.length > 1 ? "s" : ""} modified since last reset:</p>
                   <div className="space-y-1">{changedPayouts.map((p) => {
                     const original = mockPayouts.find((o) => o.id === p.id);
-                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} hold={original.hold} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} hold={p.hold}  /></div>);
+                    return (<div key={p.id} className="flex items-center gap-2 text-xs"><span className="font-mono text-gray-600">{p.id}</span><span className="text-gray-400">—</span><PayoutStatusBadge status={original.status} /><span className="text-gray-400">→</span><PayoutStatusBadge status={p.status} /></div>);
                   })}</div>
                 </div>
               ) : (
@@ -1546,7 +1639,6 @@ function DebuggingToolsPage({ onResetData, payouts }) {
                     return count > 0 ? (<div key={status} className="flex items-center gap-2 text-xs"><PayoutStatusBadge status={status} /><span className="text-gray-500">× {count}</span></div>) : null;
                   }).filter(Boolean)
                 }
-                {(() => { const holdCount = payouts.filter((p) => p.hold).length; return holdCount > 0 ? (<div className="flex items-center gap-2 text-xs"><Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge><span className="text-gray-500">× {holdCount}</span></div>) : null; })()}
                 </div>
                 <p className="text-xs text-gray-400 mt-3">{payouts.length} total payouts in mock data</p>
               </div>
@@ -1566,10 +1658,11 @@ const uxArtefactsList = [
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Admin, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Administrator, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Framework for Hold/Release Hold model — scope levels (fleet/merchant/payout), automation switches, failure controls, and resolved decisions", type: "React Component", icon: "controls", component: PayoutProgressionControls },
+  { id: "audit-logs", title: "Audit Logs & Messaging", description: "Complete reference of all 29 payout lifecycle events — audit log messages, toast notifications, status transitions, and trigger types with filterable phases", type: "React Component", icon: "audit", component: AuditLogsReference },
 ];
 
 function UXArtefactsPage() {
@@ -1584,6 +1677,7 @@ function UXArtefactsPage() {
     wireframe: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="18" rx="2" /><line x1="2" y1="8" x2="22" y2="8" /><line x1="8" y1="8" x2="8" y2="21" /><rect x="10" y="10" width="5" height="4" rx="0.5" strokeDasharray="2 1" /><rect x="10" y="16" width="10" height="3" rx="0.5" strokeDasharray="2 1" /></svg>),
     docs: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><polyline points="10 9 9 9 8 9" /></svg>),
     controls: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.32 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
+    audit: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12,6 12,12 16,14" /><path d="M4 4l2 2M20 4l-2 2" /></svg>),
   };
 
   const artefactContentRef = useRef(null);
@@ -2466,7 +2560,7 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span>Role:</span>
           <select value={role} onChange={(e) => onRoleChange(e.target.value)} className="text-xs bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-300">
-            <option value={ROLES.FINOPS_T1}>FinOps Admin</option>
+            <option value={ROLES.FINOPS_T1}>FinOps Administrator</option>
             <option value={ROLES.FINOPS_T2}>FinOps View only</option>
             <option value={ROLES.ADMIN}>Administrator</option>
           </select>
@@ -2502,7 +2596,7 @@ export default function MSPSupportDashboard() {
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
-  const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
+  const [holdRecords, setHoldRecords] = useState(initialHoldRecords);
 
   const handlePayoutStatusChange = useCallback((payoutId, newStatus, extra) => {
     setPayouts((prev) => {
@@ -2513,10 +2607,11 @@ export default function MSPSupportDashboard() {
       return prev.map((p) => {
         if (p.id !== payoutId) return p;
         const updated = { ...p, status: newStatus };
-        // Merge extra flags (hold, etc.)
-        if (extra && typeof extra === "object") Object.assign(updated, extra);
-        // Clear hold flag when transitioning to terminal states
-        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.hold = false;
+        // Merge extra fields (but not hold flag, which is now managed by holdRecords)
+        if (extra && typeof extra === "object") {
+          const { hold, ...otherExtra } = extra;
+          Object.assign(updated, otherExtra);
+        }
         return updated;
       });
     });
@@ -2525,12 +2620,32 @@ export default function MSPSupportDashboard() {
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
     setUnassignedMLEs([...mockUnassignedMLEs]);
-    setFleetHold(null);
+    setHoldRecords([...initialHoldRecords]);
   }, []);
 
   // Ingest enriched MLEs from DTE Generator
   const handleIngestMLEs = useCallback((newMLEs) => {
     setUnassignedMLEs((prev) => [...prev, ...newMLEs]);
+  }, []);
+
+  const handleCreateHold = useCallback((level, entity, phase, trigger, reason, note) => {
+    const newHold = {
+      id: generateHoldId(),
+      level,
+      entity,
+      phase,
+      trigger,
+      reason,
+      note,
+      createdBy: "Current User",
+      createdAt: nowTimestamp(),
+      active: true,
+    };
+    setHoldRecords((prev) => [...prev, newHold]);
+  }, []);
+
+  const handleReleaseHold = useCallback((holdId) => {
+    setHoldRecords((prev) => prev.map((h) => (h.id === holdId ? { ...h, active: false } : h)));
   }, []);
 
   const headings = { "organisations": { icon: Icons.Buildings, label: "Organisations" }, "merchant-facilities": { icon: Icons.Shop, label: "Merchant facilities" }, "terminals": { icon: Icons.Terminal, label: "Terminals" }, "users": { icon: Icons.Profile, label: "Users" }, "support": { icon: Icons.Lifebuoy, label: "Support" }, "developer": { icon: Icons.Code, label: "Developer" }, "api-keys": { icon: Icons.Key, label: "API keys" }, "alerts": { icon: Icons.Danger, label: "Alerts" }, "merchant-applications": { icon: Icons.DocumentText, label: "Merchant applications" }, "payouts": { icon: Icons.Wallet, label: "Payouts" }, "debugging-tools": { icon: Icons.Beaker, label: "Debugging Tools" }, "dte-generator": { icon: Icons.DocumentText, label: "DTE Generator" }, "ux-artefacts": { icon: Icons.Layers, label: "UX Artefacts" } };
@@ -2563,8 +2678,8 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} onFleetHoldChange={setFleetHold} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => { setMerchantDetailView(true); updateHash("merchant-facilities", true, null); }} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}

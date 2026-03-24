@@ -11,11 +11,11 @@ const SECTIONS = [
         type: "Status",
         color: "#818CF8",
         bg: "#EEF2FF",
-        definition: "The payout has been prepared and is awaiting FinOps Admin approval before funds can be transferred. This is the entry point for every new payout.",
+        definition: "The payout has been prepared and is awaiting FinOps Administrator approval before funds can be transferred. This is the entry point for every new payout.",
         uiTreatment: "Indigo badge. Primary action: Approve. Secondary actions: Hold, Abandon.",
         useCases: [
           "Daily automated sweep creates a payout for Merchant X with a positive balance of $4,200.",
-          "FinOps Admin opens the payout, reviews the included transactions, and either approves, places a hold, or abandons.",
+          "FinOps Administrator opens the payout, reviews the included transactions, and either approves, places a hold, or abandons.",
         ],
         auditExamples: [
           { actor: "System", entry: "Payout prepared — Merchant balance swept. 14 transactions included." },
@@ -31,12 +31,12 @@ const SECTIONS = [
         definition: "The payout has been approved and is eligible for execution. The earliest execution window has been reached. Funds can now be sent via NPP.",
         uiTreatment: "Green badge. Primary action: Begin transfer. Secondary actions: Hold, Abandon.",
         useCases: [
-          "FinOps Admin approves payout PO-2026-0220-005. It moves to Ready for Transfer and appears in the execution queue.",
-          "A retryable failure is manually retried by FinOps Admin — the payout transitions back here for re-execution.",
+          "FinOps Administrator approves payout PO-2026-0220-005. It moves to Ready for Transfer and appears in the execution queue.",
+          "A retryable failure is manually retried by FinOps Administrator — the payout transitions back here for re-execution.",
         ],
         auditExamples: [
-          { actor: "Tom Wright (FinOps Admin)", entry: "Approved — Status changed to Ready for Transfer." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry — Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Approved — Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry — Status changed to Ready for Transfer." },
         ],
         uxJustification: "'Ready for Transfer' is deliberately specific about what it's ready for — the actual bank transfer. This prevents confusion with 'Ready for Review' and clearly communicates the next expected action.",
       },
@@ -48,11 +48,11 @@ const SECTIONS = [
         definition: "The NPP transfer has been initiated. The payout is in-flight — funds are being sent to the merchant's bank. This status MUST be set before the NPP request is made.",
         uiTreatment: "Purple badge. No user actions available — this is a system-driven transitional state.",
         useCases: [
-          "FinOps Admin clicks \"Begin transfer\" on PO-2026-0220-005. The system sets status to Transferring, then initiates the NPP request.",
+          "FinOps Administrator clicks \"Begin transfer\" on PO-2026-0220-005. The system sets status to Transferring, then initiates the NPP request.",
           "In Pilot/BAU mode, the system auto-initiates transfers for approved payouts and sets Transferring programmatically.",
         ],
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Transfer initiated — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Transfer initiated — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
           { actor: "System", entry: "Status changed to Transferring — Awaiting NPP confirmation." },
         ],
         uxJustification: "'Transferring' uses the progressive tense (-ing) to signal an active, in-progress operation. FinOps users understand at a glance that this payout is mid-flight and cannot be interrupted. We chose not to call this 'Processing' because that's too generic and doesn't convey the specificity of a bank transfer. Note: this state cannot be held or abandoned — once money is moving, it must resolve.",
@@ -79,17 +79,17 @@ const SECTIONS = [
         type: "Status",
         color: "#F87171",
         bg: "#FEF2F2",
-        definition: "The transfer has failed. Distinguished by a retryable flag: retryable failures (transient NPP/Cuscal issues) require manual retry by FinOps Admin; non-retryable failures (invalid BSB, closed account) require root cause resolution before the payout can proceed.",
+        definition: "The transfer has failed. Distinguished by a retryable flag: retryable failures (transient NPP/Cuscal issues) require manual retry by FinOps Administrator; non-retryable failures (invalid BSB, closed account) require root cause resolution before the payout can proceed.",
         uiTreatment: "Red badge. Additional sub-badge: 'Retryable' (purple) or 'Non-retryable' (grey). Retryable payouts show a Retry action button. Non-retryable payouts show a recommended resolution action and Abandon.",
         useCases: [
-          "NPP returns a gateway timeout. Payout is marked Failed + retryable. FinOps Admin reviews and clicks Retry to re-queue it.",
+          "NPP returns a gateway timeout. Payout is marked Failed + retryable. FinOps Administrator reviews and clicks Retry to re-queue it.",
           "NPP returns 'Invalid BSB'. Payout is marked Failed + non-retryable. FinOps coordinates with merchant to correct bank details, then retries.",
           "A retryable payout has been retried 3 times manually. On the 4th failure, the system flags it for escalation — something deeper may be wrong.",
         ],
         auditExamples: [
           { actor: "System", entry: "Transfer failed (retryable) — Cuscal gateway timeout. Manual retry available." },
           { actor: "System", entry: "Transfer failed (non-retryable) — Invalid BSB: 062-999. Resolution required: Correct merchant bank details." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 2. Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 2. Status changed to Ready for Transfer." },
           { actor: "System", entry: "Transfer failed (retryable) — Attempt 3 exhausted. Escalation recommended." },
         ],
         uxJustification: "The retryable/non-retryable sub-classification lets FinOps immediately triage failures. Retryable failures have a clear action path (Retry button). Non-retryable failures surface a recommended resolution so FinOps doesn't have to interpret raw error codes. The sub-badges make this scannable at the table level without opening each payout.",
@@ -102,11 +102,11 @@ const SECTIONS = [
         definition: "Terminal state. The payout has been permanently cancelled. The merchant's ledger entries are released back to the balance for inclusion in a future payout. This action is irreversible.",
         uiTreatment: "Grey badge with rounded pill shape. No actions available. Requires typing 'ABANDON' to confirm.",
         useCases: [
-          "FinOps Admin discovers PO-2026-0220-010 is a duplicate. They abandon it from Ready for Review.",
+          "FinOps Administrator discovers PO-2026-0220-010 is a duplicate. They abandon it from Ready for Review.",
           "A non-retryable Failed payout cannot be resolved (merchant account permanently closed). After documenting evidence, FinOps abandons it.",
         ],
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Abandoned — Reason: Duplicate payout. Merchant ledger entries released." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Abandoned — Reason: Duplicate payout. Merchant ledger entries released." },
           { actor: "System", entry: "Status changed to Abandoned — Payout permanently cancelled." },
         ],
         uxJustification: "'Abandoned' carries appropriate weight for an irreversible cancellation. We chose it over 'Cancelled' (too casual, implies it can be undone) and 'Voided' (accounting-specific, not universally understood by FinOps). The confirmation dialog requiring 'ABANDON' typed out adds friction proportional to the severity of the action.",
@@ -131,9 +131,9 @@ const SECTIONS = [
           "A hold is placed on a Ready for Transfer payout at 3pm. At 5pm, compliance confirms the merchant is clear. FinOps releases the hold and the payout returns to Ready for Transfer — the transfer can now be executed.",
         ],
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Hold placed — Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Hold placed — Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
           { actor: "System", entry: "Payout on hold — Underlying status: Ready for Transfer. Progression frozen." },
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Hold released — Investigation complete. Payout cleared for transfer." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Hold released — Investigation complete. Payout cleared for transfer." },
           { actor: "System", entry: "Hold cleared — Payout resumed at Ready for Transfer." },
         ],
         uxJustification: "We chose 'Hold' over alternatives for several reasons. (1) vs 'Paused': Paused implies a state the payout moves into, which contradicts the flag-based architecture. 'On Hold' naturally describes something applied to a payout. (2) vs 'Disable progression': Too technical and system-oriented. FinOps teams think in terms of holds, not UI state management. It also risks confusion with disabled/enabled UI patterns. (3) vs 'Freeze/Unfreeze': Carries fraud-investigation connotations that would be misleading for routine holds like regulatory review or scheduling conflicts. (4) vs 'Suspend/Reinstate': Overly formal and bureaucratic. 'Hold' and 'Release Hold' are natural language FinOps teams already use. The flag model means the audit trail preserves the true underlying status, so when a hold is released, there's no ambiguity about where the payout should resume from.",
@@ -152,13 +152,13 @@ const SECTIONS = [
         definition: "A boolean flag on Failed payouts indicating whether the failure is transient (can be retried with the same data) or persistent (requires root cause resolution before retry). See the Failure Conditions section below for the full classification.",
         uiTreatment: "Sub-badge next to the Failed badge: purple 'Retryable' or grey 'Non-retryable'. Retryable payouts show a Retry button. Non-retryable payouts show a recommended resolution action and only allow Abandon until the underlying issue is resolved.",
         useCases: [
-          "NPP returns a gateway timeout (retryable). FinOps Admin reviews the failure, confirms it's transient, and clicks Retry.",
+          "NPP returns a gateway timeout (retryable). FinOps Administrator reviews the failure, confirms it's transient, and clicks Retry.",
           "NPP returns 'Invalid BSB' (non-retryable). FinOps contacts the merchant to correct their bank details. Once updated, they manually retry.",
         ],
         auditExamples: [
           { actor: "System", entry: "Transfer failed — Retryable (Cuscal gateway timeout). Manual retry available." },
           { actor: "System", entry: "Transfer failed — Non-retryable (Invalid BSB: 062-999). Resolution required: Correct merchant bank details." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 2. Transitioned to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 2. Transitioned to Ready for Transfer." },
         ],
         uxJustification: "The retryable distinction lets FinOps immediately triage their failure queue. Retryable failures have a clear, low-friction action path (click Retry). Non-retryable failures surface a recommended resolution so FinOps doesn't have to interpret raw error codes. The sub-badge makes this scannable at the table level — FinOps can filter to non-retryable failures and prioritise those.",
       },
@@ -184,7 +184,7 @@ const SECTIONS = [
           { code: "INSUFFICIENT_FUNDS", description: "Insufficient funds (sender-side)", detail: "mx51's pooled settlement account temporarily doesn't have enough to cover the transfer. The payout data is valid.", recommendedAction: "Retry after confirming account has been funded. Alert treasury/finance team if recurring." },
         ],
         rules: [
-          { rule: "Manual retry", detail: "All retries are manually initiated by FinOps Admin via the Retry button. The payout transitions to Ready for Transfer for re-execution.", futureAutomation: true },
+          { rule: "Manual retry", detail: "All retries are manually initiated by FinOps Administrator via the Retry button. The payout transitions to Ready for Transfer for re-execution.", futureAutomation: true },
           { rule: "Retry attempt tracking", detail: "Each retry attempt is logged in the audit trail with the attempt number and error code. The UI displays the current attempt count.", futureAutomation: false },
           { rule: "Escalation after 3 attempts", detail: "After 3 failed retry attempts, the system adds an 'Escalation recommended' indicator. FinOps should investigate the root cause rather than continuing to retry blindly.", futureAutomation: true },
           { rule: "Escalation after 5 attempts", detail: "After 5 failed retry attempts, the system flags the payout for mandatory review. At this point, a transient issue likely has a deeper systemic cause.", futureAutomation: true },
@@ -199,9 +199,9 @@ const SECTIONS = [
         ],
         auditExamples: [
           { actor: "System", entry: "Transfer failed — GATEWAY_TIMEOUT: Cuscal did not respond within 30s SLA. Retryable. Attempt 1 of 3." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 2. Reconciliation check: no duplicate payment found." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 2. Reconciliation check: no duplicate payment found." },
           { actor: "System", entry: "Transfer failed — RATE_LIMITED: Cuscal returned 429. Retryable. Attempt 2 of 3." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 3." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 3." },
           { actor: "System", entry: "Transfer failed — GATEWAY_TIMEOUT. Attempt 3 exhausted. Escalation recommended." },
         ],
         uxJustification: "Making all retries manual in POC ensures FinOps has full visibility and control over every transfer attempt. This is critical while the team builds confidence in the system. The attempt counter and escalation thresholds prevent runaway manual retries. Future automation will handle the obvious cases (timeouts, rate limits) while escalating ambiguous ones to humans.",
@@ -239,10 +239,10 @@ const SECTIONS = [
           { actor: "System", entry: "Transfer failed — INVALID_BSB: BSB 062-999 does not exist. Non-retryable. Resolution: Correct merchant bank details." },
           { actor: "System", entry: "Transfer failed — ACCOUNT_CLOSED: Merchant's account at ANZ has been closed. Non-retryable. Resolution: Obtain new bank details from merchant." },
           { actor: "System", entry: "Transfer failed — COMPLIANCE_BLOCK: AML screening flagged transaction. Non-retryable. Escalation: Compliance review required." },
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Merchant contacted — New bank details received. BSB updated from 062-999 to 062-000." },
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Resolution applied — Status changed to Ready for Transfer. Fresh transfer attempt." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Merchant contacted — New bank details received. BSB updated from 062-999 to 062-000." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Resolution applied — Status changed to Ready for Transfer. Fresh transfer attempt." },
         ],
-        uxJustification: "Surfacing the recommended action directly in the UI eliminates guesswork. A FinOps Admin seeing 'Invalid BSB → Contact merchant to update bank details' can act immediately instead of looking up error codes in documentation. The strict separation between retryable and non-retryable ensures FinOps never wastes time retrying something that will fail again.",
+        uxJustification: "Surfacing the recommended action directly in the UI eliminates guesswork. A FinOps Administrator seeing 'Invalid BSB → Contact merchant to update bank details' can act immediately instead of looking up error codes in documentation. The strict separation between retryable and non-retryable ensures FinOps never wastes time retrying something that will fail again.",
       },
       {
         term: "Retry Governance",
@@ -251,7 +251,7 @@ const SECTIONS = [
         bg: "#EEF2FF",
         definition: "Rules governing how retries are managed, tracked, and escalated across both retryable and non-retryable failure types.",
         rules: [
-          { rule: "All retries are manual (POC)", detail: "In the POC phase, every retry is initiated by a FinOps Admin clicking the Retry button. No automatic retries occur. This ensures full human oversight while the team builds confidence in the payout pipeline.", futureAutomation: true },
+          { rule: "All retries are manual (POC)", detail: "In the POC phase, every retry is initiated by a FinOps Administrator clicking the Retry button. No automatic retries occur. This ensures full human oversight while the team builds confidence in the payout pipeline.", futureAutomation: true },
           { rule: "Retry transitions to Ready for Transfer", detail: "When a retry is initiated, the payout status changes from Failed to Ready for Transfer. FinOps must then begin the transfer as a separate step. This maintains the two-step (approve → begin transfer) control flow.", futureAutomation: false },
           { rule: "Attempt counter", detail: "The system tracks the number of transfer attempts (including the original). This is displayed in the payout detail view and logged in every audit entry.", futureAutomation: false },
           { rule: "Soft escalation at attempt 3", detail: "After 3 failed attempts (including the original), the system displays an amber 'Escalation recommended' indicator. FinOps should investigate the root cause rather than retrying again.", futureAutomation: true },
@@ -268,11 +268,11 @@ const SECTIONS = [
         ],
         auditExamples: [
           { actor: "System", entry: "Transfer attempt 1 — Failed (GATEWAY_TIMEOUT). Retryable." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 2." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 2." },
           { actor: "System", entry: "Transfer attempt 2 — Failed (GATEWAY_TIMEOUT). Retryable." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 3." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 3." },
           { actor: "System", entry: "Transfer attempt 3 — Failed (CUSCAL_5XX). Retryable. Escalation recommended — 3 attempts exhausted." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Escalated — Raised Cuscal support ticket CSL-2026-0412. Awaiting resolution." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Escalated — Raised Cuscal support ticket CSL-2026-0412. Awaiting resolution." },
         ],
         uxJustification: "Manual-first retry in POC gives the FinOps team direct control and builds operational familiarity with the failure modes. The escalation thresholds (3 and 5 attempts) create natural checkpoints that prevent blind retrying. The phased automation plan (POC → Pilot → BAU) gradually shifts routine retries to the system while keeping edge cases under human control.",
       },
@@ -289,7 +289,7 @@ const SECTIONS = [
         color: "#818CF8",
         bg: "#EEF2FF",
         definition: "Creates a new payout by sweeping the merchant's positive balance. Automated daily job.",
-        uiTreatment: "Triggered by system. Also available as a manual 'Prepare payout' button for FinOps Admin.",
+        uiTreatment: "Triggered by system. Also available as a manual 'Prepare payout' button for FinOps Administrator.",
         auditExamples: [
           { actor: "System", entry: "Payout prepared — Merchant balance swept. 14 transactions included. Amount: $4,200.00." },
         ],
@@ -300,10 +300,10 @@ const SECTIONS = [
         type: "Action (manual)",
         color: "#4F46E5",
         bg: "#EEF2FF",
-        definition: "FinOps Admin reviews and approves a payout, moving it from Ready for Review to Ready for Transfer.",
+        definition: "FinOps Administrator reviews and approves a payout, moving it from Ready for Review to Ready for Transfer.",
         uiTreatment: "Primary solid button. Confirmation dialog shows payout summary and included transactions.",
         auditExamples: [
-          { actor: "Tom Wright (FinOps Admin)", entry: "Approved — Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Approved — Status changed to Ready for Transfer." },
         ],
         uxJustification: "'Approve' is the standard financial operations term for authorising a payment to proceed. Direct, unambiguous.",
       },
@@ -315,7 +315,7 @@ const SECTIONS = [
         definition: "Initiates the NPP bank transfer. The payout status changes to Transferring before the NPP request is made.",
         uiTreatment: "Primary solid button labelled \"Begin transfer\". Triggers immediately without confirmation dialog (the approval step already served as the gate).",
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Begin transfer — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Begin transfer — NPP request submitted. Transfer ID: TRF-2026-0220-005." },
         ],
         uxJustification: "We chose 'Begin transfer' because it's clear, approachable, and naturally pairs with the resulting 'Transferring' status — you begin a transfer, and it's now transferring. 'Begin' is direct without being overly technical or authoritarian. Including the noun 'transfer' makes the action scannable alongside other actions (Approve, Hold, Abandon). The verb 'begin' signals intent to start the process, which is accurate — the NPP transfer is asynchronous and the system tracks it to completion. Considered and rejected: 'Execute transfer' (too authoritarian for a FinOps tool), 'Send payout' (too casual), 'Submit for transfer' (implies another approval step).",
         alternatives: [
@@ -336,8 +336,8 @@ const SECTIONS = [
         definition: "Hold: Places a hold flag on a payout, freezing all progression. Release Hold: Removes the hold, allowing the payout to resume from its underlying status.",
         uiTreatment: "'Hold' appears as an outline button on Ready for Review and Ready for Transfer payouts. 'Release Hold' appears as a primary button when a payout is on hold. Confirmation dialog requires selecting a reason.",
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Hold placed — Reason: Suspicious activity review." },
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Hold released — Investigation complete. Payout cleared." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Hold placed — Reason: Suspicious activity review." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Hold released — Investigation complete. Payout cleared." },
         ],
         uxJustification: "See the Hold flag entry above for full terminology analysis. The action names mirror the flag: 'Hold' to set it, 'Release Hold' to clear it. 'Release Hold' is preferred over just 'Release' to avoid any ambiguity with releasing funds.",
       },
@@ -349,8 +349,8 @@ const SECTIONS = [
         definition: "Manually re-queues a Failed + retryable payout for transfer. Transitions the payout from Failed to Ready for Transfer. Only available on retryable failures — non-retryable payouts must have their root cause resolved first.",
         uiTreatment: "Primary button shown only on Failed + retryable payouts. Non-retryable payouts hide this button. The button label includes the attempt number: 'Retry (attempt 2)'. After 3 attempts, an amber escalation warning appears alongside the button.",
         auditExamples: [
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 2. Status changed to Ready for Transfer." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Manual retry initiated — Attempt 4. Warning: Escalation recommended (3+ attempts)." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 2. Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Manual retry initiated — Attempt 4. Warning: Escalation recommended (3+ attempts)." },
         ],
         uxJustification: "'Retry' is simple and universally understood. Making it manual in POC ensures FinOps reviews each failure before re-attempting. The attempt counter prevents blind repeated retries. The escalation indicators at attempts 3 and 5 create natural review checkpoints.",
       },
@@ -362,7 +362,7 @@ const SECTIONS = [
         definition: "Permanently cancels a payout. Available from Ready for Review, Ready for Transfer, On Hold, and Failed (with stringent criteria). Requires typing 'ABANDON' to confirm.",
         uiTreatment: "Red outline button. Confirmation dialog is deliberately high-friction: shows at-risk amounts, requires reason selection, and demands typing 'ABANDON' in uppercase.",
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Abandoned — Reason: Duplicate payout. Merchant ledger entries released to balance." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Abandoned — Reason: Duplicate payout. Merchant ledger entries released to balance." },
         ],
         uxJustification: "See the Abandoned status entry above. The high-friction confirmation pattern (type-to-confirm) is standard for irreversible financial actions. For Failed payouts, an additional criteria warning is shown to ensure abandonment is a last resort.",
       },
@@ -374,17 +374,17 @@ const SECTIONS = [
     subtitle: "Who can do what in the payout lifecycle",
     items: [
       {
-        term: "FinOps Admin",
+        term: "FinOps Administrator",
         type: "Role",
         color: "#4F46E5",
         bg: "#EEF2FF",
         definition: "Full read-write access to all payout operations. Can Approve, Begin Transfer, Hold, Release Hold, Retry, and Abandon payouts. Can place fleet-level holds (\"Hold all payouts\") and merchant-level holds (\"Hold payouts for [Merchant Name]\").",
         uiTreatment: "All action buttons are enabled. Role displayed in the header toolbar dropdown.",
         auditExamples: [
-          { actor: "Sarah Chen (FinOps Admin)", entry: "Approved — Status changed to Ready for Transfer." },
-          { actor: "Tom Wright (FinOps Admin)", entry: "Hold placed — Reason: Regulatory review." },
+          { actor: "Sarah Chen (FinOps Administrator)", entry: "Approved — Status changed to Ready for Transfer." },
+          { actor: "Tom Wright (FinOps Administrator)", entry: "Hold placed — Reason: Regulatory review." },
         ],
-        uxJustification: "'FinOps Admin' replaced 'FinOps Tier 1' to be more descriptive of the role's capability. 'Admin' immediately conveys write access and authority.",
+        uxJustification: "'FinOps Administrator' replaced 'FinOps Tier 1' to be more descriptive of the role's capability. 'Admin' immediately conveys write access and authority.",
       },
       {
         term: "FinOps View Only",
@@ -392,7 +392,7 @@ const SECTIONS = [
         color: "#6B7280",
         bg: "#F9FAFB",
         definition: "Read-only access. Can view all payouts, statuses, audit logs, and transfers but cannot perform any actions.",
-        uiTreatment: "All action buttons are disabled with a read-only banner: 'You have read-only access. Contact a FinOps Admin user to perform actions.'",
+        uiTreatment: "All action buttons are disabled with a read-only banner: 'You have read-only access. Contact a FinOps Administrator user to perform actions.'",
         auditExamples: [],
         uxJustification: "'FinOps View Only' replaced 'FinOps Tier 2' to clearly communicate the restriction. 'View Only' is immediately understood without needing to look up what 'Tier 2' means.",
       },
@@ -549,7 +549,7 @@ function TermCard({ item }) {
 // ─── Text-only flat view for print / export ───
 function TextOnlyView() {
   const DESIGN_PRINCIPLES = [
-    { num: 1, title: "Persona-first language.", body: "Every term is chosen for how a FinOps Admin would naturally describe it in conversation: \"place a hold on that payout,\" \"begin the transfer,\" \"abandon this one.\" We avoid engineering jargon (disable progression, state machine, flag toggle)." },
+    { num: 1, title: "Persona-first language.", body: "Every term is chosen for how a FinOps Administrator would naturally describe it in conversation: \"place a hold on that payout,\" \"begin the transfer,\" \"abandon this one.\" We avoid engineering jargon (disable progression, state machine, flag toggle)." },
     { num: 2, title: "Unambiguous action verbs.", body: "Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do." },
     { num: 3, title: "Friction proportional to consequence.", body: "Reversible actions (Approve, Begin Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software." },
     { num: 4, title: "Status names describe what's true right now.", body: "\"Ready for Review\" means the payout is ready to be reviewed. \"Transferring\" means funds are in transit. \"On Hold\" means progression is frozen. Every name answers \"what's the current state of this payout?\"" },
@@ -690,7 +690,7 @@ export default function PayoutDataDictionary() {
             <div className="mt-10 p-6 bg-gray-50 rounded-xl border border-gray-200">
               <h2 className="text-sm font-bold text-gray-800 mb-3">Terminology Design Principles</h2>
               <div className="space-y-3 text-sm text-gray-700">
-                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Admin would naturally describe it in conversation: "place a hold on that payout," "begin the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
+                <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">1.</span><span><strong>Persona-first language.</strong> Every term is chosen for how a FinOps Administrator would naturally describe it in conversation: "place a hold on that payout," "begin the transfer," "abandon this one." We avoid engineering jargon (disable progression, state machine, flag toggle).</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">2.</span><span><strong>Unambiguous action verbs.</strong> Each action button uses a single, decisive verb that maps to exactly one transition. No ambiguity about what clicking a button will do.</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">3.</span><span><strong>Friction proportional to consequence.</strong> Reversible actions (Approve, Begin Transfer, Hold) have lightweight confirmations. Irreversible actions (Abandon) require high-friction confirmation (type-to-confirm). This follows established patterns in financial software.</span></div>
                 <div className="flex gap-3"><span className="text-indigo-500 font-bold flex-shrink-0">4.</span><span><strong>Status names describe what's true right now.</strong> "Ready for Review" means the payout is ready to be reviewed. "Transferring" means funds are in transit. "On Hold" means progression is frozen. Every name answers "what's the current state of this payout?"</span></div>
