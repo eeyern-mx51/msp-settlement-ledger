@@ -52,6 +52,7 @@ const Icons = {
   Eye: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>),
   AlertTriangle: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>),
   FileText: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" /><path d="M14 2v6h6" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>),
+  Settings: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
 };
 
 // ─── Shared UI Components ───
@@ -500,6 +501,154 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Automation Config Panel ───
+function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, holdRecords, canWrite }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  // Get config for this level
+  const config = level === "fleet"
+    ? automationConfig.fleet
+    : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
+
+  const anyEnabled = config.preparation || config.approval || config.beginTransfer;
+
+  // Check for active holds that would block automation
+  const hr = holdRecords || [];
+  const activeHolds = level === "fleet"
+    ? hr.filter(h => h.active && h.level === "fleet")
+    : hr.filter(h => h.active && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
+  const prepHolds = activeHolds.filter(h => h.phase === "preparation");
+  const progHolds = activeHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+
+  const handleToggle = (phase) => {
+    if (!canWrite) return;
+    if (level === "fleet") {
+      onUpdateConfig({
+        ...automationConfig,
+        fleet: { ...automationConfig.fleet, [phase]: !automationConfig.fleet[phase] }
+      });
+    } else {
+      const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
+      onUpdateConfig({
+        ...automationConfig,
+        merchants: { ...automationConfig.merchants, [mid]: { ...current, [phase]: !current[phase] } }
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const phases = [
+    { key: "preparation", label: "Auto-preparation", desc: "System automatically prepares payouts from merchant balances daily", holdBlocked: prepHolds.length > 0 },
+    { key: "approval", label: "Auto-approval", desc: "Payouts meeting criteria are auto-approved (amount ≤ $10k, variance ≤ 20%, no disputes)", holdBlocked: progHolds.length > 0 },
+    { key: "beginTransfer", label: "Auto-transfer", desc: "Approved payouts automatically begin bank transfer at scheduled time", holdBlocked: progHolds.length > 0 },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+          anyEnabled
+            ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
+        }`}
+        title="Automation settings"
+      >
+        <Icons.Settings />
+        {anyEnabled && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-xs font-semibold">
+            {[config.preparation, config.approval, config.beginTransfer].filter(Boolean).length}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div ref={panelRef} className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-gray-200 shadow-lg z-50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div>
+              <span className="text-sm font-semibold text-gray-700">Automation Settings</span>
+              <span className="ml-2 text-xs text-gray-400">{level === "fleet" ? "Fleet-wide" : mid}</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close"><Icons.X /></button>
+          </div>
+
+          {/* Hold warning */}
+          {activeHolds.length > 0 && (
+            <div className="mx-4 mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <Icons.Shield />
+              <div>
+                <p className="text-xs font-semibold text-amber-800">{activeHolds.length} active hold{activeHolds.length !== 1 ? "s" : ""} would block automation</p>
+                <p className="text-xs text-amber-600 mt-0.5">Holds override automation config. Automated actions will be skipped while holds are active.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="px-4 py-4 space-y-4">
+            {phases.map((phase) => (
+              <div key={phase.key}>
+                <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
+                  <button
+                    onClick={() => handleToggle(phase.key)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${config[phase.key] ? "bg-blue-500" : "bg-gray-300"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config[phase.key] ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${config[phase.key] ? "text-blue-600" : "text-gray-800"}`}>{phase.label}</span>
+                      {config[phase.key] && phase.holdBlocked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          <Icons.Shield /> Held
+                        </span>
+                      )}
+                      {config[phase.key] && !phase.holdBlocked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
+                    {config[phase.key] && phase.key === "approval" && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
+                        <p className="font-semibold text-gray-700">Auto-approval rules:</p>
+                        <p>• Amount ≤ $10,000</p>
+                        <p>• Variance from previous period ≤ ± 20%</p>
+                        <p>• No open disputes</p>
+                        <p>• Not in first 5 payouts (new merchant)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Icons.Info />
+                <span>Holds always override automation. Manual actions remain available regardless of automation settings.</span>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1299,7 +1448,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET → MERCHANT FACILITY VIEW (shown when clicking a payout from fleet table)
 // ═══════════════════════════════════════════════════════════
-function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold }) {
+function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [activeTab, setActiveTab] = useState("payouts");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const merchantMid = payout.mid || "POSPAY00012345";
@@ -1334,7 +1483,7 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
                 <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
               </div>
             </div>
-            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />
+            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
           </>
         )}
         {activeTab === "overview" && <OverviewTab />}
@@ -1350,7 +1499,7 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
@@ -1383,7 +1532,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />;
+  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
@@ -1398,7 +1547,10 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
-          <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
+          <div className="flex items-center gap-2">
+            <AutomationConfigPanel level="fleet" mid={null} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords || []} canWrite={canWrite} />
+            <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
+          </div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
@@ -1432,7 +1584,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
@@ -1465,6 +1617,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
+            {automationConfig && onUpdateAutomationConfig && <AutomationConfigPanel level="merchant" mid={mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords || []} canWrite={canWrite} />}
             <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords || []} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
           </div>
@@ -1556,7 +1709,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, initialTab, onTabChange }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, initialTab, onTabChange }) {
   const [activeTab, setActiveTab] = useState(initialTab || "transactions");
   const handleTabChange = (tab) => { setActiveTab(tab); if (onTabChange) onTabChange(tab); };
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
@@ -1570,7 +1723,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -2613,6 +2766,10 @@ export default function MSPSupportDashboard() {
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
   const [holdRecords, setHoldRecords] = useState(initialHoldRecords);
+  const [automationConfig, setAutomationConfig] = useState({
+    fleet: { preparation: false, approval: false, beginTransfer: false },
+    merchants: {} // keyed by MID, same shape as fleet
+  });
 
   const handlePayoutStatusChange = useCallback((payoutId, newStatus, extra) => {
     setPayouts((prev) => {
@@ -2691,8 +2848,8 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => { setMerchantDetailView(true); updateHash("merchant-facilities", true, null); }} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
