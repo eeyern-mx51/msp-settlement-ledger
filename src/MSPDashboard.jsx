@@ -664,11 +664,13 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
 
-  const config = level === "fleet"
+  const rawConfig = level === "fleet"
     ? automationConfig.fleet
     : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
+  // Present combined progression toggle (maps to both approval + beginTransfer internally)
+  const config = { preparation: rawConfig.preparation, progression: rawConfig.approval && rawConfig.beginTransfer };
 
-  const anyEnabled = config.preparation || config.approval || config.beginTransfer;
+  const anyEnabled = config.preparation || config.progression;
 
   const hr = holdRecords || [];
   const activeHolds = level === "fleet"
@@ -679,16 +681,20 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
 
   const handleToggle = (phase) => {
     if (!canWrite) return;
+    // "progression" toggle maps to both approval + beginTransfer
+    const updates = phase === "progression"
+      ? { approval: !config.progression, beginTransfer: !config.progression }
+      : { [phase]: !rawConfig[phase] };
     if (level === "fleet") {
       onUpdateConfig({
         ...automationConfig,
-        fleet: { ...automationConfig.fleet, [phase]: !automationConfig.fleet[phase] }
+        fleet: { ...automationConfig.fleet, ...updates }
       });
     } else {
       const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
       onUpdateConfig({
         ...automationConfig,
-        merchants: { ...automationConfig.merchants, [mid]: { ...current, [phase]: !current[phase] } }
+        merchants: { ...automationConfig.merchants, [mid]: { ...current, ...updates } }
       });
     }
   };
@@ -706,9 +712,8 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
   }, [isOpen]);
 
   const phases = [
-    { key: "preparation", label: "Auto-preparation", desc: "System automatically prepares payouts from merchant balances daily", holdBlocked: prepHolds.length > 0 },
-    { key: "approval", label: "Auto-approval", desc: "Payouts meeting criteria are auto-approved (amount ≤ $10k, variance ≤ 20%, no disputes)", holdBlocked: progHolds.length > 0 },
-    { key: "beginTransfer", label: "Auto-transfer", desc: "Approved payouts automatically begin bank transfer at scheduled time", holdBlocked: progHolds.length > 0 },
+    { key: "preparation", label: "Auto-preparation", desc: "Automatically creates payouts from unsettled merchant balances on a scheduled basis", holdBlocked: prepHolds.length > 0 },
+    { key: "progression", label: "Auto-progression", desc: "Automatically advances payouts through approval and transfer when criteria are met", holdBlocked: progHolds.length > 0 },
   ];
 
   return (
@@ -726,7 +731,7 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
         <Icons.Settings />
         {anyEnabled && (
           <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-xs font-semibold">
-            {[config.preparation, config.approval, config.beginTransfer].filter(Boolean).length}
+            {[config.preparation, config.progression].filter(Boolean).length}
           </span>
         )}
       </button>
@@ -776,15 +781,6 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
                       )}
                     </div>
                     <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
-                    {config[phase.key] && phase.key === "approval" && (
-                      <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
-                        <p className="font-semibold text-gray-700">Auto-approval rules:</p>
-                        <p>• Amount ≤ $10,000</p>
-                        <p>• Variance from previous period ≤ ± 20%</p>
-                        <p>• No open disputes</p>
-                        <p>• Not in first 5 payouts (new merchant)</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
