@@ -98,7 +98,7 @@ const PAYOUT_FILTER_STEPS = [
 function PayoutProgressionFilter({ active, onChange, payouts, holdRecords }) {
   const counts = {};
   payouts.forEach((p) => {
-    if (holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid)) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
+    if (holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
     else { counts[p.status] = (counts[p.status] || 0) + 1; }
   });
   const total = payouts.length;
@@ -208,8 +208,8 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold }) {
-  // Collect ALL active holds affecting current view (inherited + own level)
   const { addToast } = useToast();
+  const [expanded, setExpanded] = useState(false);
   const hr = holdRecords || [];
 
   // Inherited: fleet holds shown on merchant/payout pages, merchant holds shown on payout pages
@@ -220,69 +220,89 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
   const currentLevelHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
   const prepHold = currentLevelHolds.find(h => h.phase === "preparation");
   const progHolds = currentLevelHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-  const hasProgHold = progHolds.length > 0;
 
-  // Combine all active holds
   const allHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
   if (allHolds.length === 0) return null;
 
-  const releaseProgression = () => {
-    progHolds.forEach(h => onReleaseHold(h.id));
-    addToast({ type: "success", title: "Hold released", message: "Progression hold has been released." });
-  };
-  const releasePreparation = () => {
-    if (prepHold) onReleaseHold(prepHold.id);
-    addToast({ type: "success", title: "Hold released", message: "Preparation hold has been released." });
-  };
+  // Group holds by level for compact summary
+  const groups = [];
+  if (fleetHolds.length > 0) groups.push({ label: "Fleet", holds: fleetHolds, inherited: true });
+  if (merchantHolds.length > 0) groups.push({ label: "Merchant", holds: merchantHolds, inherited: level !== "merchant" });
+  if (currentLevelHolds.length > 0) {
+    const currentLabel = level === "fleet" ? "Fleet" : level === "merchant" ? "Merchant" : "Payout";
+    // Don't double-count if current level is fleet and we already have fleet group
+    if (level !== "fleet" || fleetHolds.length === 0) groups.push({ label: currentLabel, holds: currentLevelHolds, inherited: false });
+  }
 
-  // Helper to format hold level tag and determine if it's releasable from current view
-  const formatHoldLine = (hold) => {
-    const isCurrentLevel = hold.level === level && (level === "fleet" || hold.entity === entity);
-    const levelLabel = hold.level === "fleet" ? "Fleet-level" : hold.level === "merchant" ? "Merchant-level" : "Payout-level";
+  // Deduplicate unique reasons across all holds for the summary line
+  const uniqueReasons = [...new Set(allHolds.map(h => h.reason))];
+  const summaryText = uniqueReasons.length <= 2
+    ? uniqueReasons.join(" · ")
+    : `${uniqueReasons[0]} + ${uniqueReasons.length - 1} more`;
 
-    return (
-      <div key={hold.id} className="border-t border-amber-200 pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
-              <span className="text-sm font-semibold text-amber-900">{hold.reason}</span>
-            </div>
-            <p className="text-xs text-amber-700 mt-1">{hold.createdBy} · {hold.createdAt}</p>
-            {!isCurrentLevel && <p className="text-xs text-gray-500 mt-1">Must be released from the {hold.level === "fleet" ? "Fleet Payouts" : "Merchant Payouts"} page.</p>}
-          </div>
-          {isCurrentLevel && canWrite && (
-            <Button
-              variant="outline"
-              colorScheme="error"
-              size="sm"
-              onClick={() => {
-                if (hold.phase === "preparation") releasePreparation();
-                else if (hold.phase === "approval" || hold.phase === "begin_transfer") releaseProgression();
-              }}
-            >
-              Release
-            </Button>
-          )}
-        </div>
-      </div>
-    );
+  const releaseHolds = (holds) => {
+    holds.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `${holds.length} hold${holds.length !== 1 ? "s" : ""} released.` });
   };
 
   return (
-    <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-amber-300 bg-amber-50">
-      <div className="mt-0.5 flex-shrink-0"><Icons.Shield /></div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-2">
+    <div className="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
+      {/* Compact summary row — always visible */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-100/50 transition-colors"
+      >
+        <Icons.Shield />
+        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-amber-900">{allHolds.length} hold{allHolds.length !== 1 ? "s" : ""} active</span>
+          <span className="text-xs text-amber-600">—</span>
+          {groups.map(g => (
+            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.holds.length})</Badge>
+          ))}
+          <span className="text-xs text-amber-700 truncate">{summaryText}</span>
         </div>
-        <div className="space-y-3">
-          {fleetHolds.map(h => formatHoldLine(h))}
-          {merchantHolds.map(h => formatHoldLine(h))}
-          {prepHold && formatHoldLine(prepHold)}
-          {progHolds.map(h => formatHoldLine(h))}
+        <span className={`text-amber-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
+          <Icons.ChevronDown />
+        </span>
+      </button>
+
+      {/* Expandable detail section */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-1 border-t border-amber-200">
+          <div className="space-y-2">
+            {allHolds.map((hold) => {
+              const isCurrentLevel = hold.level === level && (level === "fleet" || hold.entity === entity);
+              const levelLabel = hold.level === "fleet" ? "Fleet" : hold.level === "merchant" ? "Merchant" : "Payout";
+              const phaseLabel = hold.phase === "preparation" ? "Prep" : hold.phase === "approval" ? "Approval" : "Transfer";
+
+              return (
+                <div key={hold.id} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
+                  <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
+                  <Badge colorScheme="neutral" size="sm">{phaseLabel}</Badge>
+                  <span className="text-sm font-medium text-amber-900 flex-1 truncate">{hold.reason}</span>
+                  <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline">{hold.createdAt}</span>
+                  {isCurrentLevel && canWrite ? (
+                    <Button
+                      variant="outline"
+                      colorScheme="error"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hold.phase === "preparation") { releaseHolds([hold]); }
+                        else { releaseHolds(progHolds.length > 0 ? progHolds : [hold]); }
+                      }}
+                    >
+                      Release
+                    </Button>
+                  ) : !isCurrentLevel ? (
+                    <span className="text-xs text-gray-400 flex-shrink-0">Release from {hold.level === "fleet" ? "Fleet" : "Merchant"} page</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -543,7 +563,7 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid })
   // Check if progression is blocked using holdRecords, fallback to hold prop
   let isHeld = hold;
   if (holdRecords && payoutId && mid) {
-    isHeld = isProgressionBlocked(holdRecords, payoutId, mid);
+    isHeld = isProgressionBlocked(holdRecords, payoutId, mid, status);
     if (isHeld) console.log("[HOLD DEBUG] PayoutStatusBadge: payout", payoutId, "is ON HOLD (holdRecords:", holdRecords.filter(h => h.active).length, "active)");
   }
 
@@ -627,8 +647,11 @@ function isPreparationBlocked(holdRecords, mid) {
   return holdRecords.some(h => h.active && h.phase === "preparation" && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
 }
 
-function isProgressionBlocked(holdRecords, payoutId, mid) {
-  // Check if either approval or begin_transfer is blocked at any level
+const HOLDABLE_STATUSES = new Set(["Ready for Review", "Ready for Transfer"]);
+
+function isProgressionBlocked(holdRecords, payoutId, mid, status) {
+  // Only active-workflow payouts can be held; terminal/failed states are unaffected
+  if (status && !HOLDABLE_STATUSES.has(status)) return false;
   return isActionBlocked(holdRecords, "approval", payoutId, mid) || isActionBlocked(holdRecords, "begin_transfer", payoutId, mid);
 }
 
@@ -806,7 +829,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   // Get effective holds for this payout
   const effectiveHolds = getEffectiveHolds(holdRecords || [], payout.id, payout.mid);
-  const progressionBlocked = isProgressionBlocked(holdRecords || [], payout.id, payout.mid);
+  const progressionBlocked = isProgressionBlocked(holdRecords || [], payout.id, payout.mid, payout.status);
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
@@ -1356,7 +1379,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid)) : payouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid));
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
@@ -1415,7 +1438,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid)) : merchantPayouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid));
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status)) : merchantPayouts.filter((p) => p.status === statusFilter && !isProgressionBlocked(holdRecords || [], p.id, p.mid, p.status));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
