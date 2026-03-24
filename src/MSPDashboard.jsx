@@ -1047,7 +1047,7 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName, automationConfig, onUpdateAutomationConfig }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
@@ -1117,8 +1117,12 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       <Card>
         <CardHeader>
           <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold} amount={payout.amount} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} /></div>
-          {canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}</div>)}
-          {!canWrite && currentActions.length > 0 && (<div className="flex gap-2">{currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}</div>)}
+          <div className="flex items-center gap-2">
+            {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
+            {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
+            {!isTerminal && <HoldTogglesPanel level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />}
+            {!isTerminal && <AutomationConfigPanel level="payout" mid={payout.mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />}
+          </div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-5">
@@ -1604,7 +1608,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
   const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
@@ -1678,7 +1682,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1693,7 +1697,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />
+            <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
             <AutomationConfigPanel level="merchant" mid={mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />
           </div>
         </CardHeader>
