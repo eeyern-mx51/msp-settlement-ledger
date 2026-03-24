@@ -52,6 +52,7 @@ const Icons = {
   Eye: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>),
   AlertTriangle: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>),
   FileText: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" /><path d="M14 2v6h6" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>),
+  Settings: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
 };
 
 // ─── Shared UI Components ───
@@ -95,11 +96,11 @@ const PAYOUT_FILTER_STEPS = [
   { key: "Abandoned", label: "Abandoned", color: "gray" },
 ];
 
-function PayoutProgressionFilter({ active, onChange, payouts }) {
+function PayoutProgressionFilter({ active, onChange, payouts, holdRecords }) {
   const counts = {};
   payouts.forEach((p) => {
-    if (p.hold) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
-    counts[p.status] = (counts[p.status] || 0) + 1;
+    if (holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
+    else { counts[p.status] = (counts[p.status] || 0) + 1; }
   });
   const total = payouts.length;
 
@@ -344,15 +345,461 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
+function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold }) {
+  const { addToast } = useToast();
+  const [expanded, setExpanded] = useState(false);
+  const hr = holdRecords || [];
+
+  // Inherited: fleet holds shown on merchant/payout pages, merchant holds shown on payout pages
+  const fleetHolds = level !== "fleet" ? hr.filter(h => h.active && h.level === "fleet") : [];
+  const merchantHolds = level === "payout" ? hr.filter(h => h.active && h.level === "merchant" && h.entity === mid) : [];
+
+  // Current level holds
+  const currentLevelHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+  const prepHold = currentLevelHolds.find(h => h.phase === "preparation");
+  const progHolds = currentLevelHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+
+  const allHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
+  if (allHolds.length === 0) return null;
+
+  // Group holds by level for compact summary
+  const groups = [];
+  if (fleetHolds.length > 0) groups.push({ label: "Fleet", holds: fleetHolds, inherited: true });
+  if (merchantHolds.length > 0) groups.push({ label: "Merchant", holds: merchantHolds, inherited: level !== "merchant" });
+  if (currentLevelHolds.length > 0) {
+    const currentLabel = level === "fleet" ? "Fleet" : level === "merchant" ? "Merchant" : "Payout";
+    // Don't double-count if current level is fleet and we already have fleet group
+    if (level !== "fleet" || fleetHolds.length === 0) groups.push({ label: currentLabel, holds: currentLevelHolds, inherited: false });
+  }
+
+  // Deduplicate unique reasons across all holds for the summary line
+  const uniqueReasons = [...new Set(allHolds.map(h => h.reason))];
+  const summaryText = uniqueReasons.length <= 2
+    ? uniqueReasons.join(" · ")
+    : `${uniqueReasons[0]} + ${uniqueReasons.length - 1} more`;
+
+  const releaseHolds = (holds) => {
+    holds.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `${holds.length} hold${holds.length !== 1 ? "s" : ""} released.` });
+  };
+
+  return (
+    <div className="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
+      {/* Compact summary row — always visible */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-100/50 transition-colors"
+      >
+        <Icons.Shield />
+        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
+          <span className="text-sm font-bold text-amber-900">{allHolds.length} hold{allHolds.length !== 1 ? "s" : ""} active</span>
+          <span className="text-xs text-amber-600">—</span>
+          {groups.map(g => (
+            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.holds.length})</Badge>
+          ))}
+          <span className="text-xs text-amber-700 truncate">{summaryText}</span>
+        </div>
+        <span className={`text-amber-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
+          <Icons.ChevronDown />
+        </span>
+      </button>
+
+      {/* Expandable detail section */}
+      {expanded && (
+        <div className="px-4 pb-4 pt-1 border-t border-amber-200">
+          <div className="space-y-2">
+            {allHolds.map((hold) => {
+              const isCurrentLevel = hold.level === level && (level === "fleet" || hold.entity === entity);
+              const levelLabel = hold.level === "fleet" ? "Fleet" : hold.level === "merchant" ? "Merchant" : "Payout";
+              const phaseLabel = hold.phase === "preparation" ? "Prep" : hold.phase === "approval" ? "Approval" : "Transfer";
+
+              return (
+                <div key={hold.id} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
+                  <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
+                  <Badge colorScheme="neutral" size="sm">{phaseLabel}</Badge>
+                  <span className="text-sm font-medium text-amber-900 flex-1 truncate">{hold.reason}</span>
+                  <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline">{hold.createdAt}</span>
+                  {isCurrentLevel && canWrite ? (
+                    <Button
+                      variant="outline"
+                      colorScheme="error"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (hold.phase === "preparation") { releaseHolds([hold]); }
+                        else { releaseHolds(progHolds.length > 0 ? progHolds : [hold]); }
+                      }}
+                    >
+                      Release
+                    </Button>
+                  ) : !isCurrentLevel ? (
+                    <span className="text-xs text-gray-400 flex-shrink-0">Release from {hold.level === "fleet" ? "Fleet" : "Merchant"} page</span>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HoldReasonForm({ onConfirm, onCancel, loading, level }) {
+  const [reason, setReason] = useState("");
+  const [note, setNote] = useState("");
+  const reasonOptions = [
+    "Pending merchant verification", "Suspicious activity review", "Bank details under review",
+    "Regulatory hold", "Internal audit", "DTE data issue",
+    ...(level === "fleet" ? ["Suspected fraud across merchants", "System maintenance", "Payout engine bug"] : ["Suspected fraud"]),
+    "Other"
+  ];
+  return (
+    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">Reason</label>
+        <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
+          <option value="">Select a reason...</option>
+          {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
+        <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+      </div>
+      <div className="flex gap-2">
+        <Button variant="solid" colorScheme="brand" size="sm" onClick={() => onConfirm(reason, note)} disabled={!reason || loading}>{loading ? "Placing..." : "Confirm hold"}</Button>
+        <Button variant="outline" colorScheme="neutral" size="sm" onClick={onCancel} disabled={loading}>Cancel</Button>
+      </div>
+    </div>
+  );
+}
+
+function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHold, onReleaseHold, canWrite, showPreparation }) {
+  const { addToast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
+  const [showReasonFor, setShowReasonFor] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
+  const hr = holdRecords || [];
+
+  // Query current holds at this level
+  const currentHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+  const prepHold = currentHolds.find(h => h.phase === "preparation");
+  const progHolds = currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+  const hasProgHold = progHolds.length > 0;
+  const hasAnyHold = !!prepHold || hasProgHold;
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const createHoldRecords = (phases, reason, note) => {
+    console.log("[HOLD DEBUG] createHoldRecords called:", { phases, level, entity, reason });
+    setLoading(true);
+    setTimeout(() => {
+      phases.forEach(phase => {
+        const record = {
+          id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual",
+          reason, note: note || null, createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
+        };
+        console.log("[HOLD DEBUG] Calling onCreateHold with:", record.id, record.level, record.phase);
+        onCreateHold(record);
+      });
+      addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} — ${reason}` });
+      setLoading(false);
+      setShowReasonFor(null);
+    }, 600);
+  };
+
+  const releasePhases = (phases) => {
+    const toRelease = currentHolds.filter(h => phases.includes(h.phase));
+    toRelease.forEach(h => onReleaseHold(h.id));
+    addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "entity"} has been released.` });
+  };
+
+  const handleTogglePreparation = (checked) => {
+    if (checked) setShowReasonFor("preparation");
+    else releasePhases(["preparation"]);
+  };
+
+  const handleToggleProgression = (checked) => {
+    if (checked) setShowReasonFor("progression");
+    else releasePhases(["approval", "begin_transfer"]);
+  };
+
+  const handleConfirm = (reason, note) => {
+    if (showReasonFor === "preparation") createHoldRecords(["preparation"], reason, note);
+    else if (showReasonFor === "progression") createHoldRecords(["approval", "begin_transfer"], reason, note);
+    else if (showReasonFor === "everything") createHoldRecords(["preparation", "approval", "begin_transfer"], reason, note);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+          hasAnyHold
+            ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
+            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
+        }`}
+        title="Hold controls"
+      >
+        <Icons.Shield />
+        {hasAnyHold && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-red-500 text-white text-xs font-semibold">
+            {(prepHold ? 1 : 0) + (hasProgHold ? 1 : 0)}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div
+          ref={panelRef}
+          className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50"
+        >
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <span className="text-sm font-semibold text-gray-700">Hold Controls</span>
+            <button
+              onClick={() => { setIsOpen(false); setShowReasonFor(null); }}
+              className="text-gray-400 hover:text-gray-600"
+              title="Close"
+            >
+              <Icons.X />
+            </button>
+          </div>
+
+          <div className="px-4 py-4 space-y-4">
+            {showPreparation && (
+              <div>
+                <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "preparation" ? "opacity-40 pointer-events-none" : ""}`}>
+                  <button
+                    onClick={() => handleTogglePreparation(!prepHold)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${prepHold ? "bg-red-500" : "bg-gray-300"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prepHold ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <div>
+                    <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Stop preparation</span>
+                    <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
+                    {prepHold && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                        <p className="text-gray-600">{prepHold.reason}</p>
+                        <p className="text-gray-500 mt-0.5">{prepHold.createdBy} · {prepHold.createdAt}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {showReasonFor === "preparation" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
+              </div>
+            )}
+
+            <div>
+              <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "progression" ? "opacity-40 pointer-events-none" : ""}`}>
+                <button
+                  onClick={() => handleToggleProgression(!hasProgHold)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${hasProgHold ? "bg-red-500" : "bg-gray-300"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${hasProgHold ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+                <div className="flex-1">
+                  <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Stop progression</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
+                  {hasProgHold && progHolds.length > 0 && (
+                    <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
+                      <p className="text-gray-600">{progHolds[0].reason}</p>
+                      <p className="text-gray-500 mt-0.5">{progHolds[0].createdBy} · {progHolds[0].createdAt}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              {showReasonFor === "progression" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
+            </div>
+
+            {level === "fleet" && !prepHold && !hasProgHold && (
+              <div className="pt-2 border-t border-gray-100">
+                {showReasonFor !== "everything" ? (
+                  <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowReasonFor("everything")} disabled={!canWrite}>Stop everything</Button>
+                ) : (
+                  <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, holdRecords, canWrite }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const panelRef = useRef(null);
+  const buttonRef = useRef(null);
+
+  const config = level === "fleet"
+    ? automationConfig.fleet
+    : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
+
+  const anyEnabled = config.preparation || config.approval || config.beginTransfer;
+
+  const hr = holdRecords || [];
+  const activeHolds = level === "fleet"
+    ? hr.filter(h => h.active && h.level === "fleet")
+    : hr.filter(h => h.active && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
+  const prepHolds = activeHolds.filter(h => h.phase === "preparation");
+  const progHolds = activeHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+
+  const handleToggle = (phase) => {
+    if (!canWrite) return;
+    if (level === "fleet") {
+      onUpdateConfig({
+        ...automationConfig,
+        fleet: { ...automationConfig.fleet, [phase]: !automationConfig.fleet[phase] }
+      });
+    } else {
+      const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
+      onUpdateConfig({
+        ...automationConfig,
+        merchants: { ...automationConfig.merchants, [mid]: { ...current, [phase]: !current[phase] } }
+      });
+    }
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => document.removeEventListener("mousedown", handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const phases = [
+    { key: "preparation", label: "Auto-preparation", desc: "System automatically prepares payouts from merchant balances daily", holdBlocked: prepHolds.length > 0 },
+    { key: "approval", label: "Auto-approval", desc: "Payouts meeting criteria are auto-approved (amount ≤ $10k, variance ≤ 20%, no disputes)", holdBlocked: progHolds.length > 0 },
+    { key: "beginTransfer", label: "Auto-transfer", desc: "Approved payouts automatically begin bank transfer at scheduled time", holdBlocked: progHolds.length > 0 },
+  ];
+
+  return (
+    <div className="relative">
+      <button
+        ref={buttonRef}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
+          anyEnabled
+            ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
+        }`}
+        title="Automation settings"
+      >
+        <Icons.Settings />
+        {anyEnabled && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-xs font-semibold">
+            {[config.preparation, config.approval, config.beginTransfer].filter(Boolean).length}
+          </span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div ref={panelRef} className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-gray-200 shadow-lg z-50">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <div>
+              <span className="text-sm font-semibold text-gray-700">Automation Settings</span>
+              <span className="ml-2 text-xs text-gray-400">{level === "fleet" ? "Fleet-wide" : mid}</span>
+            </div>
+            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close"><Icons.X /></button>
+          </div>
+
+          {activeHolds.length > 0 && (
+            <div className="mx-4 mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+              <Icons.Shield />
+              <div>
+                <p className="text-xs font-semibold text-amber-800">{activeHolds.length} active hold{activeHolds.length !== 1 ? "s" : ""} would block automation</p>
+                <p className="text-xs text-amber-600 mt-0.5">Holds override automation config. Automated actions will be skipped while holds are active.</p>
+              </div>
+            </div>
+          )}
+
+          <div className="px-4 py-4 space-y-4">
+            {phases.map((phase) => (
+              <div key={phase.key}>
+                <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
+                  <button
+                    onClick={() => handleToggle(phase.key)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${config[phase.key] ? "bg-blue-500" : "bg-gray-300"}`}
+                  >
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config[phase.key] ? "translate-x-6" : "translate-x-1"}`} />
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-sm font-semibold ${config[phase.key] ? "text-blue-600" : "text-gray-800"}`}>{phase.label}</span>
+                      {config[phase.key] && phase.holdBlocked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
+                          <Icons.Shield /> Held
+                        </span>
+                      )}
+                      {config[phase.key] && !phase.holdBlocked && (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
+                    {config[phase.key] && phase.key === "approval" && (
+                      <div className="mt-2 p-2 bg-gray-50 rounded-lg border border-gray-200 text-xs text-gray-600 space-y-1">
+                        <p className="font-semibold text-gray-700">Auto-approval rules:</p>
+                        <p>• Amount ≤ $10,000</p>
+                        <p>• Variance from previous period ≤ ± 20%</p>
+                        <p>• No open disputes</p>
+                        <p>• Not in first 5 payouts (new merchant)</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-3 border-t border-gray-100">
+              <div className="flex items-center gap-2 text-xs text-gray-400">
+                <Icons.Info />
+                <span>Holds always override automation. Manual actions remain available regardless of automation settings.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, hold, amount }) {
+function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid }) {
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   const numAmt = amount ? parseFloat(String(amount).replace(/[^0-9.\-]/g, "")) : null;
   const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
+  let isHeld = hold;
+  if (holdRecords && payoutId && mid) {
+    isHeld = isProgressionBlocked(holdRecords, payoutId, mid, status);
+    if (isHeld) console.log("[HOLD DEBUG] PayoutStatusBadge: payout", payoutId, "is ON HOLD (holdRecords:", holdRecords.filter(h => h.active).length, "active)");
+  }
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {hold && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
+      {isHeld && <Badge colorScheme="warning" size="sm"><Icons.Pause /> On Hold</Badge>}
       {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
@@ -361,7 +808,60 @@ function PayoutStatusBadge({ status, hold, amount }) {
 // ─── Global role context (simulated) ───
 const ROLES = { FINOPS_T1: "FinOps Administrator", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
 const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
-const getStatusOrder = (payout) => payout.hold ? -1 : (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
+const getStatusOrder = (payout) => (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
+
+// ─── HOLD SYSTEM HELPERS ───
+let holdIdCounter = 100;
+const generateHoldId = () => `hold-${++holdIdCounter}`;
+const nowTimestamp = () => new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true });
+
+function getActiveHoldsForAction(holdRecords, action, payoutId, mid) {
+  // action: "preparation" | "approval" | "begin_transfer"
+  // Returns all active hold records that block this action for this payout
+  return holdRecords.filter(h => {
+    if (!h.active) return false;
+    if (h.phase !== action) return false;
+    if (h.level === "fleet") return true;
+    if (h.level === "merchant" && h.entity === mid) return true;
+    if (h.level === "payout" && h.entity === payoutId) return true;
+    return false;
+  });
+}
+
+function isActionBlocked(holdRecords, action, payoutId, mid) {
+  return getActiveHoldsForAction(holdRecords, action, payoutId, mid).length > 0;
+}
+
+function getHoldsForEntity(holdRecords, level, entity) {
+  return holdRecords.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
+}
+
+function isPreparationBlocked(holdRecords, mid) {
+  // Check fleet-level OR merchant-level preparation holds
+  return holdRecords.some(h => h.active && h.phase === "preparation" && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
+}
+
+const HOLDABLE_STATUSES = new Set(["Ready for Review", "Ready for Transfer"]);
+
+function isProgressionBlocked(holdRecords, payoutId, mid, status) {
+  // Only active-workflow payouts can be held; terminal/failed states are unaffected
+  if (status && !HOLDABLE_STATUSES.has(status)) return false;
+  return isActionBlocked(holdRecords, "approval", payoutId, mid) || isActionBlocked(holdRecords, "begin_transfer", payoutId, mid);
+}
+
+function getEffectiveHolds(holdRecords, payoutId, mid) {
+  // Get all active holds that affect a specific payout, grouped by source
+  const fleet = holdRecords.filter(h => h.active && h.level === "fleet");
+  const merchant = holdRecords.filter(h => h.active && h.level === "merchant" && h.entity === mid);
+  const payout = holdRecords.filter(h => h.active && h.level === "payout" && h.entity === payoutId);
+  return { fleet, merchant, payout, any: fleet.length + merchant.length + payout.length > 0 };
+}
+
+// ─── INITIAL HOLD RECORDS ───
+const initialHoldRecords = [
+  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+];
 
 // ═══════════════════════════════════════════════════════════
 // MOCK DATA — Expanded
@@ -547,7 +1047,7 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, merchantHold, merchantName }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
@@ -556,37 +1056,30 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   const isTerminal = isCompleted || isAbandoned;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
 
-  // Determine effective hold state — fleet overrides merchant overrides payout-level
-  const effectiveHoldScope = !isTerminal && fleetHold ? "fleet" : !isTerminal && merchantHold ? "merchant" : payout.hold ? "payout" : null;
-  const isHeldByHigherScope = effectiveHoldScope === "fleet" || effectiveHoldScope === "merchant";
+  // Check if progression is blocked by holds
+  const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
+  const effectiveHolds = holdRecords ? getEffectiveHolds(holdRecords, payout.id, payout.mid) : { any: false };
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
   const [showHold, setShowHold] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
-  // Build actions based on status + hold flag (including fleet/merchant holds)
+  // Build actions based on status and holds
   const buildActions = () => {
     // Terminal states have no actions
     if (isTerminal) return [];
-    // If held by a higher scope (fleet or merchant), no payout-level actions — hold is managed at a higher level
-    if (isHeldByHigherScope) return [
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ];
-    // If payout is individually on hold, show Release Hold + Abandon regardless of underlying status
-    if (payout.hold) return [
-      { label: "Release Hold", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Hold released", message: `Hold on ${payout.id} has been released.` }); onStatusChange(payout.id, payout.status, { hold: false }); } },
+    // If progression is blocked by holds, no status change actions
+    if (isProgBlocked) return [
       { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
     ];
     const map = {
       "Ready for Review": [
         { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
-        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Ready for Transfer": [
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
-        { label: "Hold", icon: Icons.Pause, variant: "outline", colorScheme: "neutral", action: () => setShowHold(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
@@ -602,10 +1095,6 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
     onStatusChange(payout.id, "Ready for Transfer");
   };
-  const handleHold = (reason, note) => {
-    addToast({ type: "warning", title: "Hold placed", message: `${payout.id} — ${reason}` });
-    onStatusChange(payout.id, payout.status, { hold: true });
-  };
   const handleAbandon = (reason) => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
@@ -614,33 +1103,11 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, fleetHold, mer
   return (
     <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
-      <HoldPayoutDialog open={showHold} onClose={() => setShowHold(false)} payout={payout} onConfirm={handleHold} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      {effectiveHoldScope === "fleet" && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div>
-            <p className="text-sm text-red-700">{fleetHold.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the fleet-level hold is released from the Payouts page.</p>
-          </div>
-        </div>
-      )}
-      {effectiveHoldScope === "merchant" && (
-        <div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-          <div className="mt-0.5"><Icons.Shield /></div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || payout.merchantName} are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Merchant-level</span></div>
-            <p className="text-sm text-red-700">{merchantHold.reason}</p>
-            <p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p>
-            <p className="text-xs text-gray-500 mt-2">This payout cannot progress until the merchant-level hold is released.</p>
-          </div>
-        </div>
-      )}
+      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
@@ -1053,7 +1520,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET → MERCHANT FACILITY VIEW (shown when clicking a payout from fleet table)
 // ═══════════════════════════════════════════════════════════
-function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold }) {
+function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [activeTab, setActiveTab] = useState("payouts");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const merchantMid = payout.mid || "POSPAY00012345";
@@ -1088,7 +1555,7 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
                 <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
               </div>
             </div>
-            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} fleetHold={fleetHold} />
+            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
           </>
         )}
         {activeTab === "overview" && <OverviewTab />}
@@ -1104,9 +1571,8 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, onFleetHoldChange }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const [showFleetHoldDialog, setShowFleetHoldDialog] = useState(false);
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [sortCol, setSortCol] = useState("Status");
@@ -1138,9 +1604,9 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} />;
+  if (currentPayout) return <FleetMerchantFacilityView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => p.hold) : payouts.filter((p) => p.status === statusFilter && !p.hold);
+  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
@@ -1148,17 +1614,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <BulkHoldDialog open={showFleetHoldDialog} onClose={() => setShowFleetHoldDialog(false)} scope="fleet" onConfirm={(holdInfo) => { onFleetHoldChange(holdInfo); addToast({ type: "warning", title: "Fleet hold placed", message: `All fleet payouts are now on hold — ${holdInfo.reason}.` }); }} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
-      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { onFleetHoldChange(null); addToast({ type: "success", title: "Fleet hold released", message: "All fleet payouts can now proceed." }); }} disabled={!canWrite}>Release hold</Button></div>)}
-
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} holdRecords={holdRecords} />
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
           <div className="flex items-center gap-2">
-            {!fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowFleetHoldDialog(true)} disabled={!canWrite}>Hold all payouts</Button>}
+            <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
+            <AutomationConfigPanel level="fleet" mid={null} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />
           </div>
         </CardHeader>
         <Divider />
@@ -1177,7 +1642,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm text-gray-700">{p.merchantName}</td>
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1192,11 +1657,9 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, fleetHold }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
-  const [merchantHold, setMerchantHold] = useState(null); // null or { reason, note, user, timestamp }
-  const [showMerchantHoldDialog, setShowMerchantHoldDialog] = useState(false);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState("Status");
@@ -1206,7 +1669,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => p.hold) : merchantPayouts.filter((p) => p.status === statusFilter && !p.hold);
+  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : merchantPayouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
 
@@ -1215,25 +1678,23 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} fleetHold={fleetHold} merchantHold={merchantHold} merchantName={merchantName} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} />;
 
   return (
     <div className="p-6 space-y-5">
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
-      <BulkHoldDialog open={showMerchantHoldDialog} onClose={() => setShowMerchantHoldDialog(false)} scope="merchant" merchantName={merchantName || "this merchant"} onConfirm={(holdInfo) => { setMerchantHold(holdInfo); addToast({ type: "warning", title: "Hold placed", message: `All payouts for ${merchantName || "this merchant"} are now on hold — ${holdInfo.reason}.` }); }} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
 
-      {fleetHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Fleet payouts are on hold</span><span className="text-xs font-medium bg-red-200 text-red-700 px-2 py-0.5 rounded-full">Fleet-level</span></div><p className="text-sm text-red-700">{fleetHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {fleetHold.user} · {fleetHold.timestamp}{fleetHold.note ? ` · "${fleetHold.note}"` : ""}</p><p className="text-xs text-gray-500 mt-1">Fleet-level hold must be released from the Payouts page.</p></div></div>)}
-      {!fleetHold && merchantHold && (<div className="flex items-start gap-3 p-4 rounded-xl border-2 border-red-300 bg-red-50"><div className="mt-0.5"><Icons.Shield /></div><div className="flex-1"><div className="flex items-center gap-2 mb-1"><span className="text-sm font-bold text-red-800">Payouts for {merchantName || "this merchant"} are on hold</span></div><p className="text-sm text-red-700">{merchantHold.reason}</p><p className="text-xs text-red-500 mt-1">Placed by {merchantHold.user} · {merchantHold.timestamp}{merchantHold.note ? ` · "${merchantHold.note}"` : ""}</p></div><Button variant="outline" colorScheme="error" size="sm" onClick={() => { setMerchantHold(null); addToast({ type: "success", title: "Hold released", message: `Payouts for ${merchantName || "this merchant"} can now proceed.` }); }} disabled={!canWrite}>Release hold</Button></div>)}
-
-      {/* PayoutProgressionFilter hidden — filters removed for now */}
+      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} holdRecords={holdRecords} />
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite}>Prepare payout</Button>
-            {!merchantHold && !fleetHold && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Pause />} onClick={() => setShowMerchantHoldDialog(true)} disabled={!canWrite}>Hold payouts</Button>}
+            <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />
+            <AutomationConfigPanel level="merchant" mid={mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />
           </div>
         </CardHeader>
         <Divider />
@@ -1244,7 +1705,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
@@ -1322,7 +1783,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, fleetHold, initialTab, onTabChange }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, initialTab, onTabChange }) {
   const [activeTab, setActiveTab] = useState(initialTab || "transactions");
   const handleTabChange = (tab) => { setActiveTab(tab); if (onTabChange) onTabChange(tab); };
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
@@ -1336,7 +1797,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} fleetHold={fleetHold} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -2379,7 +2840,11 @@ export default function MSPSupportDashboard() {
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
-  const [fleetHold, setFleetHold] = useState(null); // null or { reason, note, user, timestamp }
+  const [holdRecords, setHoldRecords] = useState(initialHoldRecords);
+  const [automationConfig, setAutomationConfig] = useState({
+    fleet: { preparation: false, approval: false, beginTransfer: false },
+    merchants: {}
+  });
 
   const handlePayoutStatusChange = useCallback((payoutId, newStatus, extra) => {
     setPayouts((prev) => {
@@ -2390,19 +2855,28 @@ export default function MSPSupportDashboard() {
       return prev.map((p) => {
         if (p.id !== payoutId) return p;
         const updated = { ...p, status: newStatus };
-        // Merge extra flags (hold, etc.)
-        if (extra && typeof extra === "object") Object.assign(updated, extra);
-        // Clear hold flag when transitioning to terminal states
-        if (["Transferring", "Completed", "Abandoned"].includes(newStatus)) updated.hold = false;
+        // Merge extra flags but exclude hold (holdRecords now manages this)
+        if (extra && typeof extra === "object") {
+          const { hold, ...otherExtra } = extra;
+          Object.assign(updated, otherExtra);
+        }
         return updated;
       });
     });
   }, []);
 
+  const handleCreateHold = useCallback((holdRecord) => {
+    setHoldRecords((prev) => [...prev, holdRecord]);
+  }, []);
+
+  const handleReleaseHold = useCallback((holdId) => {
+    setHoldRecords((prev) => prev.map((h) => (h.id === holdId ? { ...h, active: false } : h)));
+  }, []);
+
   const handleResetData = useCallback(() => {
     setPayouts([...mockPayouts]);
     setUnassignedMLEs([...mockUnassignedMLEs]);
-    setFleetHold(null);
+    setHoldRecords([...initialHoldRecords]);
   }, []);
 
   // Ingest enriched MLEs from DTE Generator
@@ -2440,8 +2914,8 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} onFleetHoldChange={setFleetHold} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} fleetHold={fleetHold} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => { setMerchantDetailView(true); updateHash("merchant-facilities", true, null); }} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
