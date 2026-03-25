@@ -244,8 +244,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
@@ -362,7 +362,7 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
                   ) : !isCurrentLevel ? (
                     <span className="text-xs text-gray-400 flex-shrink-0">Release from {logical.level === "fleet" ? "Fleet" : "Merchant"} page</span>
                   ) : level === "payout" && isCurrentLevel ? (
-                    <span className="text-xs text-gray-400 flex-shrink-0">Release from Hold controls</span>
+                    <span className="text-xs text-gray-400 flex-shrink-0">Release from Manual Holds</span>
                   ) : null}
                 </div>
               );
@@ -443,7 +443,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
             ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
             : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
         }`}
-        title="Hold controls"
+        title="Manual holds"
       >
         <Icons.Shield />
         {hasAnyHold && (
@@ -459,7 +459,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
           className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-700">Hold Controls</span>
+            <span className="text-sm font-semibold text-gray-700">Manual Holds</span>
             <button
               onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600"
@@ -480,7 +480,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prepHold ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                   <div>
-                    <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Stop preparation</span>
+                    <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Hold manual preparation</span>
                     <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
                     {prepHold && (
                       <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
@@ -501,7 +501,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${hasProgHold ? "translate-x-6" : "translate-x-1"}`} />
                 </button>
                 <div className="flex-1">
-                  <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Stop progression</span>
+                  <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Hold manual progression</span>
                   <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
                   {hasProgHold && progHolds.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
@@ -564,10 +564,12 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
     }
   }, [isOpen]);
 
-  const phases = [
+  const allPhases = [
     { key: "preparation", label: "Hold auto-preparation", desc: "Prevents automated payout creation from running on a scheduled basis" },
     { key: "progression", label: "Hold auto-progression", desc: "Prevents automated approval and transfer from advancing payouts" },
   ];
+  // Payout level: only show progression (no preparation at payout level)
+  const phases = level === "payout" ? allPhases.filter(p => p.key !== "preparation") : allPhases;
 
   return (
     <div className="relative">
