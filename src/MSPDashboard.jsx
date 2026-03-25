@@ -293,32 +293,16 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
 }
 
 
-function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHold, onReleaseHold, canWrite, showPreparation }) {
+function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, canWrite }) {
   const { addToast } = useToast();
-  const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const panelRef = useRef(null);
-  const buttonRef = useRef(null);
   const hr = holdRecords || [];
 
-  // Query current holds at this level
+  // ── Manual holds state ──
   const currentHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
   const prepHold = currentHolds.find(h => h.phase === "preparation");
   const progHolds = currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
   const hasProgHold = progHolds.length > 0;
-  const hasAnyHold = !!prepHold || hasProgHold;
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [isOpen]);
 
   const createHoldRecords = (phases) => {
     setLoading(true);
@@ -334,209 +318,103 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
       setLoading(false);
     }, 600);
   };
-
   const releasePhases = (phases) => {
     const toRelease = currentHolds.filter(h => phases.includes(h.phase));
     toRelease.forEach(h => onReleaseHold(h.id));
     addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "entity"} has been released.` });
   };
+  const handleToggleManualPrep = (checked) => { if (checked) createHoldRecords(["preparation"]); else releasePhases(["preparation"]); };
+  const handleToggleManualProg = (checked) => { if (checked) createHoldRecords(["approval", "begin_transfer"]); else releasePhases(["approval", "begin_transfer"]); };
 
-  const handleTogglePreparation = (checked) => {
-    if (checked) createHoldRecords(["preparation"]);
-    else releasePhases(["preparation"]);
+  // ── Automation holds state ──
+  const rawAutoConfig = level === "fleet"
+    ? automationConfig.fleet
+    : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
+  const autoConfig = { preparation: rawAutoConfig.preparation, progression: rawAutoConfig.approval && rawAutoConfig.beginTransfer };
+
+  const handleToggleAuto = (phase) => {
+    if (!canWrite) return;
+    const updates = phase === "progression"
+      ? { approval: !autoConfig.progression, beginTransfer: !autoConfig.progression }
+      : { [phase]: !rawAutoConfig[phase] };
+    if (level === "fleet") {
+      onUpdateAutomationConfig({ ...automationConfig, fleet: { ...automationConfig.fleet, ...updates } });
+    } else {
+      const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
+      onUpdateAutomationConfig({ ...automationConfig, merchants: { ...automationConfig.merchants, [mid]: { ...current, ...updates } } });
+    }
   };
 
-  const handleToggleProgression = (checked) => {
-    if (checked) createHoldRecords(["approval", "begin_transfer"]);
-    else releasePhases(["approval", "begin_transfer"]);
-  };
+  // Payout level: no preparation toggles
+  const showPreparation = level !== "payout";
+
+  const Toggle = ({ active, onClick, disabled }) => (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 ${active ? "bg-red-500" : "bg-gray-300"} ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+    >
+      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${active ? "translate-x-6" : "translate-x-1"}`} />
+    </button>
+  );
 
   return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
-          hasAnyHold
-            ? "bg-red-50 border-red-200 text-red-600 hover:bg-red-100"
-            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
-        }`}
-        title="Manual holds"
-      >
-        <Icons.Shield />
-        {hasAnyHold && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-red-500 text-white text-xs font-semibold">
-            {(prepHold ? 1 : 0) + (hasProgHold ? 1 : 0)}
-          </span>
-        )}
-      </button>
-
-      {isOpen && (
-        <div
-          ref={panelRef}
-          className="absolute right-0 mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-lg z-50"
-        >
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <span className="text-sm font-semibold text-gray-700">Manual Holds</span>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="text-gray-400 hover:text-gray-600"
-              title="Close"
-            >
-              <Icons.X />
-            </button>
-          </div>
-
-          <div className="px-4 py-4 space-y-4">
+    <Modal open={open} onClose={onClose} title="Hold controls">
+      <div className="space-y-6">
+        {/* Manual Holds */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Manual Holds</h3>
+          <div className="space-y-3">
             {showPreparation && (
-              <div>
-                <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
-                  <button
-                    onClick={() => handleTogglePreparation(!prepHold)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${prepHold ? "bg-red-500" : "bg-gray-300"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${prepHold ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                  <div>
-                    <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Hold manual preparation</span>
-                    <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
-                  </div>
+              <div className="flex items-start gap-3">
+                <Toggle active={!!prepHold} onClick={() => handleToggleManualPrep(!prepHold)} disabled={!canWrite} />
+                <div>
+                  <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
                 </div>
               </div>
             )}
-
-            <div>
-              <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
-                <button
-                  onClick={() => handleToggleProgression(!hasProgHold)}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${hasProgHold ? "bg-red-500" : "bg-gray-300"}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${hasProgHold ? "translate-x-6" : "translate-x-1"}`} />
-                </button>
-                <div className="flex-1">
-                  <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Hold manual progression</span>
-                  <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
-                </div>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, holdRecords, canWrite }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const panelRef = useRef(null);
-  const buttonRef = useRef(null);
-
-  const rawConfig = level === "fleet"
-    ? automationConfig.fleet
-    : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
-  // Config values represent whether automation is HELD (true = held/blocked, false = running)
-  const config = { preparation: rawConfig.preparation, progression: rawConfig.approval && rawConfig.beginTransfer };
-
-  const anyHeld = config.preparation || config.progression;
-
-  const handleToggle = (phase) => {
-    if (!canWrite) return;
-    // "progression" toggle maps to both approval + beginTransfer
-    const updates = phase === "progression"
-      ? { approval: !config.progression, beginTransfer: !config.progression }
-      : { [phase]: !rawConfig[phase] };
-    if (level === "fleet") {
-      onUpdateConfig({
-        ...automationConfig,
-        fleet: { ...automationConfig.fleet, ...updates }
-      });
-    } else {
-      const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
-      onUpdateConfig({
-        ...automationConfig,
-        merchants: { ...automationConfig.merchants, [mid]: { ...current, ...updates } }
-      });
-    }
-  };
-
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (panelRef.current && !panelRef.current.contains(e.target) && buttonRef.current && !buttonRef.current.contains(e.target)) {
-        setIsOpen(false);
-      }
-    };
-    if (isOpen) {
-      document.addEventListener("mousedown", handleClickOutside);
-      return () => document.removeEventListener("mousedown", handleClickOutside);
-    }
-  }, [isOpen]);
-
-  const allPhases = [
-    { key: "preparation", label: "Hold auto-preparation", desc: "Prevents automated payout creation from running on a scheduled basis" },
-    { key: "progression", label: "Hold auto-progression", desc: "Prevents automated approval and transfer from advancing payouts" },
-  ];
-  // Payout level: only show progression (no preparation at payout level)
-  const phases = level === "payout" ? allPhases.filter(p => p.key !== "preparation") : allPhases;
-
-  return (
-    <div className="relative">
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
-          anyHeld
-            ? "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
-            : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
-        }`}
-        title="Automation holds"
-      >
-        <Icons.Settings />
-        {anyHeld && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white text-xs font-semibold">
-            {[config.preparation, config.progression].filter(Boolean).length}
-          </span>
-        )}
-      </button>
-
-      {isOpen && (
-        <div ref={panelRef} className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-gray-200 shadow-lg z-50">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-            <div>
-              <span className="text-sm font-semibold text-gray-700">Automation Holds</span>
-              <span className="ml-2 text-xs text-gray-400">{level === "fleet" ? "Fleet-wide" : mid}</span>
-            </div>
-            <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close"><Icons.X /></button>
-          </div>
-
-          <div className="px-4 py-4 space-y-4">
-            {phases.map((phase) => (
-              <div key={phase.key}>
-                <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
-                  <button
-                    onClick={() => handleToggle(phase.key)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${config[phase.key] ? "bg-red-500" : "bg-gray-300"}`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config[phase.key] ? "translate-x-6" : "translate-x-1"}`} />
-                  </button>
-                  <div className="flex-1">
-                    <span className={`text-sm font-semibold ${config[phase.key] ? "text-red-600" : "text-gray-800"}`}>{phase.label}</span>
-                    <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            <div className="pt-3 border-t border-gray-100">
-              <div className="flex items-center gap-2 text-xs text-gray-400">
-                <Icons.Info />
-                <span>When held, automated actions are paused. Manual actions remain available.</span>
+            <div className="flex items-start gap-3">
+              <Toggle active={hasProgHold} onClick={() => handleToggleManualProg(!hasProgHold)} disabled={!canWrite} />
+              <div>
+                <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
+                <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
               </div>
             </div>
           </div>
         </div>
-      )}
-    </div>
+
+        <Divider />
+
+        {/* Automation Holds */}
+        <div>
+          <h3 className="text-sm font-semibold text-gray-700 mb-3">Automation Holds</h3>
+          <div className="space-y-3">
+            {showPreparation && (
+              <div className="flex items-start gap-3">
+                <Toggle active={autoConfig.preparation} onClick={() => handleToggleAuto("preparation")} disabled={!canWrite} />
+                <div>
+                  <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
+                  <p className="text-xs text-gray-500 mt-0.5">Prevents automated payout creation from running on a scheduled basis</p>
+                </div>
+              </div>
+            )}
+            <div className="flex items-start gap-3">
+              <Toggle active={autoConfig.progression} onClick={() => handleToggleAuto("progression")} disabled={!canWrite} />
+              <div>
+                <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
+                <p className="text-xs text-gray-500 mt-0.5">Prevents automated approval and transfer from advancing payouts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
+          <Icons.Info />
+          <span>When held, the corresponding actions are paused.</span>
+        </div>
+      </div>
+    </Modal>
   );
 }
 
@@ -825,6 +703,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const [showApprove, setShowApprove] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
+  const [showHolds, setShowHolds] = useState(false);
 
   // Build actions based on status and holds
   const buildActions = () => {
@@ -870,6 +749,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
       <BeginTransferDialog open={showTransfer} onClose={() => setShowTransfer(false)} payout={payout} onConfirm={handleBeginTransfer} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
+      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
@@ -886,8 +766,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
           <div className="flex items-center gap-2">
             {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
             {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
-            {!isTerminal && <HoldTogglesPanel level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />}
-            {!isTerminal && <AutomationConfigPanel level="payout" mid={payout.mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />}
+            {!isTerminal && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
           </div>
         </CardHeader>
         <Divider />
@@ -1490,6 +1369,7 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
+  const [showHolds, setShowHolds] = useState(false);
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
@@ -1528,14 +1408,15 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
+      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="fleet" entity={null} entityLabel="Fleet" mid={null} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
+
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
           <div className="flex items-center gap-2">
-            <HoldTogglesPanel level="fleet" entity={null} entityLabel="Fleet" holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
-            <AutomationConfigPanel level="fleet" mid={null} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />
+            <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
           </div>
         </CardHeader>
         <Divider />
@@ -1572,6 +1453,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
+  const [showHolds, setShowHolds] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
@@ -1593,6 +1475,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   return (
     <div className="p-6 space-y-5">
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
+      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="merchant" entity={mid} entityLabel={merchantName} mid={mid} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
@@ -1601,8 +1484,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
-            <HoldTogglesPanel level="merchant" entity={mid} entityLabel={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />
-            <AutomationConfigPanel level="merchant" mid={mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />
+            <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
           </div>
         </CardHeader>
         <Divider />
