@@ -496,7 +496,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <span className="text-sm font-semibold text-gray-700">Hold Controls</span>
             <button
-              onClick={() => { setIsOpen(false); setShowReasonFor(null); }}
+              onClick={() => setIsOpen(false)}
               className="text-gray-400 hover:text-gray-600"
               title="Close"
             >
