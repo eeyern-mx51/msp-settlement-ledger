@@ -1171,7 +1171,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
                       </div>
                       {expandedMid === g.mid && (
                         <div className="px-3 pb-3 pt-0 ml-8">
-                          <PayoutPreviewBreakdown mid={g.mid} filteredDTEs={g.dteFiles} chargebacks={g.chargebacks} adjustments={g.adjustments} />
+                          <PayoutPreviewBreakdown breakdown={g.breakdown} />
                         </div>
                       )}
                     </div>
