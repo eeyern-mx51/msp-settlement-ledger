@@ -225,7 +225,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold }) {
+function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
   const { addToast } = useToast();
   const [expanded, setExpanded] = useState(false);
   const hr = holdRecords || [];
@@ -236,39 +236,80 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
 
   // Current level holds
   const currentLevelHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
-  const prepHold = currentLevelHolds.find(h => h.phase === "preparation");
-  const progHolds = currentLevelHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
 
-  const allHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
-  if (allHolds.length === 0) return null;
+  const allManualHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
 
   // Group raw hold records into logical holds (merge approval + begin_transfer into "Progression")
   const groupHoldsLogical = (holds) => {
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ type: "preparation", label: "Preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ type: "progression", label: "Progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
-  const allLogical = groupHoldsLogical(allHolds);
-  const currentLogical = groupHoldsLogical(currentLevelHolds);
+  // Build automation hold entries
+  const getAutoHolds = () => {
+    if (!automationConfig) return [];
+    const autoEntries = [];
+    const addAutoEntry = (cfgLevel, cfgMid) => {
+      const raw = cfgLevel === "fleet"
+        ? automationConfig.fleet
+        : (automationConfig.merchants[cfgMid] || null);
+      if (!raw) return;
+      if (raw.preparation) {
+        autoEntries.push({ kind: "automation", type: "preparation", label: "Auto-preparation", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid, records: [] });
+      }
+      if (raw.approval && raw.beginTransfer) {
+        autoEntries.push({ kind: "automation", type: "progression", label: "Auto-progression", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid, records: [] });
+      }
+    };
+    // Show fleet automation holds on all levels
+    if (level === "fleet") addAutoEntry("fleet", null);
+    else {
+      addAutoEntry("fleet", null); // inherited fleet auto-holds
+      if (level === "merchant" || level === "payout") addAutoEntry("merchant", mid);
+    }
+    return autoEntries;
+  };
 
-  // Group logical holds by level for compact summary
-  const groups = [];
-  const fleetLogical = groupHoldsLogical(fleetHolds);
-  const merchantLogical = groupHoldsLogical(merchantHolds);
-  if (fleetLogical.length > 0) groups.push({ label: "Fleet", count: fleetLogical.length });
-  if (merchantLogical.length > 0) groups.push({ label: "Merchant", count: merchantLogical.length });
-  if (currentLogical.length > 0) {
-    const currentLabel = level === "fleet" ? "Fleet" : level === "merchant" ? "Merchant" : "Payout";
-    if (level !== "fleet" || fleetLogical.length === 0) groups.push({ label: currentLabel, count: currentLogical.length });
-  }
+  const allManualLogical = groupHoldsLogical(allManualHolds);
+  const currentLogical = groupHoldsLogical(currentLevelHolds);
+  const autoHolds = getAutoHolds();
+  const allLogical = [...allManualLogical, ...autoHolds];
+
+  if (allLogical.length === 0) return null;
+
+  // Build summary badges — group by level, list phase names
+  const summaryParts = [];
+  const byLevel = {};
+  allLogical.forEach(l => {
+    const lbl = l.level === "fleet" ? "Fleet" : l.level === "merchant" ? "Merchant" : "Payout";
+    if (!byLevel[lbl]) byLevel[lbl] = [];
+    byLevel[lbl].push(l.label);
+  });
+  Object.entries(byLevel).forEach(([lbl, phases]) => {
+    summaryParts.push({ label: lbl, detail: phases.join(", ") });
+  });
 
   const releaseLogical = (logical) => {
     logical.records.forEach(h => onReleaseHold(h.id));
     addToast({ type: "success", title: "Hold released", message: `${logical.label} hold released.` });
+  };
+
+  const releaseAutoHold = (entry) => {
+    if (!onUpdateAutomationConfig || !automationConfig) return;
+    const updates = entry.type === "preparation"
+      ? { preparation: false }
+      : { approval: false, beginTransfer: false };
+    if (entry.level === "fleet") {
+      onUpdateAutomationConfig({ ...automationConfig, fleet: { ...automationConfig.fleet, ...updates } });
+    } else {
+      const current = automationConfig.merchants[entry.entity] || { preparation: false, approval: false, beginTransfer: false };
+      onUpdateAutomationConfig({ ...automationConfig, merchants: { ...automationConfig.merchants, [entry.entity]: { ...current, ...updates } } });
+    }
+    addToast({ type: "success", title: "Automation hold released", message: `${entry.label} released.` });
   };
 
   return (
@@ -282,8 +323,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
         <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
           <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
           <span className="text-xs text-amber-600">—</span>
-          {groups.map(g => (
-            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.count})</Badge>
+          {summaryParts.map(g => (
+            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} · {g.detail}</Badge>
           ))}
         </div>
         <span className={`text-amber-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
@@ -298,26 +339,30 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
             {allLogical.map((logical, idx) => {
               const isCurrentLevel = logical.level === level && (level === "fleet" || logical.entity === entity);
               const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
+              const isAuto = logical.kind === "automation";
 
               return (
                 <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
                   <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
-                  <Badge colorScheme="neutral" size="sm">{logical.label}</Badge>
-                  <span className="text-xs text-amber-600 flex-1 flex-shrink-0">{logical.createdAt}</span>
-                  {isCurrentLevel && canWrite ? (
+                  <Badge colorScheme={isAuto ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
+                  {!isAuto && <span className="text-xs text-amber-600 flex-1 flex-shrink-0">{logical.createdAt}</span>}
+                  {isAuto && <span className="text-xs text-gray-400 flex-1 flex-shrink-0">Automated actions paused</span>}
+                  {isCurrentLevel && canWrite && level !== "payout" ? (
                     <Button
                       variant="outline"
                       colorScheme="error"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        releaseLogical(logical);
+                        isAuto ? releaseAutoHold(logical) : releaseLogical(logical);
                       }}
                     >
                       Release
                     </Button>
                   ) : !isCurrentLevel ? (
                     <span className="text-xs text-gray-400 flex-shrink-0">Release from {logical.level === "fleet" ? "Fleet" : "Merchant"} page</span>
+                  ) : level === "payout" && isCurrentLevel ? (
+                    <span className="text-xs text-gray-400 flex-shrink-0">Release from Hold controls</span>
                   ) : null}
                 </div>
               );
@@ -860,7 +905,9 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
   const isTerminal = isCompleted || isAbandoned;
-  const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
+  const rawAuditLog = auditLogs[payout.id] || defaultAuditLog(payout);
+  // POC: filter out user-performed and hold-related events — only show system events
+  const auditLog = rawAuditLog.filter(e => e.user === "System" && !e.action.toLowerCase().includes("hold"));
 
   // Check if progression is blocked by holds (for holdable statuses)
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
@@ -919,7 +966,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
@@ -939,7 +986,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         <Divider />
         <CardBody className="pt-5">
           <div className="grid grid-cols-1 lg:grid-cols-[200px_minmax(0,1fr)] gap-4">
-            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>], ["Status", <PayoutStatusBadge status={payout.status} hold={payout.hold} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} />]].map(([label, value]) => (
+            {[["Payout ID", <span className="font-mono">{payout.id}</span>], ["Created", payout.createdAt || payout.date], ["Requested settlement date", payout.settlementDate || payout.date], ["Merchant", payout.merchantName], ["MID", <Badge colorScheme="neutral" size="sm">{payout.mid}</Badge>], ["Payout amount", <span className="font-semibold text-gray-900">{payout.amount}</span>]].map(([label, value]) => (
               <div key={label} className="contents"><div className="text-sm font-semibold text-gray-500">{label}</div><div className="text-sm text-gray-700 flex items-center">{value}</div></div>
             ))}
           </div>
@@ -1380,11 +1427,12 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ═══════════════════════════════════════════════════════════
 function AdjustmentDetailView({ adj, onBack }) {
   const isSystem = adj.initiatedBy === "System";
+  // POC: only show system events in audit log (no user-performed events)
   const auditEntries = isSystem ? [
     { ts: adj.date + ", 6:00 AM", version: 1, action: "Adjustment auto-generated", user: "System", detail: `${adj.entryType || "Adjustment"} of ${adj.amount} created automatically during payout preparation.` },
     ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 2, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
   ] : [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: adj.initiatedBy + " (FinOps Administrator)", detail: `Manual adjustment of ${adj.amount} created.` },
+    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "System", detail: `Manual adjustment of ${adj.amount} created.` },
   ];
 
   return (
@@ -1573,7 +1621,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" canWrite={canWrite} onReleaseHold={onReleaseHold} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
 
       <Card>
         <CardHeader>
@@ -1639,7 +1687,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
 
       <Card>
         <CardHeader>
