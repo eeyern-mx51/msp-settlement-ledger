@@ -1220,14 +1220,9 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 7);
   const maxDateStr = maxDate.toISOString().split("T")[0];
   const hasDate = settlementDate !== "";
-  const cutoffDate = settlementDate;
-  const filteredDTEs = hasDate ? allMLEs.filter((dte) => dte.date <= cutoffDate) : [];
-  const { chargebacks, adjustments } = hasDate ? computePayoutPreview(mid, cutoffDate) : { chargebacks: [], adjustments: [] };
-
-  const txnTotal = filteredDTEs.reduce((sum, dte) => sum + dte.amount, 0);
-  const cbTotal = chargebacks.reduce((sum, c) => sum + c.amount, 0);
-  const adjTotal = adjustments.reduce((sum, a) => sum + a.amount, 0);
-  const payoutTotal = txnTotal + cbTotal + adjTotal;
+  const breakdown = hasDate ? getPayoutBreakdown(mid) : null;
+  const payoutTotal = breakdown ? breakdown.total_amount : 0;
+  const hasEntries = breakdown && breakdown.total_count > 0;
 
   const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
@@ -1244,7 +1239,7 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
         date: dateStr,
         createdAt: `${dateStr}, ${timeStr}`,
         settlementDate: new Date(settlementDate).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }),
-        merchantName: merchantName || filteredDTEs[0]?.merchant || "Unknown",
+        merchantName: merchantName || "Unknown",
         mid,
         amount: fmt(payoutTotal),
         status: payoutTotal <= 0 ? "Completed" : "Ready for Review",
@@ -1274,17 +1269,17 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
           <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">Select a settlement date to see payout preview.</p></div>
         )}
 
-        {hasDate && filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0 && (
+        {hasDate && !hasEntries && (
           <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">No ledger entries found for this date.</p></div>
         )}
 
-        {hasDate && (filteredDTEs.length > 0 || chargebacks.length > 0 || adjustments.length > 0) && (
-          <PayoutPreviewBreakdown mid={mid} filteredDTEs={filteredDTEs} chargebacks={chargebacks} adjustments={adjustments} />
+        {hasDate && hasEntries && (
+          <PayoutPreviewBreakdown breakdown={breakdown} />
         )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || (filteredDTEs.length === 0 && chargebacks.length === 0 && adjustments.length === 0) || creating} onClick={handleCreate}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || !hasEntries || creating} onClick={handleCreate}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create payout"}
           </Button>
         </div>
