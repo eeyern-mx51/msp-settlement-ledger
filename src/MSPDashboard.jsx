@@ -317,7 +317,6 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
         <div className="px-4 pb-4 pt-1 border-t border-amber-200">
           <div className="space-y-2">
             {allLogical.map((logical, idx) => {
-              const isCurrentLevel = logical.level === level && (level === "fleet" || logical.entity === entity);
               const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
               const isAuto = logical.kind === "automation";
 
@@ -325,25 +324,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
                 <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
                   <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
                   <Badge colorScheme={isAuto ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
-                  {!isAuto && <span className="text-xs text-amber-600 flex-1 flex-shrink-0">{logical.createdAt}</span>}
-                  {isAuto && <span className="text-xs text-gray-400 flex-1 flex-shrink-0">Automated actions paused</span>}
-                  {isCurrentLevel && canWrite && level !== "payout" ? (
-                    <Button
-                      variant="outline"
-                      colorScheme="error"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        isAuto ? releaseAutoHold(logical) : releaseLogical(logical);
-                      }}
-                    >
-                      Release
-                    </Button>
-                  ) : !isCurrentLevel ? (
-                    <span className="text-xs text-gray-400 flex-shrink-0">Release from {logical.level === "fleet" ? "Fleet" : "Merchant"} page</span>
-                  ) : level === "payout" && isCurrentLevel ? (
-                    <span className="text-xs text-gray-400 flex-shrink-0">Release from Manual Holds</span>
-                  ) : null}
+                  {!isAuto && <span className="text-xs text-amber-600 flex-1">{logical.createdAt}</span>}
+                  {isAuto && <span className="text-xs text-gray-400 flex-1">Automated actions paused</span>}
                 </div>
               );
             })}
@@ -948,7 +930,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} automationConfig={automationConfig} />
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
@@ -1603,7 +1585,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
       <Card>
         <CardHeader>
@@ -1669,7 +1651,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
     <div className="p-6 space-y-5">
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
+      <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
       <Card>
         <CardHeader>
