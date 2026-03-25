@@ -225,8 +225,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
-function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canWrite, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
-  const { addToast } = useToast();
+function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, automationConfig }) {
   const [expanded, setExpanded] = useState(false);
   const hr = holdRecords || [];
 
@@ -292,25 +291,6 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
   Object.entries(byLevel).forEach(([lbl, phases]) => {
     summaryParts.push({ label: lbl, detail: phases.join(", ") });
   });
-
-  const releaseLogical = (logical) => {
-    logical.records.forEach(h => onReleaseHold(h.id));
-    addToast({ type: "success", title: "Hold released", message: `${logical.label} hold released.` });
-  };
-
-  const releaseAutoHold = (entry) => {
-    if (!onUpdateAutomationConfig || !automationConfig) return;
-    const updates = entry.type === "preparation"
-      ? { preparation: false }
-      : { approval: false, beginTransfer: false };
-    if (entry.level === "fleet") {
-      onUpdateAutomationConfig({ ...automationConfig, fleet: { ...automationConfig.fleet, ...updates } });
-    } else {
-      const current = automationConfig.merchants[entry.entity] || { preparation: false, approval: false, beginTransfer: false };
-      onUpdateAutomationConfig({ ...automationConfig, merchants: { ...automationConfig.merchants, [entry.entity]: { ...current, ...updates } } });
-    }
-    addToast({ type: "success", title: "Automation hold released", message: `${entry.label} released.` });
-  };
 
   return (
     <div className="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
