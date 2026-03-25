@@ -209,12 +209,10 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
-  const [reason, setReason] = useState("");
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const handleConfirm = () => {
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(reason, note); onClose(); setReason(""); setNote(""); }, 1000);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1000);
   };
   if (!payout) return null;
   return (
@@ -226,26 +224,9 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
         </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-            <option value="">Select a reason...</option>
-            <option>Pending merchant verification</option>
-            <option>Suspicious activity review</option>
-            <option>Bank details under review</option>
-            <option>Regulatory hold</option>
-            <option>Internal audit</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
-        </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : "Place hold"}</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : "Place hold"}</Button>
         </div>
       </div>
     </Modal>
@@ -254,8 +235,6 @@ function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
 
 function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
   // scope: "fleet" or "merchant"
-  const [reason, setReason] = useState("");
-  const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const isFleet = scope === "fleet";
   const dialogTitle = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
@@ -264,34 +243,15 @@ function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
   const confirmLabel = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
   const handleConfirm = () => {
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm({ reason, note, user: "Sarah Chen (FinOps Administrator)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); setReason(""); setNote(""); }, 1000);
+    setTimeout(() => { setLoading(false); onConfirm({ user: "Sarah Chen (FinOps Administrator)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); }, 1000);
   };
   return (
     <Modal open={open} onClose={onClose} title={dialogTitle}>
       <div className="space-y-5">
         <Alert type="warning" title={alertTitle}>{alertBody}</Alert>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for hold</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-            <option value="">Select a reason...</option>
-            <option>Pending merchant verification</option>
-            <option>Suspicious activity review</option>
-            <option>Bank details under review</option>
-            <option>Regulatory hold</option>
-            <option>Internal audit</option>
-            <option>Suspected fraud across merchants</option>
-            <option>System maintenance</option>
-            <option>Other</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Internal note (optional)</label>
-          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-          <p className="text-xs text-gray-400 mt-1">{note.length}/300 characters</p>
-        </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading || !reason} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : confirmLabel}</Button>
+          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : confirmLabel}</Button>
         </div>
       </div>
     </Modal>
@@ -367,14 +327,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    // Group progression holds by reason (approval + begin_transfer with same reason = 1 logical hold)
-    const progByReason = {};
-    progHoldsGroup.forEach(h => {
-      if (!progByReason[h.reason]) progByReason[h.reason] = [];
-      progByReason[h.reason].push(h);
-    });
-    prepHolds.forEach(h => logical.push({ type: "preparation", label: "Preparation", records: [h], reason: h.reason, createdAt: h.createdAt, level: h.level, entity: h.entity }));
-    Object.entries(progByReason).forEach(([reason, records]) => logical.push({ type: "progression", label: "Progression", records, reason, createdAt: records[0].createdAt, level: records[0].level, entity: records[0].entity }));
+    prepHolds.forEach(h => logical.push({ type: "preparation", label: "Preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ type: "progression", label: "Progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
@@ -391,11 +345,6 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
     const currentLabel = level === "fleet" ? "Fleet" : level === "merchant" ? "Merchant" : "Payout";
     if (level !== "fleet" || fleetLogical.length === 0) groups.push({ label: currentLabel, count: currentLogical.length });
   }
-
-  const uniqueReasons = [...new Set(allLogical.map(h => h.reason))];
-  const summaryText = uniqueReasons.length <= 2
-    ? uniqueReasons.join(" · ")
-    : `${uniqueReasons[0]} + ${uniqueReasons.length - 1} more`;
 
   const releaseLogical = (logical) => {
     logical.records.forEach(h => onReleaseHold(h.id));
@@ -416,7 +365,6 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
           {groups.map(g => (
             <Badge key={g.label} colorScheme="warning" size="sm">{g.label} ({g.count})</Badge>
           ))}
-          <span className="text-xs text-amber-700 truncate">{summaryText}</span>
         </div>
         <span className={`text-amber-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
           <Icons.ChevronDown />
@@ -435,8 +383,7 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
                 <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
                   <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
                   <Badge colorScheme="neutral" size="sm">{logical.label}</Badge>
-                  <span className="text-sm font-medium text-amber-900 flex-1 truncate">{logical.reason}</span>
-                  <span className="text-xs text-amber-600 flex-shrink-0 hidden sm:inline">{logical.createdAt}</span>
+                  <span className="text-xs text-amber-600 flex-1 flex-shrink-0">{logical.createdAt}</span>
                   {isCurrentLevel && canWrite ? (
                     <Button
                       variant="outline"
@@ -462,40 +409,10 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, canW
   );
 }
 
-function HoldReasonForm({ onConfirm, onCancel, loading, level }) {
-  const [reason, setReason] = useState("");
-  const [note, setNote] = useState("");
-  const reasonOptions = [
-    "Pending merchant verification", "Suspicious activity review", "Bank details under review",
-    "Regulatory hold", "Internal audit", "DTE data issue",
-    ...(level === "fleet" ? ["Suspected fraud across merchants", "System maintenance", "Payout engine bug"] : ["Suspected fraud"]),
-    "Other"
-  ];
-  return (
-    <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Reason</label>
-        <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-          <option value="">Select a reason...</option>
-          {reasonOptions.map(r => <option key={r} value={r}>{r}</option>)}
-        </select>
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-gray-700 mb-1">Note (optional)</label>
-        <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} rows={2} placeholder="Add context for the FinOps team..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
-      </div>
-      <div className="flex gap-2">
-        <Button variant="solid" colorScheme="brand" size="sm" onClick={() => onConfirm(reason, note)} disabled={!reason || loading}>{loading ? "Placing..." : "Confirm hold"}</Button>
-        <Button variant="outline" colorScheme="neutral" size="sm" onClick={onCancel} disabled={loading}>Cancel</Button>
-      </div>
-    </div>
-  );
-}
 
 function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHold, onReleaseHold, canWrite, showPreparation }) {
   const { addToast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
-  const [showReasonFor, setShowReasonFor] = useState(null);
   const [loading, setLoading] = useState(false);
   const panelRef = useRef(null);
   const buttonRef = useRef(null);
@@ -520,21 +437,18 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
     }
   }, [isOpen]);
 
-  const createHoldRecords = (phases, reason, note) => {
-    console.log("[HOLD DEBUG] createHoldRecords called:", { phases, level, entity, reason });
+  const createHoldRecords = (phases) => {
     setLoading(true);
     setTimeout(() => {
       phases.forEach(phase => {
         const record = {
           id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual",
-          reason, note: note || null, createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
+          createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
         };
-        console.log("[HOLD DEBUG] Calling onCreateHold with:", record.id, record.level, record.phase);
         onCreateHold(record);
       });
-      addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} — ${reason}` });
+      addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} is now on hold.` });
       setLoading(false);
-      setShowReasonFor(null);
     }, 600);
   };
 
@@ -545,19 +459,13 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
   };
 
   const handleTogglePreparation = (checked) => {
-    if (checked) setShowReasonFor("preparation");
+    if (checked) createHoldRecords(["preparation"]);
     else releasePhases(["preparation"]);
   };
 
   const handleToggleProgression = (checked) => {
-    if (checked) setShowReasonFor("progression");
+    if (checked) createHoldRecords(["approval", "begin_transfer"]);
     else releasePhases(["approval", "begin_transfer"]);
-  };
-
-  const handleConfirm = (reason, note) => {
-    if (showReasonFor === "preparation") createHoldRecords(["preparation"], reason, note);
-    else if (showReasonFor === "progression") createHoldRecords(["approval", "begin_transfer"], reason, note);
-    else if (showReasonFor === "everything") createHoldRecords(["preparation", "approval", "begin_transfer"], reason, note);
   };
 
   return (
@@ -599,7 +507,7 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
           <div className="px-4 py-4 space-y-4">
             {showPreparation && (
               <div>
-                <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "preparation" ? "opacity-40 pointer-events-none" : ""}`}>
+                <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
                   <button
                     onClick={() => handleTogglePreparation(!prepHold)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${prepHold ? "bg-red-500" : "bg-gray-300"}`}
@@ -611,18 +519,16 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                     <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
                     {prepHold && (
                       <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
-                        <p className="text-gray-600">{prepHold.reason}</p>
-                        <p className="text-gray-500 mt-0.5">{prepHold.createdBy} · {prepHold.createdAt}</p>
+                        <p className="text-gray-500">{prepHold.createdBy} · {prepHold.createdAt}</p>
                       </div>
                     )}
                   </div>
                 </div>
-                {showReasonFor === "preparation" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
               </div>
             )}
 
             <div>
-              <div className={`flex items-start gap-3 ${!canWrite || showReasonFor === "progression" ? "opacity-40 pointer-events-none" : ""}`}>
+              <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
                 <button
                   onClick={() => handleToggleProgression(!hasProgHold)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${hasProgHold ? "bg-red-500" : "bg-gray-300"}`}
@@ -634,24 +540,13 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                   <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
                   {hasProgHold && progHolds.length > 0 && (
                     <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
-                      <p className="text-gray-600">{progHolds[0].reason}</p>
-                      <p className="text-gray-500 mt-0.5">{progHolds[0].createdBy} · {progHolds[0].createdAt}</p>
+                      <p className="text-gray-500">{progHolds[0].createdBy} · {progHolds[0].createdAt}</p>
                     </div>
                   )}
                 </div>
               </div>
-              {showReasonFor === "progression" && <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />}
             </div>
 
-            {level === "fleet" && !prepHold && !hasProgHold && (
-              <div className="pt-2 border-t border-gray-100">
-                {showReasonFor !== "everything" ? (
-                  <Button variant="outline" colorScheme="error" size="sm" leftIcon={<Icons.Ban />} onClick={() => setShowReasonFor("everything")} disabled={!canWrite}>Stop everything</Button>
-                ) : (
-                  <HoldReasonForm onConfirm={handleConfirm} onCancel={() => setShowReasonFor(null)} loading={loading} level={level} />
-                )}
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -874,8 +769,8 @@ function getEffectiveHolds(holdRecords, payoutId, mid) {
 
 // ─── INITIAL HOLD RECORDS ───
 const initialHoldRecords = [
-  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
-  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", reason: "Suspicious activity review", note: "Unusually high payout amount flagged for manual verification.", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -992,7 +887,7 @@ const auditLogs = {
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Administrator)", detail: "Reason: Suspicious activity review. Unusually high payout amount flagged for manual verification." },
+    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Administrator)", detail: "Progression hold placed on payout." },
     { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
   ],
   // Abandoned
@@ -1758,7 +1653,6 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
-  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [sortCol, setSortCol] = useState("Status");
@@ -1792,17 +1686,14 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
-  const statusFiltered = statusFilter === "all" ? payouts : statusFilter === "On Hold" ? payouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : payouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
+  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...payouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : payouts;
 
   return (
     <div className="p-6 space-y-5">
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" canWrite={canWrite} onReleaseHold={onReleaseHold} />
-
-      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={payouts} holdRecords={holdRecords} />
 
       <Card>
         <CardHeader>
@@ -1844,7 +1735,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
 function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
-  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -1855,9 +1745,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const { addToast } = useToast();
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-  const statusFiltered = statusFilter === "all" ? merchantPayouts : statusFilter === "On Hold" ? merchantPayouts.filter((p) => holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) : merchantPayouts.filter((p) => p.status === statusFilter && !(holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)));
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filtered = sortCol && sortKeyMap[sortCol] ? [...statusFiltered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : statusFiltered;
+  const filtered = sortCol && sortKeyMap[sortCol] ? [...merchantPayouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : merchantPayouts;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1871,8 +1760,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       <MerchantPreparePayoutDialog open={showPrepare} onClose={() => setShowPrepare(false)} onCreatePayouts={(newPayouts) => { newPayouts.forEach((p) => onPayoutStatusChange(p.id, p.status, p)); }} unassignedMLEs={unassignedMLEs || mockUnassignedMLEs} mid={mid} merchantName={merchantName} />
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} canWrite={canWrite} onReleaseHold={onReleaseHold} />
-
-      <PayoutProgressionFilter active={statusFilter} onChange={setStatusFilter} payouts={merchantPayouts} holdRecords={holdRecords} />
 
       <Card>
         <CardHeader>
