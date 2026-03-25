@@ -1029,7 +1029,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
           <div className="flex items-center gap-2">
             {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
             {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
-            {!isTerminal && <HoldTogglesPanel level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={true} />}
+            {!isTerminal && <HoldTogglesPanel level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} canWrite={canWrite} showPreparation={false} />}
             {!isTerminal && <AutomationConfigPanel level="payout" mid={payout.mid} automationConfig={automationConfig} onUpdateConfig={onUpdateAutomationConfig} holdRecords={holdRecords} canWrite={canWrite} />}
           </div>
         </CardHeader>
