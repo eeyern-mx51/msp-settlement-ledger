@@ -324,8 +324,6 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
                 <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
                   <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
                   <Badge colorScheme={isAuto ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
-                  {!isAuto && <span className="text-xs text-amber-600 flex-1">{logical.createdAt}</span>}
-                  {isAuto && <span className="text-xs text-gray-400 flex-1">Automated actions paused</span>}
                 </div>
               );
             })}
@@ -444,11 +442,6 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                   <div>
                     <span className={`text-sm font-semibold ${prepHold ? "text-red-600" : "text-gray-800"}`}>Hold manual preparation</span>
                     <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
-                    {prepHold && (
-                      <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
-                        <p className="text-gray-500">{prepHold.createdBy} · {prepHold.createdAt}</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               </div>
@@ -465,11 +458,6 @@ function HoldTogglesPanel({ level, entity, entityLabel, holdRecords, onCreateHol
                 <div className="flex-1">
                   <span className={`text-sm font-semibold ${hasProgHold ? "text-red-600" : "text-gray-800"}`}>Hold manual progression</span>
                   <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
-                  {hasProgHold && progHolds.length > 0 && (
-                    <div className="mt-2 pt-2 border-t border-gray-200 text-xs">
-                      <p className="text-gray-500">{progHolds[0].createdBy} · {progHolds[0].createdAt}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -576,9 +564,6 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
                   <div className="flex-1">
                     <span className={`text-sm font-semibold ${config[phase.key] ? "text-red-600" : "text-gray-800"}`}>{phase.label}</span>
                     <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
-                    {config[phase.key] && (
-                      <div className="mt-1.5 text-xs text-amber-600 font-medium">Automation paused</div>
-                    )}
                   </div>
                 </div>
               </div>
