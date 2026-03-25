@@ -226,7 +226,6 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 }
 
 function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, automationConfig }) {
-  const [expanded, setExpanded] = useState(false);
   const hr = holdRecords || [];
 
   // Inherited: fleet holds shown on merchant/payout pages, merchant holds shown on payout pages
@@ -243,8 +242,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", records: [h], createdAt: h.createdAt, level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", records: progHoldsGroup, createdAt: progHoldsGroup[0].createdAt, level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
@@ -258,78 +257,37 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
         : (automationConfig.merchants[cfgMid] || null);
       if (!raw) return;
       if (raw.preparation) {
-        autoEntries.push({ kind: "automation", type: "preparation", label: "Auto-preparation", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid, records: [] });
+        autoEntries.push({ kind: "automation", type: "preparation", label: "Auto-preparation", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid });
       }
       if (raw.approval && raw.beginTransfer) {
-        autoEntries.push({ kind: "automation", type: "progression", label: "Auto-progression", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid, records: [] });
+        autoEntries.push({ kind: "automation", type: "progression", label: "Auto-progression", level: cfgLevel, entity: cfgLevel === "fleet" ? null : cfgMid });
       }
     };
-    // Show fleet automation holds on all levels
     if (level === "fleet") addAutoEntry("fleet", null);
     else {
-      addAutoEntry("fleet", null); // inherited fleet auto-holds
+      addAutoEntry("fleet", null);
       if (level === "merchant" || level === "payout") addAutoEntry("merchant", mid);
     }
     return autoEntries;
   };
 
-  const allManualLogical = groupHoldsLogical(allManualHolds);
-  const currentLogical = groupHoldsLogical(currentLevelHolds);
-  const autoHolds = getAutoHolds();
-  const allLogical = [...allManualLogical, ...autoHolds];
-
+  const allLogical = [...groupHoldsLogical(allManualHolds), ...getAutoHolds()];
   if (allLogical.length === 0) return null;
 
-  // Build summary badges — group by level, list phase names
-  const summaryParts = [];
-  const byLevel = {};
-  allLogical.forEach(l => {
-    const lbl = l.level === "fleet" ? "Fleet" : l.level === "merchant" ? "Merchant" : "Payout";
-    if (!byLevel[lbl]) byLevel[lbl] = [];
-    byLevel[lbl].push(l.label);
-  });
-  Object.entries(byLevel).forEach(([lbl, phases]) => {
-    summaryParts.push({ label: lbl, detail: phases.join(", ") });
-  });
-
   return (
-    <div className="rounded-xl border-2 border-amber-300 bg-amber-50 overflow-hidden">
-      {/* Compact summary row — always visible */}
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-amber-100/50 transition-colors"
-      >
-        <Icons.Shield />
-        <div className="flex-1 min-w-0 flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
-          <span className="text-xs text-amber-600">—</span>
-          {summaryParts.map(g => (
-            <Badge key={g.label} colorScheme="warning" size="sm">{g.label} · {g.detail}</Badge>
-          ))}
-        </div>
-        <span className={`text-amber-500 transition-transform ${expanded ? "rotate-180" : ""}`}>
-          <Icons.ChevronDown />
-        </span>
-      </button>
-
-      {/* Expandable detail section */}
-      {expanded && (
-        <div className="px-4 pb-4 pt-1 border-t border-amber-200">
-          <div className="space-y-2">
-            {allLogical.map((logical, idx) => {
-              const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
-              const isAuto = logical.kind === "automation";
-
-              return (
-                <div key={idx} className="flex items-center gap-2 py-1.5 border-b border-amber-100 last:border-b-0">
-                  <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
-                  <Badge colorScheme={isAuto ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
-                </div>
-              );
-            })}
+    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-amber-300 bg-amber-50 flex-wrap">
+      <Icons.Shield />
+      <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
+      <span className="text-xs text-amber-600">—</span>
+      {allLogical.map((logical, idx) => {
+        const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
+        return (
+          <div key={idx} className="inline-flex items-center gap-1">
+            <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
+            <Badge colorScheme={logical.kind === "automation" ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
           </div>
-        </div>
-      )}
+        );
+      })}
     </div>
   );
 }
