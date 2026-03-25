@@ -85,61 +85,6 @@ function FilterChip({ label, active, onClick }) {
   return <button onClick={onClick} className={`text-xs font-medium px-2.5 py-1.5 rounded-lg border transition-colors ${active ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}>{label}</button>;
 }
 
-const PAYOUT_FILTER_STEPS = [
-  { key: "all", label: "All" },
-  { key: "On Hold", label: "On Hold", color: "amber" },
-  { key: "Ready for Review", label: "Review", color: "indigo" },
-  { key: "Ready for Transfer", label: "Transfer", color: "emerald" },
-  { key: "Transferring", label: "In flight", color: "purple" },
-  { key: "Failed", label: "Failed", color: "red" },
-  { key: "Completed", label: "Completed", color: "green" },
-  { key: "Abandoned", label: "Abandoned", color: "gray" },
-];
-
-function PayoutProgressionFilter({ active, onChange, payouts, holdRecords }) {
-  const counts = {};
-  payouts.forEach((p) => {
-    if (holdRecords && isProgressionBlocked(holdRecords, p.id, p.mid, p.status)) { counts["On Hold"] = (counts["On Hold"] || 0) + 1; }
-    else { counts[p.status] = (counts[p.status] || 0) + 1; }
-  });
-  const total = payouts.length;
-
-  const chipColors = {
-    amber: { active: "bg-amber-500 text-white border-amber-500", inactive: "text-amber-700 border-amber-300 bg-amber-50 hover:bg-amber-100" },
-    indigo: { active: "bg-indigo-600 text-white border-indigo-600", inactive: "text-indigo-700 border-indigo-300 bg-indigo-50 hover:bg-indigo-100" },
-    emerald: { active: "bg-emerald-600 text-white border-emerald-600", inactive: "text-emerald-700 border-emerald-300 bg-emerald-50 hover:bg-emerald-100" },
-    purple: { active: "bg-purple-600 text-white border-purple-600", inactive: "text-purple-700 border-purple-300 bg-purple-50 hover:bg-purple-100" },
-    red: { active: "bg-red-500 text-white border-red-500", inactive: "text-red-700 border-red-300 bg-red-50 hover:bg-red-100" },
-    green: { active: "bg-green-600 text-white border-green-600", inactive: "text-green-700 border-green-300 bg-green-50 hover:bg-green-100" },
-    gray: { active: "bg-gray-500 text-white border-gray-500", inactive: "text-gray-600 border-gray-300 bg-gray-50 hover:bg-gray-100" },
-  };
-
-  return (
-    <div className="flex items-center gap-1 flex-wrap">
-      {PAYOUT_FILTER_STEPS.map((step, i) => {
-        const count = step.key === "all" ? total : (counts[step.key] || 0);
-        const isActive = active === step.key;
-        const colors = step.color ? chipColors[step.color] : null;
-        const cls = step.key === "all"
-          ? (isActive ? "bg-gray-800 text-white border-gray-800" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50")
-          : (isActive ? colors.active : colors.inactive);
-
-        return (
-          <span key={step.key} className="inline-flex items-center gap-0">
-            {i > 1 && <span className="text-gray-300 text-[10px] mx-0.5">›</span>}
-            <button
-              onClick={() => onChange(step.key)}
-              className={`text-xs font-medium px-2 py-1 rounded-md border transition-colors inline-flex items-center gap-1.5 ${cls}`}
-            >
-              {step.label}
-              <span className={`text-[10px] font-bold ${isActive ? "opacity-80" : "opacity-60"}`}>{count}</span>
-            </button>
-          </span>
-        );
-      })}
-    </div>
-  );
-}
 function DateFilterBar({ value, onChange, options }) {
   return <div className="flex gap-2">{(options || [{ id: "today", label: "Today" }, { id: "week", label: "This week" }, { id: "custom", label: "Custom" }]).map((f) => (<button key={f.id} onClick={() => onChange(f.id)} className={`text-sm font-medium px-3 py-1.5 rounded-lg border transition-colors ${value === f.id ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"}`}>{f.label}</button>))}</div>;
 }
@@ -202,56 +147,6 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button variant="solid" colorScheme="brand" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Check />}>{loading ? "Approving..." : "Approve payout"}</Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function HoldPayoutDialog({ open, onClose, payout, onConfirm }) {
-  const [loading, setLoading] = useState(false);
-  const handleConfirm = () => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1000);
-  };
-  if (!payout) return null;
-  return (
-    <Modal open={open} onClose={onClose} title="Place hold on payout">
-      <div className="space-y-5">
-        <Alert type="warning" title="This payout will be placed on hold">The payout will remain on hold until a FinOps Administrator user releases the hold or abandons it. No transfers will be initiated while on hold.</Alert>
-        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount", payout.amount], ["Current status", payout.status]].map(([label, value]) => (
-            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
-          ))}
-        </div>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : "Place hold"}</Button>
-        </div>
-      </div>
-    </Modal>
-  );
-}
-
-function BulkHoldDialog({ open, onClose, scope, onConfirm, merchantName }) {
-  // scope: "fleet" or "merchant"
-  const [loading, setLoading] = useState(false);
-  const isFleet = scope === "fleet";
-  const dialogTitle = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
-  const alertTitle = isFleet ? "All fleet payouts will be placed on hold" : `All payouts for ${merchantName || "this merchant"} will be placed on hold`;
-  const alertBody = isFleet ? "No payouts across this fleet will be transferred until the hold is released. Payouts already in Transferring status will not be affected." : `No payouts for ${merchantName || "this merchant"} will be transferred until the hold is released. Payouts already in Transferring status will not be affected.`;
-  const confirmLabel = isFleet ? "Hold all payouts" : `Hold payouts for ${merchantName || "this merchant"}`;
-  const handleConfirm = () => {
-    setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm({ user: "Sarah Chen (FinOps Administrator)", timestamp: new Date().toLocaleString("en-AU", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true }) }); onClose(); }, 1000);
-  };
-  return (
-    <Modal open={open} onClose={onClose} title={dialogTitle}>
-      <div className="space-y-5">
-        <Alert type="warning" title={alertTitle}>{alertBody}</Alert>
-        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
-          <Button variant="solid" colorScheme="neutral" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Pause />}>{loading ? "Placing hold..." : confirmLabel}</Button>
         </div>
       </div>
     </Modal>
@@ -699,17 +594,19 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid })
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   const numAmt = amount ? parseFloat(String(amount).replace(/[^0-9.\-]/g, "")) : null;
   const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
+  // Only show On-hold badge for statuses where holds are actionable
+  const showHoldBadge = HOLDABLE_STATUSES.has(status);
   let isHeld = hold;
-  if (holdRecords && payoutId && mid) {
-    // Show On-hold for ANY active hold affecting this payout (preparation or progression, any level)
+  if (holdRecords && payoutId && mid && showHoldBadge) {
     const effective = getEffectiveHolds(holdRecords, payoutId, mid);
     isHeld = effective.any;
+  } else if (!showHoldBadge) {
+    isHeld = false;
   }
-  const isTerminal = status === "Completed" || status === "Abandoned";
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {isHeld && !isTerminal && <Badge colorScheme="warning" size="sm">On-hold</Badge>}
+      {isHeld && <Badge colorScheme="warning" size="sm">On-hold</Badge>}
       {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
@@ -966,12 +863,13 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const isTerminal = isCompleted || isAbandoned;
   const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
 
-  // Check if progression is blocked by holds
+  // Check if progression is blocked by holds (for holdable statuses)
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
+  // For Failed payouts, also check if resubmit should be blocked (progression holds still apply)
+  const isResubmitBlocked = isFailed && holdRecords && (isActionBlocked(holdRecords, "approval", payout.id, payout.mid) || isActionBlocked(holdRecords, "begin_transfer", payout.id, payout.mid));
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
-  const [showHold, setShowHold] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
   // Build actions based on status and holds
@@ -992,7 +890,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
-        { label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } },
+        ...(!isResubmitBlocked ? [{ label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
     };
