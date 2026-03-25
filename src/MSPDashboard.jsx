@@ -968,41 +968,53 @@ const mockUnassignedMLEs = [
 ];
 
 // Mock unsettled chargebacks — pending chargebacks that will be included in payout calculation
-const mockUnsettledChargebacks = [
-  { id: "CB-20260225-001", date: "2026-02-25", mid: "POSPAY00012345", amount: -120.00, reason: "Cardholder dispute — unauthorised transaction", cardLast4: "4829" },
-  { id: "CB-20260224-001", date: "2026-02-24", mid: "POSPAY00012346", amount: -350.00, reason: "Product not received", cardLast4: "1677" },
-  { id: "CB-20260224-002", date: "2026-02-24", mid: "POSPAY00012345", amount: -85.50, reason: "Duplicate charge", cardLast4: "8844" },
-  { id: "CB-20260223-001", date: "2026-02-23", mid: "POSPAY00012348", amount: -42.00, reason: "Service not as described", cardLast4: "5512" },
-];
+// ─── Mock payout breakdown data (mirrors API shape) ───
+// Per-MID unsettled breakdown: { source, amount, count }
+const mockMidBreakdowns = {
+  "POSPAY00012345": [
+    { source: "TRANSACTIONS", amount: 12450.00, count: 120 },
+    { source: "CHARGEBACKS", amount: -205.50, count: 2 },
+    { source: "ADJUSTMENTS", amount: 150.00, count: 1 },
+  ],
+  "POSPAY00012346": [
+    { source: "TRANSACTIONS", amount: 8320.00, count: 87 },
+    { source: "CHARGEBACKS", amount: -350.00, count: 1 },
+    { source: "ADJUSTMENTS", amount: -200.00, count: 1 },
+  ],
+  "POSPAY00012347": [
+    { source: "TRANSACTIONS", amount: 320.00, count: 15 },
+    { source: "CHARGEBACKS", amount: -880.40, count: 3 },
+    { source: "ADJUSTMENTS", amount: 560.40, count: 1 },
+  ],
+  "POSPAY00012348": [
+    { source: "TRANSACTIONS", amount: 5610.00, count: 42 },
+    { source: "CHARGEBACKS", amount: -42.00, count: 1 },
+    { source: "ADJUSTMENTS", amount: 0, count: 0 },
+  ],
+  "POSPAY00012349": [
+    { source: "TRANSACTIONS", amount: 3200.00, count: 31 },
+    { source: "CHARGEBACKS", amount: 0, count: 0 },
+    { source: "ADJUSTMENTS", amount: 75.00, count: 1 },
+  ],
+};
 
-// Mock unsettled adjustments — manual and system adjustments not yet included in a payout
-const mockUnsettledAdjustments = [
-  // Manual adjustments
-  { id: "UADJ-001", date: "2026-02-25", mid: "POSPAY00012345", amount: 150.00, entryType: null, initiatedBy: "Tom Wright", note: "Chargeback CB-88210 resolved in merchant's favour" },
-  { id: "UADJ-002", date: "2026-02-24", mid: "POSPAY00012346", amount: -200.00, entryType: null, initiatedBy: "Sarah Chen", note: "Scheme fee correction for January billing" },
-  // System debt deferral/rollover pairs — these are auto-created during payout prep when net < 0
-  { id: "UADJ-003a", date: "2026-02-25", mid: "POSPAY00012347", amount: -560.40, entryType: "Debt deferral", initiatedBy: "System", note: "Net negative payout — amount deferred to next cycle" },
-  { id: "UADJ-003b", date: "2026-02-25", mid: "POSPAY00012347", amount: 560.40, entryType: "Debt rollover", initiatedBy: "System", note: "Balancing entry for debt deferral UADJ-003a" },
-  { id: "UADJ-004", date: "2026-02-24", mid: "POSPAY00012349", amount: 75.00, entryType: null, initiatedBy: "Tom Wright", note: "Terminal rental fee refund — double-charged in Feb" },
-];
+function getPayoutBreakdown(mid) {
+  const breakdown = mockMidBreakdowns[mid] || [
+    { source: "TRANSACTIONS", amount: 0, count: 0 },
+    { source: "CHARGEBACKS", amount: 0, count: 0 },
+    { source: "ADJUSTMENTS", amount: 0, count: 0 },
+  ];
+  const total_amount = breakdown.reduce((s, b) => s + b.amount, 0);
+  const total_count = breakdown.reduce((s, b) => s + b.count, 0);
+  return { total_amount, total_count, breakdown };
+}
 
 // ─── Payout Preview Component ───
-// Computes and renders the breakdown: Transactions, Chargebacks, Adjustments (Manual + Debt rollover), Payout Total
-function PayoutPreviewBreakdown({ mid, filteredDTEs, chargebacks, adjustments }) {
-  const txnTotal = filteredDTEs.reduce((sum, d) => sum + d.amount, 0);
-  const txnCount = filteredDTEs.reduce((sum, d) => sum + (d.txnCount || 0), 0);
-  const cbTotal = chargebacks.reduce((sum, c) => sum + c.amount, 0);
-  const cbCount = chargebacks.length;
-
-  const manualAdj = adjustments.filter(a => !a.entryType);
-  const deferralAdj = adjustments.filter(a => a.entryType === "Debt deferral");
-  const rolloverAdj = adjustments.filter(a => a.entryType === "Debt rollover");
-  const manualTotal = manualAdj.reduce((sum, a) => sum + a.amount, 0);
-  const deferralTotal = deferralAdj.reduce((sum, a) => sum + a.amount, 0);
-  const rolloverTotal = rolloverAdj.reduce((sum, a) => sum + a.amount, 0);
-  const adjTotal = manualTotal + deferralTotal + rolloverTotal;
-
-  const payoutTotal = txnTotal + cbTotal + adjTotal;
+function PayoutPreviewBreakdown({ breakdown }) {
+  const txn = breakdown.breakdown.find(b => b.source === "TRANSACTIONS") || { amount: 0, count: 0 };
+  const cb = breakdown.breakdown.find(b => b.source === "CHARGEBACKS") || { amount: 0, count: 0 };
+  const adj = breakdown.breakdown.find(b => b.source === "ADJUSTMENTS") || { amount: 0, count: 0 };
+  const payoutTotal = breakdown.total_amount;
   const isZeroOrNegative = payoutTotal <= 0;
 
   const fmt = (v) => {
@@ -1014,65 +1026,37 @@ function PayoutPreviewBreakdown({ mid, filteredDTEs, chargebacks, adjustments })
     <div className="border border-gray-200 rounded-lg overflow-hidden">
       <div className="bg-gray-50 px-4 py-2.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">Payout preview</div>
       <div className="divide-y divide-gray-100">
-        {/* Transactions */}
         <div className="px-4 py-3 flex items-center justify-between">
           <div>
             <div className="text-sm font-medium text-gray-800">Transactions</div>
-            <div className="text-xs text-gray-400">{txnCount} transactions from {filteredDTEs.length} DTE file{filteredDTEs.length !== 1 ? "s" : ""}</div>
+            <div className="text-xs text-gray-400">{txn.count} transaction{txn.count !== 1 ? "s" : ""}</div>
           </div>
-          <span className={`text-sm font-semibold ${txnTotal >= 0 ? "text-gray-900" : "text-red-600"}`}>{fmt(txnTotal)}</span>
+          <span className={`text-sm font-semibold ${txn.amount >= 0 ? "text-gray-900" : "text-red-600"}`}>{fmt(txn.amount)}</span>
         </div>
-        {/* Chargebacks */}
         <div className="px-4 py-3 flex items-center justify-between">
           <div>
             <div className="text-sm font-medium text-gray-800">Chargebacks</div>
-            {cbCount > 0 && <div className="text-xs text-gray-400">{cbCount} pending chargeback{cbCount !== 1 ? "s" : ""}</div>}
+            {cb.count > 0 && <div className="text-xs text-gray-400">{cb.count} chargeback{cb.count !== 1 ? "s" : ""}</div>}
           </div>
-          <span className={`text-sm font-semibold ${cbTotal < 0 ? "text-red-600" : "text-gray-900"}`}>{cbCount > 0 ? fmt(cbTotal) : "$0.00"}</span>
+          <span className={`text-sm font-semibold ${cb.amount < 0 ? "text-red-600" : "text-gray-900"}`}>{cb.count > 0 ? fmt(cb.amount) : "$0.00"}</span>
         </div>
-        {/* Adjustments */}
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <div>
             <div className="text-sm font-medium text-gray-800">Adjustments</div>
-            <span className={`text-sm font-semibold ${adjTotal < 0 ? "text-red-600" : adjTotal > 0 ? "text-emerald-600" : "text-gray-900"}`}>{fmt(adjTotal)}</span>
+            {adj.count > 0 && <div className="text-xs text-gray-400">{adj.count} adjustment{adj.count !== 1 ? "s" : ""}</div>}
           </div>
-          <div className="mt-2 ml-3 space-y-1.5">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-gray-500">Manual</span>
-              <span className={`font-medium ${manualTotal < 0 ? "text-red-600" : manualTotal > 0 ? "text-emerald-600" : "text-gray-400"}`}>{manualAdj.length > 0 ? fmt(manualTotal) : "$0.00"}</span>
-            </div>
-            {(deferralAdj.length > 0 || rolloverAdj.length > 0) && (
-              <>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-amber-600 flex items-center gap-1"><Icons.AlertTriangle /> Debt deferral <span className="text-gray-400 font-normal">(will be created)</span></span>
-                  <span className="font-medium text-red-600">{fmt(deferralTotal)}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-amber-600 flex items-center gap-1"><Icons.AlertTriangle /> Debt rollover <span className="text-gray-400 font-normal">(will be created)</span></span>
-                  <span className="font-medium text-emerald-600">{fmt(rolloverTotal)}</span>
-                </div>
-              </>
-            )}
-          </div>
+          <span className={`text-sm font-semibold ${adj.amount < 0 ? "text-red-600" : adj.amount > 0 ? "text-emerald-600" : "text-gray-900"}`}>{adj.count > 0 ? fmt(adj.amount) : "$0.00"}</span>
         </div>
-        {/* Payout Total */}
         <div className={`px-4 py-3 flex items-center justify-between ${isZeroOrNegative ? "bg-amber-50" : "bg-emerald-50"}`}>
           <div>
             <div className="text-sm font-bold text-gray-900">Payout Total</div>
-            {isZeroOrNegative && <div className="text-xs text-amber-600 font-medium mt-0.5">Zero-balance — payout will auto-complete</div>}
+            {isZeroOrNegative && <div className="text-xs text-amber-600 font-medium mt-0.5">Zero-balance — debt deferral applies</div>}
           </div>
           <span className={`text-base font-bold ${isZeroOrNegative ? "text-amber-700" : "text-emerald-700"}`}>{fmt(payoutTotal)}</span>
         </div>
       </div>
     </div>
   );
-}
-
-// Helper: compute preview data for a given MID and cutoff date
-function computePayoutPreview(mid, cutoffDate) {
-  const chargebacks = mockUnsettledChargebacks.filter(c => c.mid === mid && c.date <= cutoffDate);
-  const adjustments = mockUnsettledAdjustments.filter(a => a.mid === mid && a.date <= cutoffDate);
-  return { chargebacks, adjustments };
 }
 
 function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: mlePool }) {
@@ -1092,19 +1076,14 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   // Group by merchant
   const merchantGroups = {};
   filteredDTEs.forEach((dte) => {
-    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], txnTotal: 0, txnCount: 0 };
+    if (!merchantGroups[dte.mid]) merchantGroups[dte.mid] = { merchant: dte.merchant, mid: dte.mid, dteFiles: [], txnCount: 0 };
     merchantGroups[dte.mid].dteFiles.push(dte);
-    merchantGroups[dte.mid].txnTotal += dte.amount;
     merchantGroups[dte.mid].txnCount += dte.txnCount || 0;
   });
-  // Enrich with chargebacks + adjustments
+  // Enrich with API-shaped breakdown
   Object.values(merchantGroups).forEach((g) => {
-    const preview = computePayoutPreview(g.mid, cutoffDate);
-    g.chargebacks = preview.chargebacks;
-    g.adjustments = preview.adjustments;
-    const cbTotal = g.chargebacks.reduce((s, c) => s + c.amount, 0);
-    const adjTotal = g.adjustments.reduce((s, a) => s + a.amount, 0);
-    g.payoutTotal = g.txnTotal + cbTotal + adjTotal;
+    g.breakdown = getPayoutBreakdown(g.mid);
+    g.payoutTotal = g.breakdown.total_amount;
   });
   const allGroups = Object.values(merchantGroups);
   const selectedGroups = allGroups.filter((g) => selectedMids.has(g.mid));
@@ -1182,7 +1161,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
                         <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
                         <div className="flex-1 min-w-0" onClick={() => setExpandedMid(expandedMid === g.mid ? null : g.mid)}>
                           <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
-                          <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.txnCount} txns · {g.dteFiles.length} DTE file{g.dteFiles.length !== 1 ? "s" : ""}</div>
+                          <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.breakdown.total_count} items</div>
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
                           {g.payoutTotal <= 0 && <Badge colorScheme="warning" size="sm">Zero-bal</Badge>}
