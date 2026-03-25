@@ -153,6 +153,31 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
+function BeginTransferDialog({ open, onClose, payout, onConfirm }) {
+  const [loading, setLoading] = useState(false);
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1200);
+  };
+  if (!payout) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Begin transfer">
+      <div className="space-y-5">
+        <Alert type="info" title="Confirm transfer initiation">Once initiated, the payout will be submitted to the bank for processing. This action cannot be reversed — ensure the payout details and amount are correct.</Alert>
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount], ["Settlement date", payout.settlementDate || payout.date]].map(([label, value]) => (
+            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
+          ))}
+        </div>
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Play />}>{loading ? "Initiating transfer..." : "Begin transfer"}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [confirmText, setConfirmText] = useState("");
   const [reason, setReason] = useState("");
@@ -457,17 +482,10 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
   const rawConfig = level === "fleet"
     ? automationConfig.fleet
     : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
-  // Present combined progression toggle (maps to both approval + beginTransfer internally)
+  // Config values represent whether automation is HELD (true = held/blocked, false = running)
   const config = { preparation: rawConfig.preparation, progression: rawConfig.approval && rawConfig.beginTransfer };
 
-  const anyEnabled = config.preparation || config.progression;
-
-  const hr = holdRecords || [];
-  const activeHolds = level === "fleet"
-    ? hr.filter(h => h.active && h.level === "fleet")
-    : hr.filter(h => h.active && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
-  const prepHolds = activeHolds.filter(h => h.phase === "preparation");
-  const progHolds = activeHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
+  const anyHeld = config.preparation || config.progression;
 
   const handleToggle = (phase) => {
     if (!canWrite) return;
@@ -502,8 +520,8 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
   }, [isOpen]);
 
   const phases = [
-    { key: "preparation", label: "Auto-preparation", desc: "Automatically creates payouts from unsettled merchant balances on a scheduled basis", holdBlocked: prepHolds.length > 0 },
-    { key: "progression", label: "Auto-progression", desc: "Automatically advances payouts through approval and transfer when criteria are met", holdBlocked: progHolds.length > 0 },
+    { key: "preparation", label: "Hold auto-preparation", desc: "Prevents automated payout creation from running on a scheduled basis" },
+    { key: "progression", label: "Hold auto-progression", desc: "Prevents automated approval and transfer from advancing payouts" },
   ];
 
   return (
@@ -512,15 +530,15 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
         ref={buttonRef}
         onClick={() => setIsOpen(!isOpen)}
         className={`inline-flex items-center justify-center h-8 w-8 rounded-lg border transition-colors ${
-          anyEnabled
-            ? "bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100"
+          anyHeld
+            ? "bg-amber-50 border-amber-200 text-amber-600 hover:bg-amber-100"
             : "bg-white border-gray-200 text-gray-400 hover:bg-gray-50"
         }`}
-        title="Automation settings"
+        title="Automation holds"
       >
         <Icons.Settings />
-        {anyEnabled && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-blue-500 text-white text-xs font-semibold">
+        {anyHeld && (
+          <span className="absolute -top-1 -right-1 flex items-center justify-center h-4 w-4 rounded-full bg-amber-500 text-white text-xs font-semibold">
             {[config.preparation, config.progression].filter(Boolean).length}
           </span>
         )}
@@ -530,21 +548,11 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
         <div ref={panelRef} className="absolute right-0 mt-2 w-96 bg-white rounded-xl border border-gray-200 shadow-lg z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <div>
-              <span className="text-sm font-semibold text-gray-700">Automation Settings</span>
+              <span className="text-sm font-semibold text-gray-700">Automation Holds</span>
               <span className="ml-2 text-xs text-gray-400">{level === "fleet" ? "Fleet-wide" : mid}</span>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-gray-400 hover:text-gray-600" title="Close"><Icons.X /></button>
           </div>
-
-          {activeHolds.length > 0 && (
-            <div className="mx-4 mt-3 flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-              <Icons.Shield />
-              <div>
-                <p className="text-xs font-semibold text-amber-800">{activeHolds.length} active hold{activeHolds.length !== 1 ? "s" : ""} would block automation</p>
-                <p className="text-xs text-amber-600 mt-0.5">Holds override automation config. Automated actions will be skipped while holds are active.</p>
-              </div>
-            </div>
-          )}
 
           <div className="px-4 py-4 space-y-4">
             {phases.map((phase) => (
@@ -552,25 +560,16 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
                 <div className={`flex items-start gap-3 ${!canWrite ? "opacity-50 pointer-events-none" : ""}`}>
                   <button
                     onClick={() => handleToggle(phase.key)}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${config[phase.key] ? "bg-blue-500" : "bg-gray-300"}`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors flex-shrink-0 mt-0.5 ${config[phase.key] ? "bg-red-500" : "bg-gray-300"}`}
                   >
                     <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config[phase.key] ? "translate-x-6" : "translate-x-1"}`} />
                   </button>
                   <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm font-semibold ${config[phase.key] ? "text-blue-600" : "text-gray-800"}`}>{phase.label}</span>
-                      {config[phase.key] && phase.holdBlocked && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200">
-                          <Icons.Shield /> Held
-                        </span>
-                      )}
-                      {config[phase.key] && !phase.holdBlocked && (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
-                          Active
-                        </span>
-                      )}
-                    </div>
+                    <span className={`text-sm font-semibold ${config[phase.key] ? "text-red-600" : "text-gray-800"}`}>{phase.label}</span>
                     <p className="text-xs text-gray-500 mt-0.5">{phase.desc}</p>
+                    {config[phase.key] && (
+                      <div className="mt-1.5 text-xs text-amber-600 font-medium">Automation paused</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -579,7 +578,7 @@ function AutomationConfigPanel({ level, mid, automationConfig, onUpdateConfig, h
             <div className="pt-3 border-t border-gray-100">
               <div className="flex items-center gap-2 text-xs text-gray-400">
                 <Icons.Info />
-                <span>Holds always override automation. Manual actions remain available regardless of automation settings.</span>
+                <span>When held, automated actions are paused. Manual actions remain available.</span>
               </div>
             </div>
           </div>
@@ -870,6 +869,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   // Dialog states
   const [showApprove, setShowApprove] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
 
   // Build actions based on status and holds
@@ -886,7 +886,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Ready for Transfer": [
-        { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` }); onStatusChange(payout.id, "Transferring"); } },
+        { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => setShowTransfer(true) },
         { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
@@ -902,6 +902,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
     onStatusChange(payout.id, "Ready for Transfer");
   };
+  const handleBeginTransfer = () => {
+    addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` });
+    onStatusChange(payout.id, "Transferring");
+  };
   const handleAbandon = (reason) => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
@@ -910,6 +914,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   return (
     <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
+      <BeginTransferDialog open={showTransfer} onClose={() => setShowTransfer(false)} payout={payout} onConfirm={handleBeginTransfer} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
@@ -970,21 +975,24 @@ const mockUnassignedMLEs = [
 // Mock unsettled chargebacks — pending chargebacks that will be included in payout calculation
 // ─── Mock payout breakdown data (mirrors API shape) ───
 // Per-MID unsettled breakdown: { source, amount, count }
+// ADJUSTMENTS = rollovers from previous cycles + manual adjustments only.
+// Debt deferrals are NOT included — they are created at approval time when txns + chargebacks < 0.
 const mockMidBreakdowns = {
   "POSPAY00012345": [
     { source: "TRANSACTIONS", amount: 12450.00, count: 120 },
     { source: "CHARGEBACKS", amount: -205.50, count: 2 },
-    { source: "ADJUSTMENTS", amount: 150.00, count: 1 },
+    { source: "ADJUSTMENTS", amount: 150.00, count: 1 },  // manual adj: resolved chargeback
   ],
   "POSPAY00012346": [
     { source: "TRANSACTIONS", amount: 8320.00, count: 87 },
     { source: "CHARGEBACKS", amount: -350.00, count: 1 },
-    { source: "ADJUSTMENTS", amount: -200.00, count: 1 },
+    { source: "ADJUSTMENTS", amount: -200.00, count: 1 },  // manual adj: scheme fee correction
   ],
   "POSPAY00012347": [
     { source: "TRANSACTIONS", amount: 320.00, count: 15 },
     { source: "CHARGEBACKS", amount: -880.40, count: 3 },
-    { source: "ADJUSTMENTS", amount: 560.40, count: 1 },
+    { source: "ADJUSTMENTS", amount: 560.40, count: 1 },  // rollover from previous cycle's debt deferral
+    // txns + chargebacks = -560.40 → adjustment balances it to $0 → debt deferral scenario
   ],
   "POSPAY00012348": [
     { source: "TRANSACTIONS", amount: 5610.00, count: 42 },
@@ -994,7 +1002,7 @@ const mockMidBreakdowns = {
   "POSPAY00012349": [
     { source: "TRANSACTIONS", amount: 3200.00, count: 31 },
     { source: "CHARGEBACKS", amount: 0, count: 0 },
-    { source: "ADJUSTMENTS", amount: 75.00, count: 1 },
+    { source: "ADJUSTMENTS", amount: 75.00, count: 1 },  // manual adj: terminal fee refund
   ],
 };
 
