@@ -405,7 +405,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                       return { ...d, manualPrep: next, ...(next ? { autoPrep: true } : {}) };
                     })} disabled={!canWrite || saving} />
                 <div>
-                  <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
+                  <span className="text-sm font-medium text-gray-800">Stop preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
                 </div>
               </div>
@@ -416,7 +416,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                       return { ...d, manualProg: next, ...(next ? { autoProg: true } : {}) };
                     })} disabled={!canWrite || saving} />
               <div>
-                <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
+                <span className="text-sm font-medium text-gray-800">Stop progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
               </div>
             </div>
@@ -432,7 +432,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                 <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving || draft.manualPrep} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
-                  <p className="text-xs text-gray-500 mt-0.5">{draft.manualPrep ? "Held automatically — manual preparation hold is active" : "Prevents automated payout creation from running on a scheduled basis"}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{draft.manualPrep ? "Held automatically — preparation is stopped" : "Prevents automated payout creation from running on a scheduled basis"}</p>
                 </div>
               </div>
             )}
@@ -440,7 +440,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving || draft.manualProg} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
-                <p className="text-xs text-gray-500 mt-0.5">{draft.manualProg ? "Held automatically — manual progression hold is active" : "Prevents automated approval and transfer from advancing payouts"}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{draft.manualProg ? "Held automatically — progression is stopped" : "Prevents automated approval and transfer from advancing payouts"}</p>
               </div>
             </div>
           </div>
