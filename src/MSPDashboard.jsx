@@ -274,20 +274,28 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
   const allLogical = [...groupHoldsLogical(allManualHolds), ...getAutoHolds()];
   if (allLogical.length === 0) return null;
 
+  // Group by level for stacked rows
+  const byLevel = {};
+  allLogical.forEach(l => {
+    const lbl = l.level === "fleet" ? "Fleet" : l.level === "merchant" ? "Merchant" : "Payout";
+    if (!byLevel[lbl]) byLevel[lbl] = [];
+    byLevel[lbl].push(l);
+  });
+
   return (
-    <div className="flex items-center gap-2 px-4 py-3 rounded-xl border-2 border-amber-300 bg-amber-50 flex-wrap">
-      <Icons.Shield />
-      <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
-      <span className="text-xs text-amber-600">—</span>
-      {allLogical.map((logical, idx) => {
-        const levelLabel = logical.level === "fleet" ? "Fleet" : logical.level === "merchant" ? "Merchant" : "Payout";
-        return (
-          <div key={idx} className="inline-flex items-center gap-1">
+    <div className="rounded-xl border-2 border-amber-300 bg-amber-50 px-4 py-3">
+      <div className="flex items-center gap-2 mb-2">
+        <Icons.Shield />
+        <span className="text-sm font-bold text-amber-900">{allLogical.length} hold{allLogical.length !== 1 ? "s" : ""} active</span>
+      </div>
+      <div className="space-y-1">
+        {Object.entries(byLevel).map(([levelLabel, holds]) => (
+          <div key={levelLabel} className="flex items-center gap-2">
             <Badge colorScheme="warning" size="sm">{levelLabel}</Badge>
-            <Badge colorScheme={logical.kind === "automation" ? "brand" : "neutral"} size="sm">{logical.label}</Badge>
+            <span className="text-xs text-amber-700">{holds.map(h => h.label).join(", ")}</span>
           </div>
-        );
-      })}
+        ))}
+      </div>
     </div>
   );
 }
