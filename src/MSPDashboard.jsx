@@ -271,7 +271,9 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
     return autoEntries;
   };
 
-  const allLogical = [...groupHoldsLogical(allManualHolds), ...getAutoHolds()];
+  // At payout level, preparation holds are irrelevant — the payout already exists
+  const allLogical = [...groupHoldsLogical(allManualHolds), ...getAutoHolds()]
+    .filter(l => level !== "payout" || l.type !== "preparation");
   if (allLogical.length === 0) return null;
 
   // Group by level for stacked rows
