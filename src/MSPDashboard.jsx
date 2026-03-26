@@ -242,8 +242,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Preparation stopped", level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Progression stopped", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
