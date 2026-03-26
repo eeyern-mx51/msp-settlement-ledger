@@ -430,11 +430,6 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           </div>
         </div>
 
-        <div className="flex items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
-          <Icons.Info />
-          <span>When held, the corresponding actions are paused.</span>
-        </div>
-
         {/* Save / Cancel */}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={handleCancel} disabled={saving}>Cancel</Button>
