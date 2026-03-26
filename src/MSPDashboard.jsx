@@ -295,58 +295,90 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
 
 function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, canWrite }) {
   const { addToast } = useToast();
-  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const hr = holdRecords || [];
 
-  // ── Manual holds state ──
+  // ── Current persisted state ──
   const currentHolds = hr.filter(h => h.active && h.level === level && (level === "fleet" || h.entity === entity));
-  const prepHold = currentHolds.find(h => h.phase === "preparation");
-  const progHolds = currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-  const hasProgHold = progHolds.length > 0;
-
-  const createHoldRecords = (phases) => {
-    setLoading(true);
-    setTimeout(() => {
-      phases.forEach(phase => {
-        const record = {
-          id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual",
-          createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true
-        };
-        onCreateHold(record);
-      });
-      addToast({ type: "warning", title: "Hold placed", message: `${entityLabel || "Entity"} is now on hold.` });
-      setLoading(false);
-    }, 600);
-  };
-  const releasePhases = (phases) => {
-    const toRelease = currentHolds.filter(h => phases.includes(h.phase));
-    toRelease.forEach(h => onReleaseHold(h.id));
-    addToast({ type: "success", title: "Hold released", message: `Hold on ${entityLabel || "entity"} has been released.` });
-  };
-  const handleToggleManualPrep = (checked) => { if (checked) createHoldRecords(["preparation"]); else releasePhases(["preparation"]); };
-  const handleToggleManualProg = (checked) => { if (checked) createHoldRecords(["approval", "begin_transfer"]); else releasePhases(["approval", "begin_transfer"]); };
-
-  // ── Automation holds state ──
+  const liveManualPrep = !!currentHolds.find(h => h.phase === "preparation");
+  const liveManualProg = currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer").length > 0;
   const rawAutoConfig = level === "fleet"
     ? automationConfig.fleet
     : (automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false });
-  const autoConfig = { preparation: rawAutoConfig.preparation, progression: rawAutoConfig.approval && rawAutoConfig.beginTransfer };
+  const liveAutoPrep = rawAutoConfig.preparation;
+  const liveAutoProg = rawAutoConfig.approval && rawAutoConfig.beginTransfer;
 
-  const handleToggleAuto = (phase) => {
-    if (!canWrite) return;
-    const updates = phase === "progression"
-      ? { approval: !autoConfig.progression, beginTransfer: !autoConfig.progression }
-      : { [phase]: !rawAutoConfig[phase] };
-    if (level === "fleet") {
-      onUpdateAutomationConfig({ ...automationConfig, fleet: { ...automationConfig.fleet, ...updates } });
-    } else {
-      const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
-      onUpdateAutomationConfig({ ...automationConfig, merchants: { ...automationConfig.merchants, [mid]: { ...current, ...updates } } });
+  // ── Draft state (local until Save) ──
+  const [draft, setDraft] = useState({ manualPrep: false, manualProg: false, autoPrep: false, autoProg: false });
+
+  // Reset draft to live state whenever the dialog opens
+  useEffect(() => {
+    if (open) {
+      setDraft({ manualPrep: liveManualPrep, manualProg: liveManualProg, autoPrep: liveAutoPrep, autoProg: liveAutoProg });
     }
+  }, [open]);
+
+  const showPreparation = level !== "payout";
+  const hasChanges = draft.manualPrep !== liveManualPrep || draft.manualProg !== liveManualProg || draft.autoPrep !== liveAutoPrep || draft.autoProg !== liveAutoProg;
+
+  const handleSave = () => {
+    setSaving(true);
+    setTimeout(() => {
+      // ── Apply manual hold changes ──
+      // Preparation
+      if (draft.manualPrep !== liveManualPrep) {
+        if (draft.manualPrep) {
+          const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase: "preparation", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true };
+          onCreateHold(record);
+        } else {
+          currentHolds.filter(h => h.phase === "preparation").forEach(h => onReleaseHold(h.id));
+        }
+      }
+      // Progression
+      if (draft.manualProg !== liveManualProg) {
+        if (draft.manualProg) {
+          ["approval", "begin_transfer"].forEach(phase => {
+            const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true };
+            onCreateHold(record);
+          });
+        } else {
+          currentHolds.filter(h => h.phase === "approval" || h.phase === "begin_transfer").forEach(h => onReleaseHold(h.id));
+        }
+      }
+
+      // ── Apply automation hold changes ──
+      const autoUpdates = {};
+      if (draft.autoPrep !== liveAutoPrep) autoUpdates.preparation = draft.autoPrep;
+      if (draft.autoProg !== liveAutoProg) { autoUpdates.approval = draft.autoProg; autoUpdates.beginTransfer = draft.autoProg; }
+      if (Object.keys(autoUpdates).length > 0) {
+        if (level === "fleet") {
+          onUpdateAutomationConfig({ ...automationConfig, fleet: { ...automationConfig.fleet, ...autoUpdates } });
+        } else {
+          const current = automationConfig.merchants[mid] || { preparation: false, approval: false, beginTransfer: false };
+          onUpdateAutomationConfig({ ...automationConfig, merchants: { ...automationConfig.merchants, [mid]: { ...current, ...autoUpdates } } });
+        }
+      }
+
+      // Toast
+      const anyNewHolds = (draft.manualPrep && !liveManualPrep) || (draft.manualProg && !liveManualProg) || (draft.autoPrep && !liveAutoPrep) || (draft.autoProg && !liveAutoProg);
+      const anyReleased = (!draft.manualPrep && liveManualPrep) || (!draft.manualProg && liveManualProg) || (!draft.autoPrep && liveAutoPrep) || (!draft.autoProg && liveAutoProg);
+      if (anyNewHolds && anyReleased) {
+        addToast({ type: "success", title: "Holds updated", message: `Hold settings for ${entityLabel || "entity"} have been updated.` });
+      } else if (anyNewHolds) {
+        addToast({ type: "warning", title: "Holds placed", message: `${entityLabel || "Entity"} holds have been applied.` });
+      } else if (anyReleased) {
+        addToast({ type: "success", title: "Holds released", message: `Holds on ${entityLabel || "entity"} have been released.` });
+      }
+
+      setSaving(false);
+      onClose();
+    }, 800);
   };
 
-  // Payout level: no preparation toggles
-  const showPreparation = level !== "payout";
+  const handleCancel = () => {
+    setDraft({ manualPrep: liveManualPrep, manualProg: liveManualProg, autoPrep: liveAutoPrep, autoProg: liveAutoProg });
+    onClose();
+  };
 
   const Toggle = ({ active, onClick, disabled }) => (
     <button
@@ -359,7 +391,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
   );
 
   return (
-    <Modal open={open} onClose={onClose} title="Hold controls">
+    <Modal open={open} onClose={handleCancel} title="Hold controls">
       <div className="space-y-6">
         {/* Manual Holds */}
         <div>
@@ -367,7 +399,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={!!prepHold} onClick={() => handleToggleManualPrep(!prepHold)} disabled={!canWrite} />
+                <Toggle active={draft.manualPrep} onClick={() => setDraft(d => ({ ...d, manualPrep: !d.manualPrep }))} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
@@ -375,7 +407,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={hasProgHold} onClick={() => handleToggleManualProg(!hasProgHold)} disabled={!canWrite} />
+              <Toggle active={draft.manualProg} onClick={() => setDraft(d => ({ ...d, manualProg: !d.manualProg }))} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
@@ -392,7 +424,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={autoConfig.preparation} onClick={() => handleToggleAuto("preparation")} disabled={!canWrite} />
+                <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents automated payout creation from running on a scheduled basis</p>
@@ -400,7 +432,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={autoConfig.progression} onClick={() => handleToggleAuto("progression")} disabled={!canWrite} />
+              <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Prevents automated approval and transfer from advancing payouts</p>
@@ -412,6 +444,12 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
         <div className="flex items-center gap-2 text-xs text-gray-400 pt-2 border-t border-gray-100">
           <Icons.Info />
           <span>When held, the corresponding actions are paused.</span>
+        </div>
+
+        {/* Save / Cancel */}
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={handleCancel} disabled={saving}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleSave} disabled={!hasChanges || saving}>{saving ? "Saving..." : "Save"}</Button>
         </div>
       </div>
     </Modal>
