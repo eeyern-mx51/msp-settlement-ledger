@@ -359,16 +359,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
         }
       }
 
-      // Toast
-      const anyNewHolds = (draft.manualPrep && !liveManualPrep) || (draft.manualProg && !liveManualProg) || (draft.autoPrep && !liveAutoPrep) || (draft.autoProg && !liveAutoProg);
-      const anyReleased = (!draft.manualPrep && liveManualPrep) || (!draft.manualProg && liveManualProg) || (!draft.autoPrep && liveAutoPrep) || (!draft.autoProg && liveAutoProg);
-      if (anyNewHolds && anyReleased) {
-        addToast({ type: "success", title: "Holds updated", message: `Hold settings for ${entityLabel || "entity"} have been updated.` });
-      } else if (anyNewHolds) {
-        addToast({ type: "warning", title: "Holds placed", message: `${entityLabel || "Entity"} holds have been applied.` });
-      } else if (anyReleased) {
-        addToast({ type: "success", title: "Holds released", message: `Holds on ${entityLabel || "entity"} have been released.` });
-      }
+      addToast({ type: "success", title: "Holds updated", message: "Hold settings have been updated." });
 
       setSaving(false);
       onClose();
