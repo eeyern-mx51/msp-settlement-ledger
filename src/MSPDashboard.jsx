@@ -400,10 +400,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={draft.manualPrep} onClick={() => setDraft(d => {
-                      const next = !d.manualPrep;
-                      return { ...d, manualPrep: next, ...(next ? { autoPrep: true } : {}) };
-                    })} disabled={!canWrite || saving} />
+                <Toggle active={draft.manualPrep} onClick={() => setDraft(d => ({ ...d, manualPrep: !d.manualPrep }))} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
@@ -411,10 +408,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={draft.manualProg} onClick={() => setDraft(d => {
-                      const next = !d.manualProg;
-                      return { ...d, manualProg: next, ...(next ? { autoProg: true } : {}) };
-                    })} disabled={!canWrite || saving} />
+              <Toggle active={draft.manualProg} onClick={() => setDraft(d => ({ ...d, manualProg: !d.manualProg }))} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Blocks manual approval and transfers</p>
@@ -429,18 +423,18 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving || draft.manualPrep} />
+                <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
-                  <p className="text-xs text-gray-500 mt-0.5">{draft.manualPrep ? "Held automatically — manual preparation hold is active" : "Prevents automated payout creation from running on a scheduled basis"}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Prevents automated payout creation from running on a scheduled basis</p>
                 </div>
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving || draft.manualProg} />
+              <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
-                <p className="text-xs text-gray-500 mt-0.5">{draft.manualProg ? "Held automatically — manual progression hold is active" : "Prevents automated approval and transfer from advancing payouts"}</p>
+                <p className="text-xs text-gray-500 mt-0.5">Prevents automated approval and transfer from advancing payouts</p>
               </div>
             </div>
           </div>
