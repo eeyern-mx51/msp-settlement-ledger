@@ -440,10 +440,10 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           </div>
         </div>
 
-        {/* Save / Cancel */}
+        {/* Apply / Cancel */}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={handleCancel} disabled={saving}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" onClick={handleSave} disabled={!hasChanges || saving}>{saving ? "Saving..." : "Save"}</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleSave} disabled={!hasChanges || saving}>{saving ? "Applying..." : "Apply"}</Button>
         </div>
       </div>
     </Modal>
