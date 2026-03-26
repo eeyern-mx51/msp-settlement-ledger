@@ -474,7 +474,7 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid })
 }
 
 // ─── Global role context (simulated) ───
-const ROLES = { FINOPS_T1: "FinOps Administrator", FINOPS_T2: "FinOps View only", ADMIN: "Administrator" };
+const ROLES = { FINOPS_T1: "FinOps Administrator", FINOPS_T2: "FinOps View only" };
 const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
 const getStatusOrder = (payout) => (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
@@ -798,7 +798,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
           <div className="flex items-center gap-2">
             {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
             {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
-            {!isTerminal && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
+            {!isTerminal && canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
           </div>
         </CardHeader>
         <Divider />
@@ -1405,7 +1405,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const canWrite = role === ROLES.FINOPS_T1;
-  const isAdmin = role === ROLES.ADMIN;
   const { addToast } = useToast();
 
   const handleSort = (col) => {
@@ -1418,14 +1417,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
       <div className="flex justify-center text-gray-300"><Icons.Lock /></div>
       <p className="text-gray-400 text-sm font-medium">Settlements feature is not enabled for this tenant.</p>
       <p className="text-xs text-gray-400">Contact your administrator to enable the Settlements feature flag.</p>
-    </CardBody></Card></div>
-  );
-
-  if (isAdmin) return (
-    <div className="p-6"><Card><CardBody className="py-16 text-center space-y-3">
-      <div className="flex justify-center text-gray-300"><Icons.Shield /></div>
-      <p className="text-gray-400 text-sm font-medium">You do not have permission to view payouts.</p>
-      <p className="text-xs text-gray-400">Payout management is restricted to FinOps users. Your Administrator role does not include settlement permissions.</p>
     </CardBody></Card></div>
   );
 
@@ -1447,9 +1438,11 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
       <Card>
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
-          </div>
+          {canWrite && (
+            <div className="flex items-center gap-2">
+              <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
+            </div>
+          )}
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
@@ -1516,7 +1509,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
-            <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
+            {canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
           </div>
         </CardHeader>
         <Divider />
@@ -1724,7 +1717,7 @@ const uxArtefactsList = [
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Administrator, FinOps View only, and Administrator across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Administrator and FinOps View only across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Framework for Hold/Release Hold model — scope levels (fleet/merchant/payout), automation switches, failure controls, and resolved decisions", type: "React Component", icon: "controls", component: PayoutProgressionControls },
@@ -2628,7 +2621,6 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
           <select value={role} onChange={(e) => onRoleChange(e.target.value)} className="text-xs bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-300">
             <option value={ROLES.FINOPS_T1}>FinOps Administrator</option>
             <option value={ROLES.FINOPS_T2}>FinOps View only</option>
-            <option value={ROLES.ADMIN}>Administrator</option>
           </select>
         </div>
       </div>

@@ -1,66 +1,57 @@
 import { useState } from "react";
 
 const ROLES = [
-  { id: "finops_t1", label: "FinOps Tier 1", description: "Read & write access to all payout and settlement functionality. Primary operator role for POC.", color: "#4F46E5", bgColor: "#EEF2FF" },
-  { id: "finops_t2", label: "FinOps Tier 2", description: "Read-only access to payouts and settlements. Can view but cannot perform any actions. BAU support tier.", color: "#7C3AED", bgColor: "#F5F3FF" },
-  { id: "admin", label: "Administrator", description: "Existing SD admin role. No access to settlement features. Must be segregated from FinOps permissions.", color: "#6B7280", bgColor: "#F9FAFB" },
+  { id: "finops_t1", label: "FinOps Administrator", description: "Read & write access to all payout and settlement functionality. Primary operator role for POC.", color: "#4F46E5", bgColor: "#EEF2FF" },
+  { id: "finops_t2", label: "FinOps View only", description: "Read-only access to payouts and settlements. Can view but cannot perform any actions. BAU support tier.", color: "#7C3AED", bgColor: "#F5F3FF" },
 ];
 
 const CATEGORIES = [
   {
     name: "Payout Management",
     permissions: [
-      { action: "View fleet payouts", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "View merchant payouts", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "View payout detail", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "Prepare payout (date range)", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Approve payout", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Begin transfer", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Hold payout", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Release Hold", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Abandon payout", finops_t1: "full", finops_t2: "none", admin: "none" },
+      { action: "View fleet payouts", finops_t1: "full", finops_t2: "read" },
+      { action: "View merchant payouts", finops_t1: "full", finops_t2: "read" },
+      { action: "View payout detail", finops_t1: "full", finops_t2: "read" },
+      { action: "Prepare payout (date range)", finops_t1: "full", finops_t2: "none" },
+      { action: "Approve payout", finops_t1: "full", finops_t2: "none" },
+      { action: "Begin transfer", finops_t1: "full", finops_t2: "none" },
+      { action: "Hold payout", finops_t1: "full", finops_t2: "none" },
+      { action: "Release Hold", finops_t1: "full", finops_t2: "none" },
+      { action: "Abandon payout", finops_t1: "full", finops_t2: "none" },
     ]
   },
   {
     name: "Transfer & Failure Reporting",
     permissions: [
-      { action: "View transfer status", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "View failure reason", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "Retry failed transfer", finops_t1: "full", finops_t2: "none", admin: "none" },
+      { action: "View transfer status", finops_t1: "full", finops_t2: "read" },
+      { action: "View failure reason", finops_t1: "full", finops_t2: "read" },
+      { action: "Retry failed transfer", finops_t1: "full", finops_t2: "none" },
     ]
   },
   {
-    name: "Kill Switches",
+    name: "Hold Controls",
     permissions: [
-      { action: "Toggle fleet payout execution", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Toggle merchant payout execution", finops_t1: "full", finops_t2: "none", admin: "none" },
+      { action: "Toggle fleet holds (manual)", finops_t1: "full", finops_t2: "none" },
+      { action: "Toggle merchant holds (manual)", finops_t1: "full", finops_t2: "none" },
+      { action: "Toggle fleet holds (automation)", finops_t1: "full", finops_t2: "none" },
+      { action: "Toggle merchant holds (automation)", finops_t1: "full", finops_t2: "none" },
     ]
   },
   {
     name: "Adjustments",
     permissions: [
-      { action: "View adjustments", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "View adjustment detail", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "Create adjustment", finops_t1: "full", finops_t2: "none", admin: "none" },
-      { action: "Approve adjustment", finops_t1: "full", finops_t2: "none", admin: "none" },
+      { action: "View adjustments", finops_t1: "full", finops_t2: "read" },
+      { action: "View adjustment detail", finops_t1: "full", finops_t2: "read" },
+      { action: "Create adjustment", finops_t1: "full", finops_t2: "none" },
+      { action: "Approve adjustment", finops_t1: "full", finops_t2: "none" },
     ]
   },
   {
     name: "Audit & Reporting",
     permissions: [
-      { action: "View audit log", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "View transaction ledger", finops_t1: "full", finops_t2: "read", admin: "none" },
-      { action: "Export settlement CSV", finops_t1: "full", finops_t2: "read", admin: "none" },
-    ]
-  },
-  {
-    name: "Existing SD Features",
-    permissions: [
-      { action: "View merchant facilities", finops_t1: "full", finops_t2: "read", admin: "full" },
-      { action: "View terminals", finops_t1: "full", finops_t2: "read", admin: "full" },
-      { action: "View transactions", finops_t1: "full", finops_t2: "read", admin: "full" },
-      { action: "Manage MSF rates", finops_t1: "none", finops_t2: "none", admin: "full" },
-      { action: "DB query", finops_t1: "none", finops_t2: "none", admin: "full" },
+      { action: "View audit log", finops_t1: "full", finops_t2: "read" },
+      { action: "View transaction ledger", finops_t1: "full", finops_t2: "read" },
+      { action: "Export settlement CSV", finops_t1: "full", finops_t2: "read" },
     ]
   },
 ];
@@ -76,12 +67,12 @@ export default function PermissionsMatrix() {
 
   return (
     <div className="min-h-screen bg-white p-8 font-sans">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">User Permissions & Roles</h1>
         <p className="text-sm text-gray-500 mb-6">Access matrix for the MSP Support Dashboard settlement features. Hover over a role to highlight its permissions.</p>
 
         {/* Role cards */}
-        <div className="grid grid-cols-3 gap-4 mb-8">
+        <div className="grid grid-cols-2 gap-4 mb-8">
           {ROLES.map(role => (
             <div key={role.id} className="rounded-xl border-2 p-4 transition-all cursor-pointer" style={{ borderColor: highlight === role.id ? role.color : role.color + "30", backgroundColor: highlight === role.id ? role.bgColor : "white" }} onMouseEnter={() => setHighlight(role.id)} onMouseLeave={() => setHighlight(null)}>
               <div className="flex items-center gap-2 mb-2">
@@ -108,7 +99,7 @@ export default function PermissionsMatrix() {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gray-50">
-                <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider py-3 px-4 w-[45%]">Action</th>
+                <th className="text-left text-xs font-bold text-gray-500 uppercase tracking-wider py-3 px-4 w-[55%]">Action</th>
                 {ROLES.map(role => (
                   <th key={role.id} className="text-center text-xs font-bold uppercase tracking-wider py-3 px-4" style={{ color: role.color }} onMouseEnter={() => setHighlight(role.id)} onMouseLeave={() => setHighlight(null)}>{role.label}</th>
                 ))}
@@ -118,7 +109,7 @@ export default function PermissionsMatrix() {
               {CATEGORIES.map((cat, ci) => (
                 <>
                   <tr key={`cat-${ci}`} className="bg-gray-50/70">
-                    <td colSpan={4} className="py-2 px-4 text-xs font-bold text-gray-700 border-t border-gray-200">{cat.name}</td>
+                    <td colSpan={3} className="py-2 px-4 text-xs font-bold text-gray-700 border-t border-gray-200">{cat.name}</td>
                   </tr>
                   {cat.permissions.map((perm, pi) => (
                     <tr key={`${ci}-${pi}`} className="border-t border-gray-100 hover:bg-gray-50/50 transition-colors">
@@ -145,10 +136,8 @@ export default function PermissionsMatrix() {
         <div className="mt-6 bg-amber-50 border border-amber-200 rounded-xl p-4">
           <h3 className="text-sm font-bold text-amber-800 mb-2">Design decisions & open questions</h3>
           <ul className="space-y-1 text-sm text-amber-700">
-            <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>POC: FinOps T1 only (baseline). BAU: FinOps T2 added for view-only support.</li>
-            <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>Admin role explicitly excluded from settlements — write permissions must be segregated.</li>
+            <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>POC: FinOps Administrator only (baseline). BAU: FinOps View only added for read-only support.</li>
             <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>Manual adjustments may require 2nd user approval (TBC for POC).</li>
-            <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>Consider: rename "Administrator" to something else, or adopt a 2-tier role system with granular permissions.</li>
             <li className="flex items-start gap-2"><span className="flex-shrink-0">•</span>Current MSF historical updates handled as BAU service request until dedicated FinOps team in place.</li>
           </ul>
         </div>
