@@ -383,7 +383,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
 
   return (
     <Modal open={open} onClose={handleCancel} title="Hold controls">
-      <div className="space-y-6">
+      <div className="space-y-5">
         {/* Manual Holds */}
         <div>
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Manual Holds</h3>
@@ -407,10 +407,8 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           </div>
         </div>
 
-        <Divider />
-
         {/* Automation Holds */}
-        <div>
+        <div className="pt-5 border-t border-gray-200">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Automation Holds</h3>
           <div className="space-y-3">
             {showPreparation && (
