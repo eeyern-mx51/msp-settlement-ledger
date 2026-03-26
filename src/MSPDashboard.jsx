@@ -242,8 +242,8 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
     const logical = [];
     const prepHolds = holds.filter(h => h.phase === "preparation");
     const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Preparation stopped", level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Progression stopped", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", level: h.level, entity: h.entity }));
+    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
     return logical;
   };
 
@@ -405,7 +405,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                       return { ...d, manualPrep: next, ...(next ? { autoPrep: true } : {}) };
                     })} disabled={!canWrite || saving} />
                 <div>
-                  <span className="text-sm font-medium text-gray-800">Stop preparation</span>
+                  <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
                 </div>
               </div>
@@ -416,8 +416,8 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                       return { ...d, manualProg: next, ...(next ? { autoProg: true } : {}) };
                     })} disabled={!canWrite || saving} />
               <div>
-                <span className="text-sm font-medium text-gray-800">Stop progression</span>
-                <p className="text-xs text-gray-500 mt-0.5">Blocks approval & begin transfer</p>
+                <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
+                <p className="text-xs text-gray-500 mt-0.5">Blocks manual approval and transfers</p>
               </div>
             </div>
           </div>
@@ -432,7 +432,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
                 <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving || draft.manualPrep} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
-                  <p className="text-xs text-gray-500 mt-0.5">{draft.manualPrep ? "Held automatically — preparation is stopped" : "Prevents automated payout creation from running on a scheduled basis"}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{draft.manualPrep ? "Held automatically — manual preparation hold is active" : "Prevents automated payout creation from running on a scheduled basis"}</p>
                 </div>
               </div>
             )}
@@ -440,7 +440,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving || draft.manualProg} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
-                <p className="text-xs text-gray-500 mt-0.5">{draft.manualProg ? "Held automatically — progression is stopped" : "Prevents automated approval and transfer from advancing payouts"}</p>
+                <p className="text-xs text-gray-500 mt-0.5">{draft.manualProg ? "Held automatically — manual progression hold is active" : "Prevents automated approval and transfer from advancing payouts"}</p>
               </div>
             </div>
           </div>
