@@ -112,7 +112,7 @@ export default function PayoutLifecycle() {
         <div className="mt-6 bg-white border border-gray-200 rounded-xl overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
             <h2 className="text-sm font-bold text-gray-800">Payout Transition Table</h2>
-            <p className="text-xs text-gray-500 mt-0.5">12 transitions reflecting the updated lifecycle with Hold as flag overlay</p>
+            <p className="text-xs text-gray-500 mt-0.5">10 transitions reflecting the updated lifecycle with Hold as flag overlay. Abandon restricted to Ready for Review only (POC).</p>
           </div>
           <table className="w-full text-sm">
             <thead><tr className="border-b border-gray-200 bg-gray-50">
@@ -122,15 +122,13 @@ export default function PayoutLifecycle() {
               ["1", "\u2014", "Ready for Review", "Prepare payout", "Auto", "Daily sweep creates payout when merchant balance > 0"],
               ["2", "Ready for Review", "Ready for Transfer", "Approve", "Manual", "FinOps Administrator reviews and approves"],
               ["3", "Ready for Review", "Completed", "Zero/neg balance", "Auto", "Debt deferred \u2014 no transfer needed"],
-              ["4", "Ready for Review", "Abandoned", "Abandon", "Manual", "FinOps Administrator cancels before approval"],
+              ["4", "Ready for Review", "Abandoned", "Abandon", "Manual", "FinOps Administrator cancels before approval (only status where abandon is available in POC)"],
               ["5", "Ready for Transfer", "Transferring", "Begin transfer", "Manual/Auto", "NPP transfer initiated"],
-              ["6", "Ready for Transfer", "Abandoned", "Abandon", "Manual", "FinOps Administrator cancels before execution"],
-              ["7", "Transferring", "Completed", "NPP success", "Auto", "Merchant bank confirms receipt"],
-              ["8", "Transferring", "Failed (retryable)", "NPP transient failure", "Auto", "Auto-transitions to Ready for Transfer"],
-              ["9", "Transferring", "Failed (non-retryable)", "NPP persistent failure", "Auto", "Manual intervention required"],
-              ["10", "Failed", "Ready for Transfer", "Resolve & retry", "Manual/Auto", "Retryable: auto. Non-retryable: after bank detail fix"],
-              ["11", "Failed", "Abandoned", "Abandon", "Manual", "Stringent criteria \u2014 documented evidence required"],
-              ["12", "Completed", "Failed", "Bank return", "Auto", "Edge case \u2014 returned funds"],
+              ["6", "Transferring", "Completed", "NPP success", "Auto", "Merchant bank confirms receipt"],
+              ["7", "Transferring", "Failed (retryable)", "NPP transient failure", "Auto", "Auto-transitions to Ready for Transfer"],
+              ["8", "Transferring", "Failed (non-retryable)", "NPP persistent failure", "Auto", "Manual intervention required"],
+              ["9", "Failed", "Ready for Transfer", "Resolve & retry", "Manual/Auto", "Retryable: auto. Non-retryable: after bank detail fix"],
+              ["10", "Completed", "Failed", "Bank return", "Auto", "Edge case \u2014 returned funds"],
             ].map(([n, from, to, trigger, type, notes], i) => (
               <tr key={i} className="border-b border-gray-100 hover:bg-gray-50">
                 <td className="py-2 px-4 text-xs text-gray-400 font-mono">{n}</td>
@@ -143,7 +141,7 @@ export default function PayoutLifecycle() {
             ))}</tbody>
           </table>
           <div className="px-6 py-3 bg-amber-50 border-t border-amber-200">
-            <p className="text-xs text-amber-800"><strong>Hold flag:</strong> Can be placed on Ready for Review or Ready for Transfer. While on hold, no transitions occur except Release Hold (clears flag) and Abandon. Hold is not a state \u2014 it's an overlay on the existing status.</p>
+            <p className="text-xs text-amber-800"><strong>Hold flag:</strong> Can be placed on Ready for Review or Ready for Transfer. While on hold, no transitions occur except Release Hold (clears flag). Abandon is only available if the underlying status is Ready for Review. Hold is not a state \u2014 it's an overlay on the existing status.</p>
           </div>
         </div>
 
