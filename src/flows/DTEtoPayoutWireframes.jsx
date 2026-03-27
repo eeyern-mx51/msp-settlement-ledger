@@ -315,7 +315,7 @@ function WireframePayoutReview() {
       </div>
       {/* Action panel hint */}
       <div className="bg-purple-50 rounded border border-purple-200 px-3 py-2 text-[9px] text-purple-600">
-        <b>FinOps actions:</b> Approve → Ready for Transfer · Hold → Investigation · Abandon → Cancel payout
+        <b>FinOps actions:</b> Approve → Ready for Transfer · Hold → Investigation · Abandon → Cancel payout (Ready for Review only)
       </div>
     </div>
   );
@@ -452,14 +452,14 @@ const STEPS = [
   {
     id: 6, phase: "Review", title: "FinOps reviews & approves payouts",
     actor: "FinOps T1 (manual)", type: "manual",
-    description: "FinOps reviews the prepared payouts — validating amounts against expected DTE totals, checking for anomalies. They can Approve (→ Ready for Transfer), Hold (→ investigation), or Abandon (→ cancel). Expandable payout detail shows the constituent MLEs.",
+    description: "FinOps reviews the prepared payouts — validating amounts against expected DTE totals, checking for anomalies. They can Approve (→ Ready for Transfer), Hold (→ investigation), or Abandon (→ cancel, from Ready for Review only). Expandable payout detail shows the constituent MLEs.",
     wireframe: WireframePayoutReview,
     uiReq: true, reqLabel: "Payout list, Approve/Hold/Abandon actions, Detail panel",
     dataFlow: "Support Dashboard → Payout Service → status update",
     details: [
       "Approve: status → Ready for Transfer (requires FinOps T1+)",
       "Hold: On Hold flag applied (investigation, requires reason)",
-      "Abandon: status → Abandoned (requires reason + T2 confirmation if >$10k)",
+      "Abandon: status → Abandoned (Ready for Review only, requires reason + confirmation)",
       "Payout detail: expandable MLE list, merchant info, audit trail",
       "Bulk actions available for batch approve",
     ],
