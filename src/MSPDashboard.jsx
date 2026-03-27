@@ -180,37 +180,21 @@ function BeginTransferDialog({ open, onClose, payout, onConfirm }) {
 
 function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [confirmText, setConfirmText] = useState("");
-  const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
   const isConfirmed = confirmText === "ABANDON";
   const handleConfirm = () => {
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(reason); onClose(); setConfirmText(""); setReason(""); }, 1500);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); setConfirmText(""); }, 1500);
   };
   if (!payout) return null;
   return (
     <Modal open={open} onClose={onClose} title="Abandon payout">
       <div className="space-y-5">
         <Alert type="error" title="This action is irreversible">Abandoning this payout will permanently stop it. The merchant's funds will not be transferred. All transactions will be returned to the ledger and allocated to the next payout preparation.</Alert>
-        {payout.status === "Failed" && (
-          <Alert type="warning" title="Stringent criteria apply">Abandoning a Failed payout requires documented evidence that the failure cannot be resolved. This action will be audited.</Alert>
-        )}
         <div className="bg-red-50 rounded-lg p-4 space-y-2 border border-red-100">
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["Amount at risk", payout.amount]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-red-600 font-medium">{label}</span><span className="text-red-800 font-semibold">{value}</span></div>
           ))}
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">Reason for abandoning</label>
-          <select value={reason} onChange={(e) => setReason(e.target.value)} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400">
-            <option value="">Select a reason...</option>
-            <option>Duplicate payout</option>
-            <option>Merchant account closed</option>
-            <option>Fraudulent activity confirmed</option>
-            <option>Incorrect settlement calculation</option>
-            <option>Merchant requested abandonment</option>
-            <option>Other</option>
-          </select>
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Type ABANDON to confirm</label>
@@ -218,7 +202,7 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Go back</Button>
-          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed || !reason} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
+          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
         </div>
       </div>
     </Modal>
@@ -769,7 +753,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
     addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` });
     onStatusChange(payout.id, "Transferring");
   };
-  const handleAbandon = (reason) => {
+  const handleAbandon = () => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
   };
