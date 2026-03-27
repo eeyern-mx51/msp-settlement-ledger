@@ -741,10 +741,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const buildActions = () => {
     // Terminal states have no actions
     if (isTerminal) return [];
-    // If progression is blocked by holds, no status change actions
-    if (isProgBlocked) return [
-      { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
-    ];
+    // If progression is blocked by holds, no status change actions (abandon only available at Ready for Review)
+    if (isProgBlocked) return payout.status === "Ready for Review"
+      ? [{ label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) }]
+      : [];
     const map = {
       "Ready for Review": [
         { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
@@ -752,11 +752,9 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       ],
       "Ready for Transfer": [
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => setShowTransfer(true) },
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
       "Failed": [
         ...(!isResubmitBlocked ? [{ label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
       ],
     };
     return map[payout.status] || [];
