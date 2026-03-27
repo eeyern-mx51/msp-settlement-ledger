@@ -209,6 +209,38 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   );
 }
 
+function ResubmitPayoutDialog({ open, onClose, payout, onConfirm }) {
+  const [loading, setLoading] = useState(false);
+  const handleConfirm = () => {
+    setLoading(true);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1200);
+  };
+  if (!payout) return null;
+  return (
+    <Modal open={open} onClose={onClose} title="Resubmit payout">
+      <div className="space-y-5">
+        <Alert type="info" title="Confirm resubmit">This payout will be moved back to "Ready for Transfer" and can be submitted to the bank again. Ensure the underlying issue has been resolved before resubmitting.</Alert>
+        <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount], ["Settlement date", payout.settlementDate || payout.date]].map(([label, value]) => (
+            <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
+          ))}
+        </div>
+        {payout.failureReason && (
+          <div className="bg-red-50 rounded-lg p-4 space-y-1 border border-red-100">
+            <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Last failure</span>
+            <p className="text-sm text-red-800">{payout.failureReason}</p>
+            {payout.failureCode && <p className="text-xs text-red-500 font-mono">{payout.failureCode}</p>}
+          </div>
+        )}
+        <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+          <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Refresh />}>{loading ? "Resubmitting..." : "Resubmit payout"}</Button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
 function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, automationConfig }) {
   const hr = holdRecords || [];
 
@@ -536,9 +568,9 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed" },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed", failureReason: "Cuscal gateway timeout — second attempt failed", failureCode: "GATEWAY_TIMEOUT", retryable: true },
   { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", status: "Ready for Transfer", hold: true },
-  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed" },
+  { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed", failureReason: "Invalid BSB — bank returned BECS reject code R4", failureCode: "INVALID_BSB", retryable: false },
   // 19 Feb
   { id: "PO-2026-0219-001", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$1,420.00", status: "Abandoned" },
   { id: "PO-2026-0219-002", date: "19 Feb 2026", createdAt: "19 Feb 2026, 6:00 AM", settlementDate: "19 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$3,780.50", status: "Completed" },
@@ -719,6 +751,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const [showApprove, setShowApprove] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [showAbandon, setShowAbandon] = useState(false);
+  const [showResubmit, setShowResubmit] = useState(false);
   const [showHolds, setShowHolds] = useState(false);
 
   // Build actions based on status and holds
@@ -738,7 +771,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => setShowTransfer(true) },
       ],
       "Failed": [
-        ...(!isResubmitBlocked ? [{ label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => { addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` }); onStatusChange(payout.id, "Ready for Transfer"); } }] : []),
+        ...(!isResubmitBlocked ? [{ label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => setShowResubmit(true) }] : []),
       ],
     };
     return map[payout.status] || [];
@@ -753,6 +786,10 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
     addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` });
     onStatusChange(payout.id, "Transferring");
   };
+  const handleResubmit = () => {
+    addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` });
+    onStatusChange(payout.id, "Ready for Transfer");
+  };
   const handleAbandon = () => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
     onStatusChange(payout.id, "Abandoned");
@@ -762,6 +799,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
     <div className="p-6 space-y-5">
       <ApprovePayoutDialog open={showApprove} onClose={() => setShowApprove(false)} payout={payout} onConfirm={handleApprove} />
       <BeginTransferDialog open={showTransfer} onClose={() => setShowTransfer(false)} payout={payout} onConfirm={handleBeginTransfer} />
+      <ResubmitPayoutDialog open={showResubmit} onClose={() => setShowResubmit(false)} payout={payout} onConfirm={handleResubmit} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
       <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 

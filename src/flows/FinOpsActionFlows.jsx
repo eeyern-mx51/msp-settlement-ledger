@@ -117,8 +117,9 @@ const FLOWS = {
     transition: "Failed (retryable) → Ready for Transfer → Begin transfer → Transferring → Completed / Failed",
     steps: [
       { actor: "FinOps Administrator", action: "Navigate to failed payout", detail: "Filter by Failed status. Review the error code and failure reason displayed in the alert banner." },
-      { actor: "FinOps Administrator", action: "Review failure context", detail: "Check error code (e.g. GATEWAY_TIMEOUT, RATE_LIMITED), attempt count, and recommended action. For GATEWAY_TIMEOUT, confirm no duplicate payment was processed." },
-      { actor: "FinOps Administrator", action: "Click \"Retry (attempt N)\" button", detail: "Button shows the attempt number. Available only on retryable failures. Triggers immediately — no confirmation dialog." },
+      { actor: "FinOps Administrator", action: "Click \"Resubmit\" button", detail: "Opens a confirmation dialog showing payout summary, settlement date, and the last failure reason/code." },
+      { actor: "FinOps Administrator", action: "Review failure context in dialog", detail: "Dialog displays the failure reason and code so FinOps can confirm the underlying issue has been resolved before resubmitting." },
+      { actor: "FinOps Administrator", action: "Click \"Resubmit payout\" to confirm", detail: "1.2s loading state. Payout transitions to Ready for Transfer." },
       { actor: "System", action: "Transition to Ready for Transfer", detail: "Status → Ready for Transfer. Attempt counter incremented. Audit log: \"Manual retry initiated — Attempt N.\"" },
       { actor: "FinOps Administrator", action: "Begin the transfer", detail: "Payout now follows the standard Begin transfer flow — click \"Begin transfer\" to initiate the NPP transfer." },
       { actor: "System", action: "Record outcome", detail: "Success → Completed. Failure → returns to Failed with updated attempt count." },
