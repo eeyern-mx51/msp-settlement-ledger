@@ -94,13 +94,8 @@ export default function PayoutLifecycle() {
             <path d="M 350,92 C 280,92 200,200 160,374" fill="none" stroke="#6B7280" strokeWidth="1.5" markerEnd="url(#arrow-neutral)" />
             <text x={230} y={200} fontSize="8" fill="#6B7280" fontWeight="600" fontFamily="system-ui" transform="rotate(60, 230, 200)">Abandon</text>
 
-            {/* Ready for Transfer → Abandoned (direct) */}
-            <path d="M 350,252 C 280,252 200,300 160,374" fill="none" stroke="#6B7280" strokeWidth="1.5" markerEnd="url(#arrow-neutral)" />
-            <text x={230} y={310} fontSize="8" fill="#6B7280" fontWeight="600" fontFamily="system-ui">Abandon</text>
-
-            {/* Failed → Abandoned (stringent criteria) */}
-            <path d="M 350,572 C 200,572 160,460 160,448" fill="none" stroke="#6B7280" strokeWidth="1.5" markerEnd="url(#arrow-neutral)" />
-            <text x={210} y={520} fontSize="8" fill="#6B7280" fontWeight="600" fontFamily="system-ui">Abandon (stringent)</text>
+            {/* Ready for Transfer → Abandoned: removed in POC (abandon restricted to Ready for Review only) */}
+            {/* Failed → Abandoned: removed in POC (abandon restricted to Ready for Review only) */}
 
             {/* Hold flag indicator arrows - dashed amber from Review and Transfer to Note */}
             <path d="M 350,76 C 290,76 260,76 246,76" fill="none" stroke="#D97706" strokeWidth="1.2" markerEnd="url(#arrow-warn)" strokeDasharray="4 2" />
