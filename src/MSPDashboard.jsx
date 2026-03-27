@@ -555,10 +555,13 @@ const mockPayouts = [
   { id: "PO-2026-0224-001", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$5,112.40", status: "Ready for Review" },
   { id: "PO-2026-0224-002", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,480.90", status: "Ready for Review" },
   { id: "PO-2026-0224-003", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$1,875.20", status: "Ready for Review" },
+  { id: "PO-2026-0224-004", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$8,420.00", status: "Ready for Review" },
+  { id: "PO-2026-0224-005", date: "24 Feb 2026", createdAt: "24 Feb 2026, 6:00 AM", settlementDate: "24 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$4,750.30", status: "Ready for Review" },
   // 23 Feb
   { id: "PO-2026-0223-001", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,821.50", status: "Ready for Transfer" },
   { id: "PO-2026-0223-002", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$12,340.00", status: "Ready for Transfer" },
-  { id: "PO-2026-0223-003", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", status: "Transferring" },
+  { id: "PO-2026-0223-003", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,215.60", status: "Transferring" },
+  { id: "PO-2026-0223-004", date: "23 Feb 2026", createdAt: "23 Feb 2026, 6:02 AM", settlementDate: "23 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$7,215.60", status: "Transferring" },
   // 22 Feb
   { id: "PO-2026-0222-001", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,617.80", status: "Completed" },
   { id: "PO-2026-0222-002", date: "22 Feb 2026", createdAt: "22 Feb 2026, 6:01 AM", settlementDate: "22 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$8,990.25", status: "Completed" },
@@ -568,7 +571,7 @@ const mockPayouts = [
   { id: "PO-2026-0221-002", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$2,945.30", status: "Completed" },
   { id: "PO-2026-0221-003", date: "21 Feb 2026", createdAt: "21 Feb 2026, 6:00 AM", settlementDate: "21 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$4,310.75", status: "Completed" },
   // 20 Feb — failures and issues
-  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$6,112.75", status: "Failed", failureReason: "Cuscal gateway timeout — second attempt failed", failureCode: "GATEWAY_TIMEOUT", retryable: true },
+  { id: "PO-2026-0220-001", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$6,112.75", status: "Failed", failureReason: "Cuscal gateway timeout — second attempt failed", failureCode: "GATEWAY_TIMEOUT", retryable: true },
   { id: "PO-2026-0220-002", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$9,801.00", status: "Ready for Transfer", hold: true },
   { id: "PO-2026-0220-003", date: "20 Feb 2026", createdAt: "20 Feb 2026, 6:01 AM", settlementDate: "20 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$1,925.40", status: "Failed", failureReason: "Invalid BSB — bank returned BECS reject code R4", failureCode: "INVALID_BSB", retryable: false },
   // 19 Feb
@@ -578,8 +581,14 @@ const mockPayouts = [
   { id: "PO-2026-0218-001", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$22,640.00", status: "Completed" },
   { id: "PO-2026-0218-002", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$4,190.25", status: "Completed" },
   { id: "PO-2026-0218-003", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$11,405.80", status: "Completed" },
+  { id: "PO-2026-0218-004", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$2,870.45", status: "Completed" },
+  { id: "PO-2026-0218-005", date: "18 Feb 2026", createdAt: "18 Feb 2026, 6:02 AM", settlementDate: "18 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$3,415.90", status: "Completed" },
   // 17 Feb
   { id: "PO-2026-0217-001", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: "$5,330.60", status: "Abandoned" },
+  { id: "PO-2026-0217-002", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Mike's Electronics", mid: "POSPAY00012346", amount: "$18,920.00", status: "Completed" },
+  { id: "PO-2026-0217-003", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: "$5,640.30", status: "Completed" },
+  { id: "PO-2026-0217-004", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: "$9,285.50", status: "Completed" },
+  { id: "PO-2026-0217-005", date: "17 Feb 2026", createdAt: "17 Feb 2026, 6:00 AM", settlementDate: "17 Feb 2026", merchantName: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: "$3,540.80", status: "Completed" },
 ];
 
 // ─── Per-payout audit logs ───
@@ -597,6 +606,14 @@ const auditLogs = {
     { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 8 transactions included, totalling $1,875.20." },
     { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
   ],
+  "PO-2026-0224-004": [
+    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 22 transactions included, totalling $8,420.00." },
+    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+  ],
+  "PO-2026-0224-005": [
+    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included, totalling $4,750.30." },
+    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+  ],
   // Ready for Transfer — approved but transfer not yet initiated
   "PO-2026-0223-001": [
     { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
@@ -610,11 +627,18 @@ const auditLogs = {
   ],
   // Transferring — in progress
   "PO-2026-0223-003": [
-    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included." },
+    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 10 transactions included, totalling $3,215.60." },
     { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
     { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
+  ],
+  "PO-2026-0223-004": [
+    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included, totalling $7,215.60." },
+    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "23 Feb 2026, 9:15 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 11:30 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
+    { ts: "23 Feb 2026, 11:30 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
   ],
   // Completed — full lifecycle
   "PO-2026-0222-001": [
@@ -638,12 +662,15 @@ const auditLogs = {
   ],
   // Failed — with error detail
   "PO-2026-0220-001": [
-    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included." },
+    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $6,112.75." },
     { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
     { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-999 / Acc 87654321." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed", user: "System", detail: "DE credit rejected by Cuscal. Reason: Invalid BSB (062-999). Payout moved to Failed." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 6, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
+    { ts: "20 Feb 2026, 11:30 AM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure. Payout moved back to Ready for Transfer." },
+    { ts: "20 Feb 2026, 12:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer re-initiated to BSB 062-000 / Acc 12345678." },
+    { ts: "20 Feb 2026, 12:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
+    { ts: "20 Feb 2026, 12:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001b. Manual resubmission required." },
   ],
   "PO-2026-0220-003": [
     { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
