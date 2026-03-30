@@ -181,11 +181,17 @@ function BeginTransferDialog({ open, onClose, payout, onConfirm }) {
 function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [confirmText, setConfirmText] = useState("");
   const [loading, setLoading] = useState(false);
-  const isConfirmed = confirmText === "ABANDON";
+  const [errors, setErrors] = useState({});
+  const [note, setNote] = useState("");
   const handleConfirm = () => {
+    const errs = {};
+    if (confirmText !== "ABANDON") errs.confirmText = "Please type ABANDON to confirm this action.";
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(); onClose(); setConfirmText(""); }, 1500);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); setConfirmText(""); setNote(""); }, 1500);
   };
+  useEffect(() => { if (open) { setNote(""); setErrors({}); } }, [open]);
   if (!payout) return null;
   return (
     <Modal open={open} onClose={onClose} title="Abandon payout">
@@ -197,12 +203,18 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
           ))}
         </div>
         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Internal note <span className="text-xs font-normal text-gray-400">(optional)</span></label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} placeholder="Add context for the audit log..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-red-200 focus:border-red-400 resize-none ${note.length >= 500 ? "border-red-400" : "border-gray-300"}`} />
+          <div className="flex justify-between mt-0.5"><p className="text-xs text-gray-400">Recorded in the audit log. Not visible to the merchant.</p><p className={`text-xs ${note.length >= 450 ? (note.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{note.length}/500</p></div>
+        </div>
+        <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Type ABANDON to confirm</label>
-          <input type="text" value={confirmText} onChange={(e) => setConfirmText(e.target.value.toUpperCase())} placeholder="ABANDON" className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 font-mono tracking-wider focus:ring-2 focus:ring-red-200 focus:border-red-400" />
+          <input type="text" value={confirmText} onChange={(e) => { setConfirmText(e.target.value.toUpperCase()); if (errors.confirmText) setErrors({}); }} placeholder="ABANDON" className={`w-full text-sm border rounded-lg px-3 py-2 font-mono tracking-wider focus:ring-2 ${errors.confirmText ? "border-red-400 focus:ring-red-200 focus:border-red-400" : "border-gray-300 focus:ring-red-200 focus:border-red-400"}`} />
+          {errors.confirmText && <p className="text-xs text-red-600 mt-1">{errors.confirmText}</p>}
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Go back</Button>
-          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading || !isConfirmed} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
+          <Button variant="solid" colorScheme="error" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Ban />}>{loading ? "Abandoning..." : "Abandon payout"}</Button>
         </div>
       </div>
     </Modal>
@@ -211,10 +223,12 @@ function AbandonPayoutDialog({ open, onClose, payout, onConfirm }) {
 
 function ResubmitPayoutDialog({ open, onClose, payout, onConfirm }) {
   const [loading, setLoading] = useState(false);
+  const [note, setNote] = useState("");
   const handleConfirm = () => {
     setLoading(true);
-    setTimeout(() => { setLoading(false); onConfirm(); onClose(); }, 1200);
+    setTimeout(() => { setLoading(false); onConfirm(); onClose(); setNote(""); }, 1200);
   };
+  useEffect(() => { if (open) setNote(""); }, [open]);
   if (!payout) return null;
   return (
     <Modal open={open} onClose={onClose} title="Resubmit payout">
@@ -224,6 +238,11 @@ function ResubmitPayoutDialog({ open, onClose, payout, onConfirm }) {
           {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount], ["Settlement date", payout.settlementDate || payout.date]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Internal note <span className="text-xs font-normal text-gray-400">(optional)</span></label>
+          <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} placeholder="Add context for the audit log..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${note.length >= 500 ? "border-red-400" : "border-gray-300"}`} />
+          <div className="flex justify-between mt-0.5"><p className="text-xs text-gray-400">Recorded in the audit log. Not visible to the merchant.</p><p className={`text-xs ${note.length >= 450 ? (note.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{note.length}/500</p></div>
         </div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
@@ -340,18 +359,23 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
 
   // ── Draft state (local until Save) ──
   const [draft, setDraft] = useState({ manualPrep: false, manualProg: false, autoPrep: false, autoProg: false });
+  const [note, setNote] = useState("");
 
   // Reset draft to live state whenever the dialog opens
   useEffect(() => {
     if (open) {
       setDraft({ manualPrep: liveManualPrep, manualProg: liveManualProg, autoPrep: liveAutoPrep, autoProg: liveAutoProg });
+      setNote("");
     }
   }, [open]);
 
   const showPreparation = level !== "payout";
   const hasChanges = draft.manualPrep !== liveManualPrep || draft.manualProg !== liveManualProg || draft.autoPrep !== liveAutoPrep || draft.autoProg !== liveAutoProg;
+  const [submitError, setSubmitError] = useState("");
 
   const handleSave = () => {
+    if (!hasChanges) { setSubmitError("No changes to apply. Modify at least one hold setting."); return; }
+    setSubmitError("");
     setSaving(true);
     setTimeout(() => {
       // ── Apply manual hold changes ──
@@ -420,7 +444,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={draft.manualPrep} onClick={() => setDraft(d => ({ ...d, manualPrep: !d.manualPrep }))} disabled={!canWrite || saving} />
+                <Toggle active={draft.manualPrep} onClick={() => { setDraft(d => ({ ...d, manualPrep: !d.manualPrep })); setSubmitError(""); }} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold manual preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents new payouts from being created</p>
@@ -428,7 +452,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={draft.manualProg} onClick={() => setDraft(d => ({ ...d, manualProg: !d.manualProg }))} disabled={!canWrite || saving} />
+              <Toggle active={draft.manualProg} onClick={() => { setDraft(d => ({ ...d, manualProg: !d.manualProg })); setSubmitError(""); }} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold manual progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Blocks manual approval and transfers</p>
@@ -443,7 +467,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           <div className="space-y-3">
             {showPreparation && (
               <div className="flex items-start gap-3">
-                <Toggle active={draft.autoPrep} onClick={() => setDraft(d => ({ ...d, autoPrep: !d.autoPrep }))} disabled={!canWrite || saving} />
+                <Toggle active={draft.autoPrep} onClick={() => { setDraft(d => ({ ...d, autoPrep: !d.autoPrep })); setSubmitError(""); }} disabled={!canWrite || saving} />
                 <div>
                   <span className="text-sm font-medium text-gray-800">Hold auto-preparation</span>
                   <p className="text-xs text-gray-500 mt-0.5">Prevents automated payout creation from running on a scheduled basis</p>
@@ -451,7 +475,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
               </div>
             )}
             <div className="flex items-start gap-3">
-              <Toggle active={draft.autoProg} onClick={() => setDraft(d => ({ ...d, autoProg: !d.autoProg }))} disabled={!canWrite || saving} />
+              <Toggle active={draft.autoProg} onClick={() => { setDraft(d => ({ ...d, autoProg: !d.autoProg })); setSubmitError(""); }} disabled={!canWrite || saving} />
               <div>
                 <span className="text-sm font-medium text-gray-800">Hold auto-progression</span>
                 <p className="text-xs text-gray-500 mt-0.5">Prevents automated approval and transfer from advancing payouts</p>
@@ -460,10 +484,20 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
           </div>
         </div>
 
+        {/* Internal note (payout-level only) */}
+        {level === "payout" && (
+          <div className="pt-5 border-t border-gray-200">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Internal note <span className="text-xs font-normal text-gray-400">(optional)</span></label>
+            <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={500} rows={2} placeholder="Add context for the audit log..." className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none" />
+            <p className="text-xs text-gray-400 mt-0.5">Recorded in the audit log. Not visible to the merchant.</p>
+          </div>
+        )}
+
         {/* Apply / Cancel */}
+        {submitError && <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><p className="text-sm text-amber-700">{submitError}</p></div>}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={handleCancel} disabled={saving}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" onClick={handleSave} disabled={!hasChanges || saving}>{saving ? "Applying..." : "Apply"}</Button>
+          <Button variant="solid" colorScheme="brand" size="md" onClick={handleSave} disabled={saving}>{saving ? "Applying..." : "Apply"}</Button>
         </div>
       </div>
     </Modal>
@@ -611,124 +645,167 @@ const mockPayouts = [
 ];
 
 // ─── Per-payout audit logs ───
+// ─── Audit log data model ───
+// Each entry: { ts, change, initiatedBy, version, note? }
+// Events: Payout prepared, Payout approved, Transfer initiated, Transfer completed,
+//         Transfer failed, Payout resubmitted, Payout abandoned, Payout returned,
+//         Hold status changed
 const auditLogs = {
-  // Ready for Review — just prepared
+  // ── Ready for Review — just prepared ──
   "PO-2026-0224-001": [
-    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $5,112.40." },
-    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
   ],
   "PO-2026-0224-002": [
-    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 11 transactions included, totalling $3,480.90." },
-    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
   ],
   "PO-2026-0224-003": [
-    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 8 transactions included, totalling $1,875.20." },
-    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
   ],
   "PO-2026-0224-004": [
-    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 22 transactions included, totalling $8,420.00." },
-    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
   ],
   "PO-2026-0224-005": [
-    { ts: "24 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included, totalling $4,750.30." },
-    { ts: "24 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
   ],
-  // Ready for Transfer — approved but transfer not yet initiated
+
+  // ── Ready for Transfer — approved (positive amount) ──
   "PO-2026-0223-001": [
-    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 14 transactions included." },
-    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:45 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Reviewed and confirmed amounts. Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "23 Feb 2026, 9:45 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 3, note: "Reviewed and confirmed amounts." },
+    { ts: "23 Feb 2026, 9:45 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
   ],
   "PO-2026-0223-002": [
-    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 31 transactions included." },
-    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 10:20 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Two transfers will be created (split by bank account). Status changed to Ready for Transfer." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "23 Feb 2026, 10:20 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 3, note: "Two transfers will be created (split by bank account)." },
+    { ts: "23 Feb 2026, 10:20 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
   ],
-  // Transferring — in progress
+
+  // ── Transferring — transfer initiated ──
   "PO-2026-0223-003": [
-    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 10 transactions included, totalling $3,215.60." },
-    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 8:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
-    { ts: "23 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "23 Feb 2026, 8:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "23 Feb 2026, 8:30 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "23 Feb 2026, 11:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 5 },
+    { ts: "23 Feb 2026, 11:00 AM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
   ],
   "PO-2026-0223-004": [
-    { ts: "23 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 24 transactions included, totalling $7,215.60." },
-    { ts: "23 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "23 Feb 2026, 9:15 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "23 Feb 2026, 11:30 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 084-004 / Acc 56781234." },
-    { ts: "23 Feb 2026, 11:30 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal DE credit submitted. Awaiting confirmation." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "23 Feb 2026, 9:15 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "23 Feb 2026, 9:15 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "23 Feb 2026, 11:30 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 5 },
+    { ts: "23 Feb 2026, 11:30 AM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
   ],
-  // Completed — full lifecycle
+
+  // ── Completed — full lifecycle (positive amount) ──
   "PO-2026-0222-001": [
-    { ts: "22 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 16 transactions included." },
-    { ts: "22 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "22 Feb 2026, 9:10 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "22 Feb 2026, 10:00 AM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
-    { ts: "22 Feb 2026, 10:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfer in progress." },
-    { ts: "22 Feb 2026, 1:45 PM", version: 6, action: "Transfer completed", user: "System", detail: "DE credit confirmed. Transfer ID: TRF-2026-0222-001." },
-    { ts: "22 Feb 2026, 1:45 PM", version: 7, action: "Status changed to Completed", user: "System", detail: "Payout finalised." },
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "22 Feb 2026, 9:10 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "22 Feb 2026, 9:10 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "22 Feb 2026, 10:00 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 5 },
+    { ts: "22 Feb 2026, 10:00 AM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
+    { ts: "22 Feb 2026, 1:45 PM", change: "Transfer completed", initiatedBy: "System", version: 7 },
+    { ts: "22 Feb 2026, 1:45 PM", change: "Status → Completed", initiatedBy: "System", version: 8 },
   ],
+
+  // ── Completed — approved with zero amount (auto-completed) ──
+  "PO-2026-0222-002": [
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "22 Feb 2026, 9:30 AM", change: "Payout approved (zero balance)", initiatedBy: "Sarah Chen", version: 3, note: "Zero-balance payout — no transfer required." },
+    { ts: "22 Feb 2026, 9:30 AM", change: "Status → Completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — approved with debt deferral (negative balance) ──
   "PO-2026-0221-001": [
-    { ts: "21 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 47 transactions included." },
-    { ts: "21 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "21 Feb 2026, 10:15 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Large payout — verified with manager. Status changed to Ready for Transfer." },
-    { ts: "21 Feb 2026, 11:00 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "2 transfers initiated (split by account)." },
-    { ts: "21 Feb 2026, 11:00 AM", version: 5, action: "Status changed to Transferring", user: "System", detail: "Cuscal transfers in progress." },
-    { ts: "21 Feb 2026, 2:30 PM", version: 6, action: "Transfer 1 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-001: $10,204.60 to BSB 033-001 / Acc 44556677." },
-    { ts: "21 Feb 2026, 2:35 PM", version: 7, action: "Transfer 2 completed", user: "System", detail: "DE credit confirmed. TRF-2026-0221-002: $5,000.00 to BSB 033-001 / Acc 44556688." },
-    { ts: "21 Feb 2026, 2:35 PM", version: 8, action: "Status changed to Completed", user: "System", detail: "All transfers confirmed. Payout finalised." },
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "21 Feb 2026, 10:15 AM", change: "Payout approved (debt deferral)", initiatedBy: "Sarah Chen", version: 3, note: "Negative balance — debt deferred to next cycle." },
+    { ts: "21 Feb 2026, 10:15 AM", change: "Status → Completed", initiatedBy: "System", version: 4 },
   ],
-  // Failed — with error detail
+
+  // ── Failed — retryable then non-retryable ──
   "PO-2026-0220-001": [
-    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 18 transactions included, totalling $6,112.75." },
-    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 10:30 AM", version: 3, action: "Approved", user: "Sarah Chen (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 4, action: "Begin transfer", user: "Sarah Chen (FinOps Administrator)", detail: "Transfer initiated to BSB 062-000 / Acc 12345678." },
-    { ts: "20 Feb 2026, 11:15 AM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
-    { ts: "20 Feb 2026, 11:30 AM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure. Payout moved back to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer re-initiated to BSB 062-000 / Acc 12345678." },
-    { ts: "20 Feb 2026, 12:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
-    { ts: "20 Feb 2026, 12:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-001b. Manual resubmission required." },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "20 Feb 2026, 10:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "20 Feb 2026, 10:30 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 5 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Transfer failed (retryable)", initiatedBy: "System", version: 7 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 8 },
+    { ts: "20 Feb 2026, 12:00 PM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 9, note: "Retry after gateway timeout." },
+    { ts: "20 Feb 2026, 12:00 PM", change: "Status → Transferring", initiatedBy: "System", version: 10 },
+    { ts: "20 Feb 2026, 12:02 PM", change: "Transfer failed (non-retryable)", initiatedBy: "System", version: 11 },
+    { ts: "20 Feb 2026, 12:02 PM", change: "Status → Failed", initiatedBy: "System", version: 12 },
   ],
+
+  // ── Failed — with resubmit ──
   "PO-2026-0220-003": [
-    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 9 transactions included." },
-    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 11:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 12:30 PM", version: 4, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 5, action: "Transfer failed (retryable)", user: "System", detail: "Cuscal gateway timeout — no response within SLA. Failure is retryable." },
-    { ts: "20 Feb 2026, 12:35 PM", version: 6, action: "Auto-retransitioned to Ready for Transfer", user: "System", detail: "Retryable failure detected. Payout automatically moved back to Ready for Transfer. Transfer ID: TRF-2026-0220-003." },
-    { ts: "20 Feb 2026, 1:00 PM", version: 7, action: "Begin transfer", user: "Tom Wright (FinOps Administrator)", detail: "Transfer re-initiated to BSB 013-140 / Acc 99887766." },
-    { ts: "20 Feb 2026, 1:02 PM", version: 8, action: "Transfer failed", user: "System", detail: "Cuscal gateway timeout — second attempt failed. Failure is NOT retryable. Payout moved to Failed." },
-    { ts: "20 Feb 2026, 1:02 PM", version: 9, action: "Status changed to Failed", user: "System", detail: "Transfer ID: TRF-2026-0220-003b. Manual resubmission required." },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "20 Feb 2026, 11:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "20 Feb 2026, 11:00 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 12:30 PM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 5 },
+    { ts: "20 Feb 2026, 12:30 PM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
+    { ts: "20 Feb 2026, 12:35 PM", change: "Transfer failed (non-retryable)", initiatedBy: "System", version: 7 },
+    { ts: "20 Feb 2026, 12:35 PM", change: "Status → Failed", initiatedBy: "System", version: 8 },
+    { ts: "20 Feb 2026, 2:00 PM", change: "Payout resubmitted", initiatedBy: "Tom Wright", version: 9, note: "Root cause resolved — BSB corrected by merchant." },
+    { ts: "20 Feb 2026, 2:00 PM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 10 },
   ],
-  // On Hold
+
+  // ── Ready for Transfer with hold (payout-level manual + auto) ──
   "PO-2026-0220-002": [
-    { ts: "20 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 28 transactions included." },
-    { ts: "20 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "20 Feb 2026, 9:00 AM", version: 3, action: "Approved", user: "Tom Wright (FinOps Administrator)", detail: "Status changed to Ready for Transfer." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 4, action: "Hold placed", user: "Sarah Chen (FinOps Administrator)", detail: "Progression hold placed on payout." },
-    { ts: "20 Feb 2026, 9:45 AM", version: 5, action: "Payout on hold", user: "System", detail: "Payout held pending review. Underlying status: Ready for Transfer." },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "20 Feb 2026, 9:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "20 Feb 2026, 9:00 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 9:45 AM", change: "Manual progression hold placed", initiatedBy: "Sarah Chen", version: 5, note: "Holding for compliance review — large transaction flagged." },
+    { ts: "20 Feb 2026, 3:30 PM", change: "Auto progression hold placed", initiatedBy: "System", version: 6 },
   ],
-  // Abandoned
+
+  // ── Abandoned ──
   "PO-2026-0219-001": [
-    { ts: "19 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 6 transactions included." },
-    { ts: "19 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 3, action: "Abandoned", user: "Tom Wright (FinOps Administrator)", detail: "Merchant requested payout deferral to next cycle. Transactions will be re-included in next preparation." },
-    { ts: "19 Feb 2026, 11:00 AM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
+    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "19 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "19 Feb 2026, 11:00 AM", change: "Payout abandoned", initiatedBy: "Tom Wright", version: 3, note: "Merchant requested payout deferral to next cycle." },
+    { ts: "19 Feb 2026, 11:00 AM", change: "Status → Abandoned", initiatedBy: "System", version: 4 },
   ],
   "PO-2026-0217-001": [
-    { ts: "17 Feb 2026, 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: "Merchant balance swept. 15 transactions included." },
-    { ts: "17 Feb 2026, 6:01 AM", version: 2, action: "Status changed to Ready for Review", user: "System", detail: "Awaiting FinOps approval." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 3, action: "Abandoned", user: "Sarah Chen (FinOps Administrator)", detail: "Duplicate payout detected — merchant was already paid via manual bank transfer. Abandoning to prevent double payment." },
-    { ts: "17 Feb 2026, 3:00 PM", version: 4, action: "Status changed to Abandoned", user: "System", detail: "Payout abandoned. Transactions returned to ledger for next payout preparation." },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "17 Feb 2026, 3:00 PM", change: "Payout abandoned", initiatedBy: "Sarah Chen", version: 3, note: "Duplicate — merchant already paid via manual bank transfer." },
+    { ts: "17 Feb 2026, 3:00 PM", change: "Status → Abandoned", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Returned — completed then NPP return ──
+  "PO-2026-0218-001": [
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 6:01 AM", change: "Status → Ready for Review", initiatedBy: "System", version: 2 },
+    { ts: "18 Feb 2026, 8:00 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 8:00 AM", change: "Status → Ready for Transfer", initiatedBy: "System", version: 4 },
+    { ts: "18 Feb 2026, 9:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 5 },
+    { ts: "18 Feb 2026, 9:00 AM", change: "Status → Transferring", initiatedBy: "System", version: 6 },
+    { ts: "18 Feb 2026, 12:00 PM", change: "Transfer completed", initiatedBy: "System", version: 7 },
+    { ts: "18 Feb 2026, 12:00 PM", change: "Status → Completed", initiatedBy: "System", version: 8 },
+    { ts: "19 Feb 2026, 10:30 AM", change: "Payout returned", initiatedBy: "System", version: 9 },
+    { ts: "19 Feb 2026, 10:30 AM", change: "Status → Failed", initiatedBy: "System", version: 10 },
   ],
 };
 
 // Fallback audit log for payouts without a specific log
 const defaultAuditLog = (payout) => [
-  { ts: payout.date + ", 6:00 AM", version: 1, action: "Payout prepared", user: "System", detail: `Merchant balance swept. Payout of ${payout.amount} created.` },
-  { ts: payout.date + ", 6:01 AM", version: 2, action: "Status changed to " + payout.status, user: "System", detail: "Current status." },
+  { ts: payout.date + ", 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+  { ts: payout.date + ", 6:01 AM", change: "Status → " + payout.status, initiatedBy: "System", version: 2 },
 ];
 
 
@@ -771,7 +848,33 @@ const mockTransactions = [
 // ═══════════════════════════════════════════════════════════
 function AuditTimeline({ entries }) {
   const reversed = [...entries].reverse();
-  return (<div className="relative">{reversed.map((entry, i) => (<div key={i} className="flex gap-4 pb-6 last:pb-0"><div className="flex flex-col items-center"><div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${entry.action.includes("failed") || entry.action.includes("Failed") ? "bg-red-500" : i === 0 ? "bg-indigo-500" : "bg-gray-300"}`} />{i < reversed.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1" />}</div><div className="flex-1 min-w-0"><div className="flex items-baseline gap-2 flex-wrap"><span className={`text-sm font-semibold ${entry.action.includes("failed") || entry.action.includes("Failed") ? "text-red-700" : "text-gray-800"}`}>{entry.action}</span>{entry.version && <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span>}<span className="text-xs text-gray-400">{entry.ts}</span></div><div className="text-sm text-gray-500 mt-0.5">{entry.detail}</div><div className="text-xs text-gray-400 mt-0.5">by {entry.user}</div></div></div>))}</div>);
+  const isFail = (c) => c.toLowerCase().includes("failed") || c.toLowerCase().includes("returned");
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200">
+            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 pl-1 whitespace-nowrap">Timestamp</th>
+            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Change</th>
+            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Updated by</th>
+            <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Version</th>
+            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 whitespace-nowrap">Internal note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {reversed.map((entry, i) => (
+            <tr key={i} className={`border-b border-gray-100 last:border-b-0 ${i === 0 ? "bg-indigo-50/40" : ""}`}>
+              <td className="py-2.5 pr-4 pl-1 text-xs text-gray-500 whitespace-nowrap align-top">{entry.ts}</td>
+              <td className={`py-2.5 pr-4 font-medium align-top whitespace-nowrap ${isFail(entry.change) ? "text-red-700" : i === 0 ? "text-indigo-700" : "text-gray-800"}`}>{entry.change}</td>
+              <td className="py-2.5 pr-4 text-gray-600 align-top whitespace-nowrap">{entry.initiatedBy}</td>
+              <td className="py-2.5 pr-4 text-center align-top"><span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span></td>
+              <td className="py-2.5 text-gray-500 align-top">{entry.note ? <span className="italic">{entry.note}</span> : <span className="text-gray-300">—</span>}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -784,9 +887,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
   const isTerminal = isCompleted || isAbandoned;
-  const rawAuditLog = auditLogs[payout.id] || defaultAuditLog(payout);
-  // POC: filter out user-performed and hold-related events — only show system events
-  const auditLog = rawAuditLog.filter(e => e.user === "System" && !e.action.toLowerCase().includes("hold"));
+  const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
 
   // Check if progression is blocked by holds (for holdable statuses)
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
@@ -1004,6 +1105,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const [selectedMids, setSelectedMids] = useState(new Set());
   const [expandedMid, setExpandedMid] = useState(null);
   const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState({});
   const { addToast } = useToast();
 
   const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 7);
@@ -1043,6 +1145,11 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
   const handleCreate = () => {
+    const errs = {};
+    if (!hasDate) errs.date = "Settlement date is required.";
+    if (hasDate && selectedGroups.length === 0) errs.merchants = "Select at least one merchant.";
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setCreating(true);
     setTimeout(() => {
       const today = new Date();
@@ -1072,11 +1179,11 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
       <div className="space-y-4">
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
-          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>
+          <input type="date" value={settlementDate} onChange={(e) => { setSettlementDate(e.target.value); setErrors(prev => ({ ...prev, date: undefined })); }} max={maxDateStr} className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px] ${errors.date ? "border-red-400" : "border-gray-300"}`} />
+          {errors.date ? <p className="text-xs text-red-600 mt-1">{errors.date}</p> : <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>}
         </div>
 
-        {!hasDate && (
+        {!hasDate && !errors.date && (
           <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">Select a settlement date to see payout preview.</p></div>
         )}
 
@@ -1136,9 +1243,10 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
           </>
         )}
 
+        {errors.merchants && <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2"><p className="text-sm text-amber-700">{errors.merchants}</p></div>}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || selectedGroups.length === 0 || creating} onClick={handleCreate}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={creating} onClick={handleCreate}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : `Create payout (${selectedMids.size})`}
           </Button>
         </div>
@@ -1154,6 +1262,7 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   const allMLEs = (mlePool || mockUnassignedMLEs).filter((dte) => dte.mid === mid);
   const [settlementDate, setSettlementDate] = useState("");
   const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState({});
   const { addToast } = useToast();
 
   const maxDate = new Date(); maxDate.setDate(maxDate.getDate() + 7);
@@ -1165,9 +1274,14 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
 
   const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
-  useEffect(() => { if (open) { setSettlementDate(""); setCreating(false); } }, [open]);
+  useEffect(() => { if (open) { setSettlementDate(""); setCreating(false); setErrors({}); } }, [open]);
 
   const handleCreate = () => {
+    const errs = {};
+    if (!hasDate) errs.date = "Settlement date is required.";
+    if (hasDate && !hasEntries) errs.entries = "No ledger entries found for this date.";
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setCreating(true);
     setTimeout(() => {
       const today = new Date();
@@ -1200,16 +1314,16 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
 
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-1">Settlement date <span className="text-red-500">*</span></label>
-          <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px]" />
-          <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>
+          <input type="date" value={settlementDate} onChange={(e) => { setSettlementDate(e.target.value); setErrors(prev => ({ ...prev, date: undefined, entries: undefined })); }} max={maxDateStr} className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 max-w-[240px] ${errors.date ? "border-red-400" : "border-gray-300"}`} />
+          {errors.date ? <p className="text-xs text-red-600 mt-1">{errors.date}</p> : <p className="text-xs text-gray-400 mt-1.5">Includes all ledger entries with a requested settlement date on or before this date. Up to 7 days in advance.</p>}
         </div>
 
-        {!hasDate && (
+        {!hasDate && !errors.date && (
           <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">Select a settlement date to see payout preview.</p></div>
         )}
 
         {hasDate && !hasEntries && (
-          <div className="border border-gray-200 rounded-lg px-4 py-8 text-center"><p className="text-sm text-gray-400">No ledger entries found for this date.</p></div>
+          <div className={`border rounded-lg px-4 py-8 text-center ${errors.entries ? "border-red-200 bg-red-50" : "border-gray-200"}`}><p className={`text-sm ${errors.entries ? "text-red-600" : "text-gray-400"}`}>No ledger entries found for this date.</p></div>
         )}
 
         {hasDate && hasEntries && (
@@ -1218,7 +1332,7 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!hasDate || !hasEntries || creating} onClick={handleCreate}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={creating} onClick={handleCreate}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create payout"}
           </Button>
         </div>
@@ -1235,6 +1349,7 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
   const [settlementDate, setSettlementDate] = useState("");
   const [info, setInfo] = useState("");
   const [creating, setCreating] = useState(false);
+  const [errors, setErrors] = useState({});
   const { addToast } = useToast();
 
   // Date bounds: unlimited past, 7 days future
@@ -1244,9 +1359,14 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
   const maxDateStr = maxDate.toISOString().split("T")[0];
   const todayStr = today.toISOString().split("T")[0];
 
-  useEffect(() => { if (open) { setAmount(""); setSettlementDate(todayStr); setInfo(""); setCreating(false); } }, [open]);
+  useEffect(() => { if (open) { setAmount(""); setSettlementDate(todayStr); setInfo(""); setCreating(false); setErrors({}); } }, [open]);
 
   const handleCreate = () => {
+    const errs = {};
+    if (!amount || isNaN(parseFloat(amount))) errs.amount = "A valid amount is required.";
+    if (!info.trim()) errs.info = "Internal note is required.";
+    if (Object.keys(errs).length > 0) { setErrors(errs); return; }
+    setErrors({});
     setCreating(true);
     setTimeout(() => {
       const today = new Date();
@@ -1279,9 +1399,9 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
           <label className="block text-sm font-semibold text-gray-700 mb-1">Amount <span className="text-red-500">*</span></label>
           <div className="relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-gray-500">AUD</span>
-            <input type="text" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g. 125.00 or -45.50" className="w-full text-sm border border-gray-300 rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
+            <input type="text" value={amount} onChange={(e) => { setAmount(e.target.value); if (errors.amount) setErrors(prev => ({ ...prev, amount: undefined })); }} placeholder="e.g. 125.00 or -45.50" className={`w-full text-sm border rounded-lg pl-12 pr-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 ${errors.amount ? "border-red-400" : "border-gray-300"}`} />
           </div>
-          {(() => {
+          {errors.amount ? <p className="text-xs text-red-600 mt-1">{errors.amount}</p> : (() => {
             const parsed = parseFloat(amount);
             if (!amount || isNaN(parsed) || parsed === 0) return null;
             const abs = Math.abs(parsed).toLocaleString("en-AU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -1294,10 +1414,10 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
           <input type="date" value={settlementDate} onChange={(e) => setSettlementDate(e.target.value)} max={maxDateStr} className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
           <p className="text-xs text-gray-400 mt-1">The adjustment will be included in a payout with a settlement date on or after this date. Up to 7 days in advance.</p>
         </div>
-        <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => setInfo(e.target.value)} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${info.length >= 500 ? "border-red-400" : "border-gray-300"}`} /><p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p></div>
+        <div><label className="block text-sm font-semibold text-gray-700 mb-1">Internal note <span className="text-red-500">*</span></label><textarea value={info} onChange={(e) => { setInfo(e.target.value); if (errors.info) setErrors(prev => ({ ...prev, info: undefined })); }} maxLength={500} rows={3} placeholder="Internal context for FinOps team (not shown to merchant)..." className={`w-full text-sm border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 resize-none ${errors.info ? "border-red-400" : info.length >= 500 ? "border-red-400" : "border-gray-300"}`} />{errors.info ? <p className="text-xs text-red-600 mt-1">{errors.info}</p> : <p className={`text-xs mt-1 ${info.length >= 450 ? (info.length >= 500 ? "text-red-500 font-medium" : "text-amber-500") : "text-gray-400"}`}>{info.length}/500 characters{info.length >= 500 ? " — limit reached" : ""}</p>}</div>
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
-          <Button variant="solid" colorScheme="brand" size="md" disabled={!amount || isNaN(parseFloat(amount)) || !info.trim() || creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.Plus />}>
+          <Button variant="solid" colorScheme="brand" size="md" disabled={creating} onClick={handleCreate} leftIcon={creating ? null : <Icons.Plus />}>
             {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : "Create adjustment"}
           </Button>
         </div>
@@ -1311,12 +1431,11 @@ function CreateAdjustmentDialog({ open, onClose, onCreateAdjustment, mid }) {
 // ═══════════════════════════════════════════════════════════
 function AdjustmentDetailView({ adj, onBack }) {
   const isSystem = adj.initiatedBy === "System";
-  // POC: only show system events in audit log (no user-performed events)
   const auditEntries = isSystem ? [
-    { ts: adj.date + ", 6:00 AM", version: 1, action: "Adjustment auto-generated", user: "System", detail: `${adj.entryType || "Adjustment"} of ${adj.amount} created automatically during payout preparation.` },
-    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", version: 2, action: "Linked adjustment created", user: "System", detail: `Balancing entry ${adj.linkedAdjId} generated. ${adj.entryType === "Debt deferral" ? "A corresponding Debt rollover has been created to offset this deferral." : "This entry offsets the linked Debt deferral."}` }] : []),
+    { ts: adj.date + ", 6:00 AM", change: "Adjustment auto-generated", initiatedBy: "System", version: 1, note: `${adj.entryType || "Adjustment"} of ${adj.amount} created during payout preparation.` },
+    ...(adj.linkedAdjId ? [{ ts: adj.date + ", 6:00 AM", change: "Linked adjustment created", initiatedBy: "System", version: 2, note: `Balancing entry ${adj.linkedAdjId} generated.` }] : []),
   ] : [
-    { ts: adj.date + ", 10:00 AM", version: 1, action: "Adjustment created", user: "System", detail: `Manual adjustment of ${adj.amount} created.` },
+    { ts: adj.date + ", 10:00 AM", change: "Adjustment created", initiatedBy: adj.initiatedBy, version: 1, note: adj.internalNote || undefined },
   ];
 
   return (
