@@ -850,29 +850,24 @@ function AuditTimeline({ entries }) {
   const reversed = [...entries].reverse();
   const isFail = (c) => c.toLowerCase().includes("failed") || c.toLowerCase().includes("returned");
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-gray-200">
-            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 pl-1 whitespace-nowrap">Timestamp</th>
-            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Change</th>
-            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Updated by</th>
-            <th className="text-center text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 pr-4 whitespace-nowrap">Version</th>
-            <th className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider py-2 whitespace-nowrap">Internal note</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reversed.map((entry, i) => (
-            <tr key={i} className={`border-b border-gray-100 last:border-b-0 ${i === 0 ? "bg-indigo-50/40" : ""}`}>
-              <td className="py-2.5 pr-4 pl-1 text-xs text-gray-500 whitespace-nowrap align-top">{entry.ts}</td>
-              <td className={`py-2.5 pr-4 font-medium align-top whitespace-nowrap ${isFail(entry.change) ? "text-red-700" : i === 0 ? "text-indigo-700" : "text-gray-800"}`}>{entry.change}</td>
-              <td className="py-2.5 pr-4 text-gray-600 align-top whitespace-nowrap">{entry.initiatedBy}</td>
-              <td className="py-2.5 pr-4 text-center align-top"><span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span></td>
-              <td className="py-2.5 text-gray-500 align-top">{entry.note ? <span className="italic">{entry.note}</span> : <span className="text-gray-300">—</span>}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="relative">
+      {reversed.map((entry, i) => (
+        <div key={i} className="flex gap-4 pb-6 last:pb-0">
+          <div className="flex flex-col items-center">
+            <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${isFail(entry.change) ? "bg-red-500" : i === 0 ? "bg-indigo-500" : "bg-gray-300"}`} />
+            {i < reversed.length - 1 && <div className="w-px flex-1 bg-gray-200 mt-1" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-baseline gap-2 flex-wrap">
+              <span className={`text-sm font-semibold ${isFail(entry.change) ? "text-red-700" : "text-gray-800"}`}>{entry.change}</span>
+              {entry.version && <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span>}
+              <span className="text-xs text-gray-400">{entry.ts}</span>
+            </div>
+            {entry.note && <div className="text-sm text-gray-500 mt-0.5 italic">{entry.note}</div>}
+            <div className="text-xs text-gray-400 mt-0.5">by {entry.initiatedBy}</div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
