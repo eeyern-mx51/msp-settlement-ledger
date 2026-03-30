@@ -914,7 +914,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
           <div className="flex items-center gap-2">
             {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
             {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
-            {!isTerminal && canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
+            {HOLDABLE_STATUSES.has(payout.status) && canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
           </div>
         </CardHeader>
         <Divider />
