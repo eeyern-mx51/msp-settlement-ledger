@@ -253,13 +253,24 @@ function ActiveHoldBanners({ holdRecords, level, entity, mid, merchantName, auto
 
   const allManualHolds = [...fleetHolds, ...merchantHolds, ...currentLevelHolds];
 
-  // Group raw hold records into logical holds (merge approval + begin_transfer into "Progression")
+  // Group raw hold records into logical holds per level (merge approval + begin_transfer into "Progression")
   const groupHoldsLogical = (holds) => {
     const logical = [];
-    const prepHolds = holds.filter(h => h.phase === "preparation");
-    const progHoldsGroup = holds.filter(h => h.phase === "approval" || h.phase === "begin_transfer");
-    prepHolds.forEach(h => logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", level: h.level, entity: h.entity }));
-    if (progHoldsGroup.length > 0) logical.push({ kind: "manual", type: "progression", label: "Manual progression", level: progHoldsGroup[0].level, entity: progHoldsGroup[0].entity });
+    // Group by level+entity first so each level gets its own entries
+    const bySource = {};
+    holds.forEach(h => {
+      const key = `${h.level}::${h.entity || ""}`;
+      if (!bySource[key]) bySource[key] = { level: h.level, entity: h.entity, phases: [] };
+      bySource[key].phases.push(h.phase);
+    });
+    Object.values(bySource).forEach(({ level: hLevel, entity: hEntity, phases }) => {
+      if (phases.includes("preparation")) {
+        logical.push({ kind: "manual", type: "preparation", label: "Manual preparation", level: hLevel, entity: hEntity });
+      }
+      if (phases.includes("approval") || phases.includes("begin_transfer")) {
+        logical.push({ kind: "manual", type: "progression", label: "Manual progression", level: hLevel, entity: hEntity });
+      }
+    });
     return logical;
   };
 
@@ -540,10 +551,10 @@ function isPreparationBlocked(holdRecords, mid) {
   return holdRecords.some(h => h.active && h.phase === "preparation" && (h.level === "fleet" || (h.level === "merchant" && h.entity === mid)));
 }
 
-const HOLDABLE_STATUSES = new Set(["Ready for Review", "Ready for Transfer"]);
+const HOLDABLE_STATUSES = new Set(["Ready for Review", "Ready for Transfer", "Failed"]);
 
 function isProgressionBlocked(holdRecords, payoutId, mid, status) {
-  // Only active-workflow payouts can be held; terminal/failed states are unaffected
+  // Only holdable payouts (Ready for Review, Ready for Transfer, Failed) are affected
   if (status && !HOLDABLE_STATUSES.has(status)) return false;
   return isActionBlocked(holdRecords, "approval", payoutId, mid) || isActionBlocked(holdRecords, "begin_transfer", payoutId, mid);
 }
