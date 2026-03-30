@@ -12,7 +12,7 @@ const FLOWS = {
     steps: [
       { actor: "FinOps Administrator", action: "Navigate to payout detail", detail: "Click payout row from fleet or merchant payout list." },
       { actor: "FinOps Administrator", action: "Review payout summary", detail: "Validate payout amount against expected DTE transaction sums. Check merchant, MID, transfer count." },
-      { actor: "FinOps Administrator", action: "Click \"Approve\" button", detail: "Opens confirmation dialog showing payout ID, merchant, MID, amount, and transfer count." },
+      { actor: "FinOps Administrator", action: "Click \"Approve\" button", detail: "Opens confirmation dialog showing payout ID, merchant, MID, settlement date, and amount." },
       { actor: "FinOps Administrator", action: "Confirm approval", detail: "Click \"Approve payout\" in dialog. 1.2s loading state while processing." },
       { actor: "System", action: "Process approval", detail: "If amount > 0: status → Ready for Transfer. If amount ≤ 0: status → Completed (debt deferred + rollover adjustments created)." },
       { actor: "System", action: "Audit log entry", detail: "Records: \"Payout approved\" with user, timestamp, and previous status." },
@@ -117,8 +117,7 @@ const FLOWS = {
     transition: "Failed (retryable) → Ready for Transfer → Begin transfer → Transferring → Completed / Failed",
     steps: [
       { actor: "FinOps Administrator", action: "Navigate to failed payout", detail: "Filter by Failed status. Review the error code and failure reason displayed in the alert banner." },
-      { actor: "FinOps Administrator", action: "Click \"Resubmit\" button", detail: "Opens a confirmation dialog showing payout summary, settlement date, and the last failure reason/code." },
-      { actor: "FinOps Administrator", action: "Review failure context in dialog", detail: "Dialog displays the failure reason and code so FinOps can confirm the underlying issue has been resolved before resubmitting." },
+      { actor: "FinOps Administrator", action: "Click \"Resubmit\" button", detail: "Opens a confirmation dialog showing payout summary and settlement date." },
       { actor: "FinOps Administrator", action: "Click \"Resubmit payout\" to confirm", detail: "1.2s loading state. Payout transitions to Ready for Transfer." },
       { actor: "System", action: "Transition to Ready for Transfer", detail: "Status → Ready for Transfer. Attempt counter incremented. Audit log: \"Manual retry initiated — Attempt N.\"" },
       { actor: "FinOps Administrator", action: "Begin the transfer", detail: "Payout now follows the standard Begin transfer flow — click \"Begin transfer\" to initiate the NPP transfer." },

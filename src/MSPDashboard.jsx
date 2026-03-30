@@ -140,7 +140,7 @@ function ApprovePayoutDialog({ open, onClose, payout, onConfirm }) {
       <div className="space-y-5">
         <Alert type="info" title="Review before approving">Once approved, this payout will move to "Ready for Transfer" and the transfer can be initiated. Ensure the amounts and merchant details are correct.</Alert>
         <div className="bg-gray-50 rounded-lg p-4 space-y-2 border border-gray-100">
-          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Amount", payout.amount]].map(([label, value]) => (
+          {[["Payout ID", payout.id], ["Merchant", payout.merchantName], ["MID", payout.mid], ["Settlement date", payout.settlementDate || payout.date], ["Amount", payout.amount]].map(([label, value]) => (
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
         </div>
@@ -225,13 +225,6 @@ function ResubmitPayoutDialog({ open, onClose, payout, onConfirm }) {
             <div key={label} className="flex justify-between text-sm"><span className="text-gray-500 font-medium">{label}</span><span className="text-gray-800 font-semibold">{value}</span></div>
           ))}
         </div>
-        {payout.failureReason && (
-          <div className="bg-red-50 rounded-lg p-4 space-y-1 border border-red-100">
-            <span className="text-xs font-semibold text-red-700 uppercase tracking-wide">Last failure</span>
-            <p className="text-sm text-red-800">{payout.failureReason}</p>
-            {payout.failureCode && <p className="text-xs text-red-500 font-mono">{payout.failureCode}</p>}
-          </div>
-        )}
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose} disabled={loading}>Cancel</Button>
           <Button variant="solid" colorScheme="brand" size="md" onClick={handleConfirm} disabled={loading} leftIcon={loading ? null : <Icons.Refresh />}>{loading ? "Resubmitting..." : "Resubmit payout"}</Button>
