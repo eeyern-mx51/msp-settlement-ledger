@@ -1424,10 +1424,20 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const canWrite = role === ROLES.FINOPS_T1;
   const PAGE_SIZE = 20;
 
+  const [settlementFrom, setSettlementFrom] = useState("");
+  const [settlementTo, setSettlementTo] = useState("");
+
+  const hasActiveFilters = settlementFrom || settlementTo;
+  const clearAll = () => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
+
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
 
-  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
-  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  // Filter
+  let filtered = adjustments;
+  if (settlementFrom || settlementTo) filtered = filtered.filter(a => dateInRange(a.requestedSettlementDate, settlementFrom, settlementTo));
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paginatedAdj = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
@@ -1441,7 +1451,16 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+            <div className="flex items-center gap-1.5 ml-4">
+              <span className="text-xs text-gray-500 font-medium">Settlement</span>
+              <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+              <span className="text-xs text-gray-400">–</span>
+              <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+            </div>
+            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1461,7 +1480,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
-            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
@@ -1530,6 +1549,27 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 }
 
 // ═══════════════════════════════════════════════════════════
+// DATE HELPERS
+// ═══════════════════════════════════════════════════════════
+const normDate = (d) => {
+  if (!d) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+  const clean = d.split(",")[0].trim();
+  const parts = clean.split(" ");
+  if (parts.length === 3) {
+    const months = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
+    return `${parts[2]}-${months[parts[1]] || "01"}-${parts[0].padStart(2, "0")}`;
+  }
+  return d;
+};
+const dateInRange = (dateStr, from, to) => {
+  const d = normDate(dateStr);
+  if (from && d < from) return false;
+  if (to && d > to) return false;
+  return true;
+};
+
+// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
@@ -1541,10 +1581,17 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
 
+  const [search, setSearch] = useState("");
+  const [settlementFrom, setSettlementFrom] = useState("");
+  const [settlementTo, setSettlementTo] = useState("");
+
   const handleSort = (col) => {
     if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); }
     else { setSortCol(col); setSortDir("asc"); }
   };
+
+  const hasActiveFilters = search || settlementFrom || settlementTo;
+  const clearAll = () => { setSearch(""); setSettlementFrom(""); setSettlementTo(""); };
 
   if (!featureEnabled) return (
     <div className="p-6"><Card><CardBody className="py-16 text-center space-y-3">
@@ -1558,8 +1605,14 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
+  // Filter
+  let filtered = payouts;
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q) || (p.merchantName || "").toLowerCase().includes(q) || (p.mid || "").toLowerCase().includes(q)); }
+  if (settlementFrom || settlementTo) filtered = filtered.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
+
+  // Sort
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...payouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : payouts;
+  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...filtered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : filtered;
 
   return (
     <div className="p-6 space-y-5">
@@ -1571,7 +1624,17 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID…" className="ml-4 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-gray-500 font-medium">Settlement</span>
+              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+              <span className="text-xs text-gray-400">–</span>
+              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+            </div>
+            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+          </div>
           {canWrite && (
             <div className="flex items-center gap-2">
               <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
@@ -1619,10 +1682,23 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
+
+  const [settlementFrom, setSettlementFrom] = useState("");
+  const [settlementTo, setSettlementTo] = useState("");
+
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
+
+  const hasActiveFilters = settlementFrom || settlementTo;
+  const clearAll = () => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
+
+  // Filter
+  let afterFilter = merchantPayouts;
+  if (settlementFrom || settlementTo) afterFilter = afterFilter.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
+
+  // Sort
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filtered = sortCol && sortKeyMap[sortCol] ? [...merchantPayouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : merchantPayouts;
+  const filtered = sortCol && sortKeyMap[sortCol] ? [...afterFilter].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : afterFilter;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1640,7 +1716,16 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+          <div className="flex items-center gap-3 flex-1">
+            <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+            <div className="flex items-center gap-1.5 ml-4">
+              <span className="text-xs text-gray-500 font-medium">Settlement</span>
+              <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+              <span className="text-xs text-gray-400">–</span>
+              <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+            </div>
+            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+          </div>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
             {canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
