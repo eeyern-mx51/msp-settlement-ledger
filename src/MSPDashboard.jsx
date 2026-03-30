@@ -829,14 +829,15 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 // PAYOUT DETAIL VIEW
 // ═══════════════════════════════════════════════════════════
-function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName, automationConfig, onUpdateAutomationConfig }) {
+function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
   const { addToast } = useToast();
   const canWrite = role === ROLES.FINOPS_T1;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
   const isTerminal = isCompleted || isAbandoned;
-  const auditLog = auditLogs[payout.id] || defaultAuditLog(payout);
+  const auditLog = (auditLogState && auditLogState[payout.id]) || auditLogs[payout.id] || defaultAuditLog(payout);
+  const userName = role === ROLES.FINOPS_T1 ? "Sarah Chen" : "View User";
 
   // Check if progression is blocked by holds (for holdable statuses)
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
@@ -876,18 +877,22 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   const handleApprove = () => {
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout approved", initiatedBy: userName });
     onStatusChange(payout.id, "Ready for Transfer");
   };
   const handleBeginTransfer = () => {
     addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Transfer initiated", initiatedBy: userName });
     onStatusChange(payout.id, "Transferring");
   };
   const handleResubmit = () => {
     addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout resubmitted", initiatedBy: userName });
     onStatusChange(payout.id, "Ready for Transfer");
   };
   const handleAbandon = () => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout abandoned", initiatedBy: userName });
     onStatusChange(payout.id, "Abandoned");
   };
 
@@ -897,7 +902,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       <BeginTransferDialog open={showTransfer} onClose={() => setShowTransfer(false)} payout={payout} onConfirm={handleBeginTransfer} />
       <ResubmitPayoutDialog open={showResubmit} onClose={() => setShowResubmit(false)} payout={payout} onConfirm={handleResubmit} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
-      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
+      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={(holdRecord) => { onCreateHold(holdRecord); if (onAuditAppend) onAuditAppend(payout.id, { change: `${holdRecord.trigger === "manual" ? "Manual" : "Auto"} progression hold placed`, initiatedBy: userName }); }} onReleaseHold={(holdId) => { onReleaseHold(holdId); if (onAuditAppend) { const h = holdRecords.find(r => r.id === holdId); onAuditAppend(payout.id, { change: `${h && h.trigger === "manual" ? "Manual" : "Auto"} progression hold released`, initiatedBy: userName }); } }} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
@@ -1500,7 +1505,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
 // ═══════════════════════════════════════════════════════════
 // FLEET → MERCHANT FACILITY VIEW (shown when clicking a payout from fleet table)
 // ═══════════════════════════════════════════════════════════
-function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
+function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
   const [activeTab, setActiveTab] = useState("payouts");
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
   const merchantMid = payout.mid || "POSPAY00012345";
@@ -1535,7 +1540,7 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
                 <button onClick={onBack} className="ml-auto text-sm font-medium text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1"><Icons.ChevronLeft /> Return to fleet payouts</button>
               </div>
             </div>
-            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />
+            <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={merchantMid} merchantName={merchantName} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />
           </>
         )}
         {activeTab === "overview" && <OverviewTab />}
@@ -1572,7 +1577,7 @@ const dateInRange = (dateStr, from, to) => {
 // ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
-function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
+function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [showHolds, setShowHolds] = useState(false);
@@ -1603,7 +1608,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
 
   // Filter
   let filtered = payouts;
@@ -1672,7 +1677,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 // ═══════════════════════════════════════════════════════════
 // MERCHANT PAYOUTS TAB
 // ═══════════════════════════════════════════════════════════
-function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
+function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLEs, mid, merchantName, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
   const [selectedPayout, setSelectedPayout] = useState(null);
   const [showPrepare, setShowPrepare] = useState(false);
   const [showHolds, setShowHolds] = useState(false);
@@ -1705,7 +1710,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
 
   return (
     <div className="p-6 space-y-5">
@@ -1817,7 +1822,7 @@ function DisputesTab() {
 // ═══════════════════════════════════════════════════════════
 // MERCHANT FACILITY DETAIL (with Payouts + Adjustments tabs)
 // ═══════════════════════════════════════════════════════════
-function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, initialTab, onTabChange }) {
+function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend, initialTab, onTabChange }) {
   const [activeTab, setActiveTab] = useState(initialTab || "transactions");
   const handleTabChange = (tab) => { setActiveTab(tab); if (onTabChange) onTabChange(tab); };
   const tabs = [{ id: "overview", label: "Overview" }, { id: "terminals", label: "Terminals" }, { id: "transactions", label: "Transactions" }, { id: "payouts", label: "Payouts" }, { id: "adjustments", label: "Adjustments" }, { id: "disputes", label: "Disputes" }];
@@ -1831,7 +1836,7 @@ function MerchantFacilityDetailPage({ role, payouts, onPayoutStatusChange, unass
       {activeTab === "overview" && <OverviewTab />}
       {activeTab === "terminals" && <TerminalsTab />}
       {activeTab === "transactions" && <TransactionsTab />}
-      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />}
+      {activeTab === "payouts" && <MerchantPayoutsTab role={role} payouts={payouts} onPayoutStatusChange={onPayoutStatusChange} unassignedMLEs={unassignedMLEs} mid={bc.mid} merchantName={bc.facility} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />}
       {activeTab === "adjustments" && <MerchantAdjustmentsTab role={role} mid={bc.mid} />}
       {activeTab === "disputes" && <DisputesTab />}
     </div>
@@ -2874,6 +2879,16 @@ export default function MSPSupportDashboard() {
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
   const [holdRecords, setHoldRecords] = useState(initialHoldRecords);
+  const [auditLogState, setAuditLogState] = useState({ ...auditLogs });
+
+  const handleAuditAppend = useCallback((payoutId, entry) => {
+    setAuditLogState((prev) => {
+      const existing = prev[payoutId] || [];
+      const version = existing.length > 0 ? Math.max(...existing.map(e => e.version || 0)) + 1 : 1;
+      return { ...prev, [payoutId]: [...existing, { ...entry, version, ts: entry.ts || nowTimestamp() }] };
+    });
+  }, []);
+
   const [automationConfig, setAutomationConfig] = useState({
     fleet: { preparation: false, approval: false, beginTransfer: false },
     merchants: {}
@@ -2883,6 +2898,8 @@ export default function MSPSupportDashboard() {
     setPayouts((prev) => {
       // If it's a new payout (not found in existing list), add it
       if (extra && !prev.find((p) => p.id === payoutId) && extra.id) {
+        // New payout — create initial audit log entry
+        handleAuditAppend(payoutId, { change: "Payout prepared", initiatedBy: "System" });
         return [extra, ...prev];
       }
       return prev.map((p) => {
@@ -2896,7 +2913,7 @@ export default function MSPSupportDashboard() {
         return updated;
       });
     });
-  }, []);
+  }, [handleAuditAppend]);
 
   const handleCreateHold = useCallback((holdRecord) => {
     setHoldRecords((prev) => [...prev, holdRecord]);
@@ -2910,6 +2927,7 @@ export default function MSPSupportDashboard() {
     setPayouts([...mockPayouts]);
     setUnassignedMLEs([...mockUnassignedMLEs]);
     setHoldRecords([...initialHoldRecords]);
+    setAuditLogState({ ...auditLogs });
   }, []);
 
   // Ingest enriched MLEs from DTE Generator
@@ -2947,8 +2965,8 @@ export default function MSPSupportDashboard() {
         <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
           <Header icon={currentHeading.icon} heading={currentHeading.label} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} role={role} onRoleChange={setRole} featureEnabled={featureEnabled} onFeatureToggle={() => setFeatureEnabled(!featureEnabled)} />
           <main className="flex-1 overflow-y-auto bg-[#F9FAFB]">
-            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} />}
-            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
+            {activePage === "payouts" && <FleetPayoutsPage role={role} featureEnabled={featureEnabled} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} auditLogState={auditLogState} onAuditAppend={handleAuditAppend} />}
+            {activePage === "merchant-facilities" && merchantDetailView && <MerchantFacilityDetailPage role={role} payouts={payouts} onPayoutStatusChange={handlePayoutStatusChange} unassignedMLEs={unassignedMLEs} holdRecords={holdRecords} onCreateHold={handleCreateHold} onReleaseHold={handleReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={setAutomationConfig} auditLogState={auditLogState} onAuditAppend={handleAuditAppend} initialTab={initialMerchantTab} onTabChange={(tab) => updateHash("merchant-facilities", true, tab)} />}
             {activePage === "merchant-facilities" && !merchantDetailView && <MerchantFacilitiesListPage onSelectMerchant={() => { setMerchantDetailView(true); updateHash("merchant-facilities", true, null); }} />}
             {activePage === "debugging-tools" && <DebuggingToolsPage onResetData={handleResetData} payouts={payouts} />}
             {activePage === "dte-generator" && <DTEGeneratorPage onIngestMLEs={handleIngestMLEs} onNavigate={handleNav} />}
