@@ -1424,40 +1424,10 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const canWrite = role === ROLES.FINOPS_T1;
   const PAGE_SIZE = 20;
 
-  // Filter state
-  const [searchId, setSearchId] = useState("");
-  const [payoutSearch, setPayoutSearch] = useState("");
-  const [initiatedByFilter, setInitiatedByFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [amountMin, setAmountMin] = useState("");
-  const [amountMax, setAmountMax] = useState("");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [settlementFrom, setSettlementFrom] = useState("");
-  const [settlementTo, setSettlementTo] = useState("");
-
-  const hasActiveFilters = searchId || payoutSearch || initiatedByFilter || typeFilter || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
-  const clearAllFilters = () => { setSearchId(""); setPayoutSearch(""); setInitiatedByFilter(""); setTypeFilter(""); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
-
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
 
-  // Derive unique initiatedBy values for the filter dropdown
-  const initiatedByOptions = [...new Set(adjustments.map(a => a.initiatedBy))].sort().map(v => ({ value: v, label: v }));
-
-  // Apply filters
-  let filtered = adjustments;
-  if (searchId) { const q = searchId.toLowerCase(); filtered = filtered.filter(a => a.id.toLowerCase().includes(q)); }
-  if (payoutSearch) { const q = payoutSearch.toLowerCase(); filtered = filtered.filter(a => (a.payoutId || "").toLowerCase().includes(q)); }
-  if (initiatedByFilter) filtered = filtered.filter(a => a.initiatedBy === initiatedByFilter);
-  if (typeFilter === "Generic") filtered = filtered.filter(a => !a.entryType);
-  else if (typeFilter) filtered = filtered.filter(a => a.entryType === typeFilter);
-  if (amountMin) filtered = filtered.filter(a => parseAmount(a.amount) >= parseFloat(amountMin));
-  if (amountMax) filtered = filtered.filter(a => parseAmount(a.amount) <= parseFloat(amountMax));
-  if (createdFrom || createdTo) filtered = filtered.filter(a => dateInRange(a.date, createdFrom, createdTo));
-  if (settlementFrom || settlementTo) filtered = filtered.filter(a => dateInRange(a.requestedSettlementDate, settlementFrom, settlementTo));
-
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paginatedAdj = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(adjustments.length / PAGE_SIZE));
+  const paginatedAdj = adjustments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Keep selectedAdj in sync
   const currentAdj = selectedAdj ? adjustments.find((a) => a.id === selectedAdj.id) || selectedAdj : null;
@@ -1471,29 +1441,13 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{adjustments.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          {/* Filter bar */}
-          <div className="mb-4 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterInput value={searchId} onChange={(v) => { setSearchId(v); setCurrentPage(1); }} placeholder="Search adjustment ID…" className="w-[180px]" />
-              <FilterInput value={payoutSearch} onChange={(v) => { setPayoutSearch(v); setCurrentPage(1); }} placeholder="Associated payout…" className="w-[170px]" />
-              <FilterSelect value={initiatedByFilter} onChange={(v) => { setInitiatedByFilter(v); setCurrentPage(1); }} options={initiatedByOptions} placeholder="Initiated by" />
-              <FilterSelect value={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }} options={[{ value: "Generic", label: "Generic" }, { value: "Debt deferral", label: "Debt deferral" }, { value: "Debt rollover", label: "Debt rollover" }]} placeholder="Type" />
-              <AmountRangeInputs min={amountMin} max={amountMax} onMinChange={(v) => { setAmountMin(v); setCurrentPage(1); }} onMaxChange={(v) => { setAmountMax(v); setCurrentPage(1); }} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <DateRangeInputs from={createdFrom} to={createdTo} onFromChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onToChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} label="Created" />
-              <DateRangeInputs from={settlementFrom} to={settlementTo} onFromChange={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onToChange={(v) => { setSettlementTo(v); setCurrentPage(1); }} label="Settlement" />
-              {hasActiveFilters && <button onClick={clearAllFilters} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-2">Clear all</button>}
-            </div>
-          </div>
-
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Amount", "Initiated by", "Type", "Payout"].map((h) => <TH key={h} right={h === "Amount"}>{h}</TH>)}
           </tr></thead><tbody>
@@ -1507,7 +1461,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
                   <td className="py-3 px-3 text-sm font-mono text-gray-500">{a.payoutId}</td>
                 </tr>
             ))}
-            {filtered.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments match the selected filters.</td></tr>}
+            {adjustments.length === 0 && <tr><td colSpan={6} className="py-8 text-center text-sm text-gray-400">No adjustments found.</td></tr>}
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
@@ -1576,101 +1530,6 @@ function FleetMerchantFacilityView({ payout, onBack, role, payouts, onPayoutStat
 }
 
 // ═══════════════════════════════════════════════════════════
-// SHARED FILTER / SEARCH HELPERS
-// ═══════════════════════════════════════════════════════════
-
-// Small reusable input components for the filter bar
-function FilterInput({ value, onChange, placeholder, className = "", type = "text", ...props }) {
-  return <input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className={`text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 ${className}`} {...props} />;
-}
-
-function FilterSelect({ value, onChange, options, placeholder, className = "" }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className={`text-sm border border-gray-300 rounded-lg px-3 py-1.5 pr-8 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 bg-white ${className} ${value ? "text-gray-800" : "text-gray-400"}`}>
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
-}
-
-function MultiSelect({ values, onChange, options, placeholder }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef(null);
-  useEffect(() => {
-    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-  const toggle = (v) => { onChange(values.includes(v) ? values.filter(x => x !== v) : [...values, v]); };
-  return (
-    <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen(!open)} className={`text-sm border border-gray-300 rounded-lg px-3 py-1.5 pr-8 bg-white text-left min-w-[140px] focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 ${values.length > 0 ? "text-gray-800" : "text-gray-400"}`}>
-        {values.length > 0 ? `${values.length} selected` : placeholder}
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.ChevronDown /></span>
-      </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-56 bg-white border border-gray-200 rounded-lg shadow-lg py-1 max-h-64 overflow-y-auto">
-          {options.map(o => (
-            <label key={o.value} className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm text-gray-700">
-              <input type="checkbox" checked={values.includes(o.value)} onChange={() => toggle(o.value)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
-              {o.label}
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function DateRangeInputs({ from, to, onFromChange, onToChange, label }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">{label}</span>
-      <input type="date" value={from} onChange={(e) => onFromChange(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-      <span className="text-xs text-gray-400">–</span>
-      <input type="date" value={to} onChange={(e) => onToChange(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-    </div>
-  );
-}
-
-function AmountRangeInputs({ min, max, onMinChange, onMaxChange }) {
-  return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-xs text-gray-500 font-medium whitespace-nowrap">Amount</span>
-      <FilterInput value={min} onChange={onMinChange} placeholder="Min" type="number" className="w-[80px]" step="0.01" />
-      <span className="text-xs text-gray-400">–</span>
-      <FilterInput value={max} onChange={onMaxChange} placeholder="Max" type="number" className="w-[80px]" step="0.01" />
-    </div>
-  );
-}
-
-// Parse amount string like "$1,234.56" or "-$45.50" → number
-const parseAmount = (s) => parseFloat(String(s || "").replace(/[^0-9.\-]/g, "")) || 0;
-
-// Date comparison helper: normalise "24 Feb 2026" → comparable string
-const normDate = (d) => {
-  if (!d) return "";
-  // Handle ISO dates (2026-02-24)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
-  // Handle "24 Feb 2026" or "24 Feb 2026, 6:00 AM"
-  const clean = d.split(",")[0].trim();
-  const parts = clean.split(" ");
-  if (parts.length === 3) {
-    const months = { Jan: "01", Feb: "02", Mar: "03", Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09", Oct: "10", Nov: "11", Dec: "12" };
-    return `${parts[2]}-${months[parts[1]] || "01"}-${parts[0].padStart(2, "0")}`;
-  }
-  return d;
-};
-
-// Check if a date string falls within a from–to range (inclusive)
-const dateInRange = (dateStr, from, to) => {
-  const d = normDate(dateStr);
-  if (from && d < from) return false;
-  if (to && d > to) return false;
-  return true;
-};
-
-// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig }) {
@@ -1682,25 +1541,10 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
 
-  // Filter state
-  const [searchId, setSearchId] = useState("");
-  const [merchantSearch, setMerchantSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [holdFilter, setHoldFilter] = useState("");
-  const [amountMin, setAmountMin] = useState("");
-  const [amountMax, setAmountMax] = useState("");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [settlementFrom, setSettlementFrom] = useState("");
-  const [settlementTo, setSettlementTo] = useState("");
-
   const handleSort = (col) => {
     if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); }
     else { setSortCol(col); setSortDir("asc"); }
   };
-
-  const hasActiveFilters = searchId || merchantSearch || statusFilter.length > 0 || holdFilter || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
-  const clearAllFilters = () => { setSearchId(""); setMerchantSearch(""); setStatusFilter([]); setHoldFilter(""); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); };
 
   if (!featureEnabled) return (
     <div className="p-6"><Card><CardBody className="py-16 text-center space-y-3">
@@ -1714,28 +1558,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
   if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} />;
 
-  // Helper: check if a payout is currently held
-  const isPayoutHeld = (p) => {
-    if (!holdRecords) return false;
-    return holdRecords.some(h => h.active && (h.phase === "approval" || h.phase === "begin_transfer") &&
-      (h.level === "fleet" || (h.level === "merchant" && h.entity === p.mid) || (h.level === "payout" && h.entity === p.id)));
-  };
-
-  // Apply filters
-  let filtered = payouts;
-  if (searchId) { const q = searchId.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q)); }
-  if (merchantSearch) { const q = merchantSearch.toLowerCase(); filtered = filtered.filter(p => (p.merchantName || "").toLowerCase().includes(q) || (p.mid || "").toLowerCase().includes(q)); }
-  if (statusFilter.length > 0) filtered = filtered.filter(p => statusFilter.includes(p.status));
-  if (holdFilter === "held") filtered = filtered.filter(p => isPayoutHeld(p));
-  if (holdFilter === "not_held") filtered = filtered.filter(p => !isPayoutHeld(p));
-  if (amountMin) filtered = filtered.filter(p => parseAmount(p.amount) >= parseFloat(amountMin));
-  if (amountMax) filtered = filtered.filter(p => parseAmount(p.amount) <= parseFloat(amountMax));
-  if (createdFrom || createdTo) filtered = filtered.filter(p => dateInRange(p.createdAt || p.date, createdFrom, createdTo));
-  if (settlementFrom || settlementTo) filtered = filtered.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
-
-  // Sort
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...filtered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : filtered;
+  const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...payouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : payouts;
 
   return (
     <div className="p-6 space-y-5">
@@ -1756,22 +1580,6 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          {/* Filter bar */}
-          <div className="mb-4 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterInput value={searchId} onChange={setSearchId} placeholder="Search payout ID…" className="w-[180px]" />
-              <FilterInput value={merchantSearch} onChange={setMerchantSearch} placeholder="Merchant / MID…" className="w-[180px]" />
-              <MultiSelect values={statusFilter} onChange={setStatusFilter} options={["Ready for Review", "Ready for Transfer", "Transferring", "Failed", "Completed", "Abandoned"].map(s => ({ value: s, label: s }))} placeholder="Status" />
-              <FilterSelect value={holdFilter} onChange={setHoldFilter} options={[{ value: "held", label: "On hold" }, { value: "not_held", label: "Not on hold" }]} placeholder="Hold status" />
-              <AmountRangeInputs min={amountMin} max={amountMax} onMinChange={setAmountMin} onMaxChange={setAmountMax} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <DateRangeInputs from={createdFrom} to={createdTo} onFromChange={setCreatedFrom} onToChange={setCreatedTo} label="Created" />
-              <DateRangeInputs from={settlementFrom} to={settlementTo} onFromChange={setSettlementFrom} onToChange={setSettlementTo} label="Settlement" />
-              {hasActiveFilters && <button onClick={clearAllFilters} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-2">Clear all</button>}
-            </div>
-          </div>
-
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Merchant", "MID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Merchant", "Amount", "Status"].includes(h);
@@ -1789,7 +1597,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} automationConfig={automationConfig} /></td>
               </tr>
             ))}
-            {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts found.</td></tr>}
           </tbody></table></div>
           <div className="flex justify-center pt-4"><Button variant="outline" colorScheme="brand" size="md">More results</Button></div>
         </CardBody>
@@ -1811,45 +1619,10 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const PAGE_SIZE = 20;
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
-
-  // Filter state
-  const [searchId, setSearchId] = useState("");
-  const [statusFilter, setStatusFilter] = useState([]);
-  const [holdFilter, setHoldFilter] = useState("");
-  const [amountMin, setAmountMin] = useState("");
-  const [amountMax, setAmountMax] = useState("");
-  const [createdFrom, setCreatedFrom] = useState("");
-  const [createdTo, setCreatedTo] = useState("");
-  const [settlementFrom, setSettlementFrom] = useState("");
-  const [settlementTo, setSettlementTo] = useState("");
-
-  const hasActiveFilters = searchId || statusFilter.length > 0 || holdFilter || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
-  const clearAllFilters = () => { setSearchId(""); setStatusFilter([]); setHoldFilter(""); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
-
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
-
-  // Helper: check if a payout is currently held
-  const isPayoutHeld = (p) => {
-    if (!holdRecords) return false;
-    return holdRecords.some(h => h.active && (h.phase === "approval" || h.phase === "begin_transfer") &&
-      (h.level === "fleet" || (h.level === "merchant" && h.entity === p.mid) || (h.level === "payout" && h.entity === p.id)));
-  };
-
-  // Apply filters
-  let afterFilter = merchantPayouts;
-  if (searchId) { const q = searchId.toLowerCase(); afterFilter = afterFilter.filter(p => p.id.toLowerCase().includes(q)); }
-  if (statusFilter.length > 0) afterFilter = afterFilter.filter(p => statusFilter.includes(p.status));
-  if (holdFilter === "held") afterFilter = afterFilter.filter(p => isPayoutHeld(p));
-  if (holdFilter === "not_held") afterFilter = afterFilter.filter(p => !isPayoutHeld(p));
-  if (amountMin) afterFilter = afterFilter.filter(p => parseAmount(p.amount) >= parseFloat(amountMin));
-  if (amountMax) afterFilter = afterFilter.filter(p => parseAmount(p.amount) <= parseFloat(amountMax));
-  if (createdFrom || createdTo) afterFilter = afterFilter.filter(p => dateInRange(p.createdAt || p.date, createdFrom, createdTo));
-  if (settlementFrom || settlementTo) afterFilter = afterFilter.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
-
-  // Sort
   const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
-  const filtered = sortCol && sortKeyMap[sortCol] ? [...afterFilter].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : afterFilter;
+  const filtered = sortCol && sortKeyMap[sortCol] ? [...merchantPayouts].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : merchantPayouts;
 
   // Pagination
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1875,21 +1648,6 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         </CardHeader>
         <Divider />
         <CardBody className="pt-4">
-          {/* Filter bar */}
-          <div className="mb-4 space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <FilterInput value={searchId} onChange={(v) => { setSearchId(v); setCurrentPage(1); }} placeholder="Search payout ID…" className="w-[180px]" />
-              <MultiSelect values={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} options={["Ready for Review", "Ready for Transfer", "Transferring", "Failed", "Completed", "Abandoned"].map(s => ({ value: s, label: s }))} placeholder="Status" />
-              <FilterSelect value={holdFilter} onChange={(v) => { setHoldFilter(v); setCurrentPage(1); }} options={[{ value: "held", label: "On hold" }, { value: "not_held", label: "Not on hold" }]} placeholder="Hold status" />
-              <AmountRangeInputs min={amountMin} max={amountMax} onMinChange={(v) => { setAmountMin(v); setCurrentPage(1); }} onMaxChange={(v) => { setAmountMax(v); setCurrentPage(1); }} />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <DateRangeInputs from={createdFrom} to={createdTo} onFromChange={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onToChange={(v) => { setCreatedTo(v); setCurrentPage(1); }} label="Created" />
-              <DateRangeInputs from={settlementFrom} to={settlementTo} onFromChange={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onToChange={(v) => { setSettlementTo(v); setCurrentPage(1); }} label="Settlement" />
-              {hasActiveFilters && <button onClick={clearAllFilters} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-2">Clear all</button>}
-            </div>
-          </div>
-
           <div className="overflow-x-auto"><table className="w-full border-collapse"><thead><tr className="border-b border-gray-200">
             {["Created", "Settlement date", "Payout ID", "Amount", "Status"].map((h) => {
               const sortable = ["Created", "Settlement date", "Payout ID", "Amount", "Status"].includes(h);
@@ -1897,7 +1655,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
             })}
           </tr></thead><tbody>
             {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} automationConfig={automationConfig} /></td></tr>))}
-            {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
+            {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts found.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
           {totalPages > 1 && (
