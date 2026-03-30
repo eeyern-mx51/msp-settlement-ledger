@@ -467,23 +467,38 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
 }
 
 // ─── Payout Status ───
-function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid }) {
+function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid, automationConfig }) {
   const cfg = { "Ready for Review": "info", "Ready for Transfer": "brand", "Transferring": "purple", "Failed": "error", "Completed": "success", "Abandoned": "neutral" };
   const numAmt = amount ? parseFloat(String(amount).replace(/[^0-9.\-]/g, "")) : null;
   const isZeroBalance = status === "Completed" && numAmt !== null && numAmt <= 0;
-  // Only show On-hold badge for statuses where holds are actionable
+  // Only show hold badges for statuses where holds are actionable
   const showHoldBadge = HOLDABLE_STATUSES.has(status);
-  let isHeld = hold;
-  if (holdRecords && payoutId && mid && showHoldBadge) {
-    const effective = getEffectiveHolds(holdRecords, payoutId, mid);
-    isHeld = effective.any;
-  } else if (!showHoldBadge) {
-    isHeld = false;
+
+  let hasManualHold = false;
+  let hasAutoHold = false;
+
+  if (showHoldBadge) {
+    // Only check progression holds (approval + begin_transfer) for badge display
+    if (holdRecords && payoutId && mid) {
+      const progHolds = holdRecords.filter(h => h.active && (h.phase === "approval" || h.phase === "begin_transfer") &&
+        (h.level === "fleet" || (h.level === "merchant" && h.entity === mid) || (h.level === "payout" && h.entity === payoutId)));
+      hasManualHold = progHolds.length > 0;
+    }
+    if (hold) hasManualHold = true;
+
+    if (automationConfig && mid) {
+      const fleetAuto = automationConfig.fleet || {};
+      const merchantAuto = automationConfig.merchants?.[mid] || {};
+      const autoProg = (fleetAuto.approval && fleetAuto.beginTransfer) || (merchantAuto.approval && merchantAuto.beginTransfer);
+      hasAutoHold = autoProg;
+    }
   }
+
   return (
     <span className="inline-flex items-center gap-1.5">
       <Badge colorScheme={cfg[status] || "neutral"} size="sm">{status}</Badge>
-      {isHeld && <Badge colorScheme="warning" size="sm">On-hold</Badge>}
+      {hasManualHold && <Badge colorScheme="warning" size="sm"><span className="inline-flex items-center gap-1"><Icons.Pause /> Manual</span></Badge>}
+      {hasAutoHold && <Badge colorScheme="warning" size="sm"><span className="inline-flex items-center gap-1"><Icons.Pause /> Auto</span></Badge>}
       {isZeroBalance && <Badge colorScheme="neutral" size="sm">Zero-balance</Badge>}
     </span>
   );
@@ -841,7 +856,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold} amount={payout.amount} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} /></div>
+          <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold} amount={payout.amount} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} automationConfig={automationConfig} /></div>
           <div className="flex items-center gap-2">
             {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
             {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
@@ -1507,7 +1522,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
                 <td className="py-3 px-3 text-sm text-gray-700">{p.merchantName}</td>
                 <td className="py-3 px-3 text-sm font-mono text-gray-500">{p.mid}</td>
                 <td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td>
-                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} /></td>
+                <td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} automationConfig={automationConfig} /></td>
               </tr>
             ))}
             {filteredPayouts.length === 0 && <tr><td colSpan={7} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
@@ -1567,7 +1582,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
               return <th key={h} onClick={sortable ? () => handleSort(h) : undefined} className={`py-2 px-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider ${h === "Amount" ? "text-right" : ""} ${sortable ? "cursor-pointer hover:text-indigo-600 select-none" : ""}`}>{h}{sortCol === h ? (sortDir === "asc" ? " ↑" : " ↓") : ""}</th>;
             })}
           </tr></thead><tbody>
-            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} /></td></tr>))}
+            {paginatedPayouts.map((p) => (<tr key={p.id} onClick={() => setSelectedPayout(p)} className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors"><td className="py-3 px-3 text-sm text-gray-700 whitespace-nowrap">{p.createdAt || p.date}</td><td className="py-3 px-3 text-sm text-gray-700">{p.settlementDate || p.date}</td><td className="py-3 px-3 text-sm font-mono text-indigo-600 font-medium">{p.id}</td><td className="py-3 px-3 text-sm font-semibold text-gray-900 text-right">{p.amount}</td><td className="py-3 px-3"><PayoutStatusBadge status={p.status} hold={p.hold} amount={p.amount} holdRecords={holdRecords} payoutId={p.id} mid={p.mid} automationConfig={automationConfig} /></td></tr>))}
             {paginatedPayouts.length === 0 && <tr><td colSpan={5} className="py-8 text-center text-sm text-gray-400">No payouts match the selected filters.</td></tr>}
           </tbody></table></div>
           {/* Pagination */}
