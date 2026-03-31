@@ -1907,7 +1907,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Keep selectedPayout in sync with latest state
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={currentPayout.merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
 
   // Filter
   let filtered = payouts;
@@ -2005,7 +2005,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const paginatedPayouts = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   const currentPayout = selectedPayout ? payouts.find(p => p.id === selectedPayout.id) || selectedPayout : null;
-  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); if (newStatus === "Abandoned") setSelectedPayout(null); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
+  if (currentPayout) return <PayoutDetailView payout={currentPayout} onBack={() => setSelectedPayout(null)} role={role} onStatusChange={(id, newStatus, extra) => { onPayoutStatusChange(id, newStatus, extra); }} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} merchantName={merchantName} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} auditLogState={auditLogState} onAuditAppend={onAuditAppend} />;
 
   return (
     <div className="p-6 space-y-5">
