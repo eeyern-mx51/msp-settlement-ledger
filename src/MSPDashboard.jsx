@@ -655,209 +655,209 @@ const mockPayouts = [
 const auditLogs = {
   // ── Ready for Review — just prepared ──
   "PO-2026-0224-001": [
-    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
   ],
   "PO-2026-0224-002": [
-    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
   ],
   "PO-2026-0224-003": [
-    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
   ],
   "PO-2026-0224-004": [
-    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
   ],
   "PO-2026-0224-005": [
-    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "24 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
   ],
 
   // ── Ready for Transfer — approved (positive amount) ──
   "PO-2026-0223-001": [
-    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "23 Feb 2026, 9:45 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2, note: "Reviewed and confirmed amounts." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 9:45 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2, note: "Reviewed and confirmed amounts." },
   ],
   "PO-2026-0223-002": [
-    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "23 Feb 2026, 10:20 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2, note: "Two transfers will be created (split by bank account)." },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 10:20 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2, note: "Two transfers will be created (split by bank account)." },
   ],
 
   // ── Transferring — transfer initiated ──
   "PO-2026-0223-003": [
-    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "23 Feb 2026, 8:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "23 Feb 2026, 11:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 8:30 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "23 Feb 2026, 11:00 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
   ],
   "PO-2026-0223-004": [
-    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "23 Feb 2026, 9:15 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "23 Feb 2026, 11:30 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "23 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "23 Feb 2026, 9:15 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "23 Feb 2026, 11:30 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
   ],
 
   // ── Completed — full lifecycle (positive amount) ──
   "PO-2026-0222-001": [
-    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "22 Feb 2026, 9:10 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "22 Feb 2026, 10:00 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "22 Feb 2026, 1:45 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 9:10 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "22 Feb 2026, 10:00 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "22 Feb 2026, 1:45 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Bella's Boutique) ──
   "PO-2026-0222-003": [
-    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "22 Feb 2026, 9:25 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "22 Feb 2026, 10:10 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "22 Feb 2026, 2:15 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 9:25 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "22 Feb 2026, 10:10 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "22 Feb 2026, 2:15 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — approved with zero amount (auto-completed) ──
   "PO-2026-0222-002": [
-    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "22 Feb 2026, 9:30 AM", change: "Payout approved (zero balance)", initiatedBy: "Sarah Chen", version: 2, note: "Zero-balance payout — no transfer required." },
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 9:30 AM", change: "Payout approved with entries totalling zero amount", code: "02", initiatedBy: "Sarah Chen", version: 2, note: "Zero-balance payout — no transfer required." },
   ],
 
   // ── Completed — approved with debt deferral (negative balance) ──
   "PO-2026-0221-001": [
-    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "21 Feb 2026, 10:15 AM", change: "Payout approved (debt deferral)", initiatedBy: "Sarah Chen", version: 2, note: "Negative balance — debt deferred to next cycle." },
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 10:15 AM", change: "Payout approved with debt deferral", code: "03", initiatedBy: "Sarah Chen", version: 2, note: "Negative balance — debt deferred to next cycle." },
   ],
 
   // ── Completed — full lifecycle (Joe's Coffee, 21 Feb) ──
   "PO-2026-0221-002": [
-    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "21 Feb 2026, 8:50 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "21 Feb 2026, 9:30 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "21 Feb 2026, 12:20 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 8:50 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "21 Feb 2026, 9:30 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "21 Feb 2026, 12:20 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Coastal Surf Shop, 21 Feb) ──
   "PO-2026-0221-003": [
-    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "21 Feb 2026, 9:10 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2, note: "Amounts verified against DTE totals." },
-    { ts: "21 Feb 2026, 10:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "21 Feb 2026, 1:40 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 9:10 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2, note: "Amounts verified against DTE totals." },
+    { ts: "21 Feb 2026, 10:00 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "21 Feb 2026, 1:40 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Coastal Surf Shop, 19 Feb) ──
   "PO-2026-0219-002": [
-    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "19 Feb 2026, 8:40 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "19 Feb 2026, 9:15 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "19 Feb 2026, 11:50 AM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "19 Feb 2026, 8:40 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "19 Feb 2026, 9:15 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "19 Feb 2026, 11:50 AM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Joe's Coffee, 18 Feb) ──
   "PO-2026-0218-002": [
-    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "18 Feb 2026, 8:20 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "18 Feb 2026, 9:10 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "18 Feb 2026, 12:30 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:20 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "18 Feb 2026, 9:10 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 12:30 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Fresh Mart, 18 Feb) ──
   "PO-2026-0218-003": [
-    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "18 Feb 2026, 8:35 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2, note: "Large settlement — double-checked transaction breakdown." },
-    { ts: "18 Feb 2026, 9:20 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "18 Feb 2026, 1:10 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:35 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2, note: "Large settlement — double-checked transaction breakdown." },
+    { ts: "18 Feb 2026, 9:20 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "18 Feb 2026, 1:10 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Coastal Surf Shop, 18 Feb) ──
   "PO-2026-0218-004": [
-    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "18 Feb 2026, 8:45 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "18 Feb 2026, 9:30 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "18 Feb 2026, 12:45 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:45 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "18 Feb 2026, 9:30 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 12:45 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Bella's Boutique, 18 Feb) ──
   "PO-2026-0218-005": [
-    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "18 Feb 2026, 9:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "18 Feb 2026, 9:45 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "18 Feb 2026, 1:20 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 9:00 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "18 Feb 2026, 9:45 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "18 Feb 2026, 1:20 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Mike's Electronics, 17 Feb) ──
   "PO-2026-0217-002": [
-    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "17 Feb 2026, 8:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2, note: "High-value payout — verified against daily limits." },
-    { ts: "17 Feb 2026, 9:15 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "17 Feb 2026, 12:50 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 8:30 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2, note: "High-value payout — verified against daily limits." },
+    { ts: "17 Feb 2026, 9:15 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "17 Feb 2026, 12:50 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Coastal Surf Shop, 17 Feb) ──
   "PO-2026-0217-003": [
-    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "17 Feb 2026, 9:05 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "17 Feb 2026, 9:50 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "17 Feb 2026, 1:30 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 9:05 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "17 Feb 2026, 9:50 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "17 Feb 2026, 1:30 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Fresh Mart, 17 Feb) ──
   "PO-2026-0217-004": [
-    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "17 Feb 2026, 8:55 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "17 Feb 2026, 9:40 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "17 Feb 2026, 12:15 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 8:55 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "17 Feb 2026, 9:40 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "17 Feb 2026, 12:15 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Completed — full lifecycle (Joe's Coffee, 17 Feb) ──
   "PO-2026-0217-005": [
-    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "17 Feb 2026, 9:20 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "17 Feb 2026, 10:05 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "17 Feb 2026, 1:55 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 9:20 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "17 Feb 2026, 10:05 AM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "17 Feb 2026, 1:55 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
   ],
 
   // ── Failed — retryable then non-retryable ──
   "PO-2026-0220-001": [
-    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "20 Feb 2026, 10:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "20 Feb 2026, 11:15 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "20 Feb 2026, 11:15 AM", change: "Transfer failed (retryable)", initiatedBy: "System", version: 4 },
-    { ts: "20 Feb 2026, 12:00 PM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 5, note: "Retry after gateway timeout." },
-    { ts: "20 Feb 2026, 12:02 PM", change: "Transfer failed (non-retryable)", initiatedBy: "System", version: 6 },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 10:30 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "20 Feb 2026, 11:15 AM", change: "Payout transfer failed (retryable)", code: "06", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 12:00 PM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 5, note: "Retry after gateway timeout." },
+    { ts: "20 Feb 2026, 12:02 PM", change: "Payout transfer failed (not retryable)", code: "07", initiatedBy: "System", version: 6 },
   ],
 
   // ── Failed — with resubmit ──
   "PO-2026-0220-003": [
-    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "20 Feb 2026, 11:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "20 Feb 2026, 12:30 PM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
-    { ts: "20 Feb 2026, 12:35 PM", change: "Transfer failed (non-retryable)", initiatedBy: "System", version: 4 },
-    { ts: "20 Feb 2026, 2:00 PM", change: "Payout resubmitted", initiatedBy: "Tom Wright", version: 5, note: "Root cause resolved — BSB corrected by merchant." },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 11:00 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "20 Feb 2026, 12:30 PM", change: "Transfer initiated", code: "04", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "20 Feb 2026, 12:35 PM", change: "Payout transfer failed (not retryable)", code: "07", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 2:00 PM", change: "Payout resubmitted", code: "08", initiatedBy: "Tom Wright", version: 5, note: "Root cause resolved — BSB corrected by merchant." },
   ],
 
   // ── Ready for Transfer with hold (payout-level manual + auto) ──
   "PO-2026-0220-002": [
-    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "20 Feb 2026, 9:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
-    { ts: "20 Feb 2026, 9:45 AM", change: "Manual progression hold placed", initiatedBy: "Sarah Chen", version: 3, note: "Holding for compliance review — large transaction flagged." },
-    { ts: "20 Feb 2026, 3:30 PM", change: "Auto progression hold placed", initiatedBy: "System", version: 4 },
+    { ts: "20 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "20 Feb 2026, 9:00 AM", change: "Payout approved", code: "01", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "20 Feb 2026, 9:45 AM", change: "Payout updated", code: "11", initiatedBy: "Sarah Chen", version: 3, subAction: "Manual progression on-hold", note: "Compliance review, large transaction flagged." },
+    { ts: "20 Feb 2026, 3:30 PM", change: "Payout updated", code: "11", initiatedBy: "System", version: 4, subAction: "Automated progression on-hold" },
   ],
 
   // ── Abandoned ──
   "PO-2026-0219-001": [
-    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "19 Feb 2026, 11:00 AM", change: "Payout abandoned", initiatedBy: "Tom Wright", version: 2, note: "Merchant requested payout deferral to next cycle." },
+    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "19 Feb 2026, 11:00 AM", change: "Payout abandoned", code: "09", initiatedBy: "Tom Wright", version: 2, note: "Merchant requested payout deferral to next cycle." },
   ],
   "PO-2026-0217-001": [
-    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "17 Feb 2026, 3:00 PM", change: "Payout abandoned", initiatedBy: "Sarah Chen", version: 2, note: "Duplicate — merchant already paid via manual bank transfer." },
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 3:00 PM", change: "Payout abandoned", code: "09", initiatedBy: "Sarah Chen", version: 2, note: "Duplicate — merchant already paid via manual bank transfer." },
   ],
 
   // ── Returned — completed then NPP return ──
   "PO-2026-0218-001": [
-    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
-    { ts: "18 Feb 2026, 8:00 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
-    { ts: "18 Feb 2026, 9:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
-    { ts: "18 Feb 2026, 12:00 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
-    { ts: "19 Feb 2026, 10:30 AM", change: "Payout returned", initiatedBy: "System", version: 5 },
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:00 AM", change: "Payout approved", code: "01", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "18 Feb 2026, 9:00 AM", change: "Transfer initiated", code: "04", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 12:00 PM", change: "Payout transfer successful", code: "05", initiatedBy: "System", version: 4 },
+    { ts: "19 Feb 2026, 10:30 AM", change: "Payout returned", code: "10", initiatedBy: "System", version: 5 },
   ],
 };
 
 // Fallback audit log for payouts without a specific log
 const defaultAuditLog = (payout) => [
-  { ts: payout.date + ", 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+  { ts: payout.date + ", 6:00 AM", change: "Payout prepared", code: "00", initiatedBy: "System", version: 1 },
 ];
 
 
@@ -900,7 +900,31 @@ const mockTransactions = [
 // ═══════════════════════════════════════════════════════════
 function AuditTimeline({ entries }) {
   const reversed = [...entries].reverse();
-  const isFail = (c) => c.toLowerCase().includes("failed") || c.toLowerCase().includes("returned");
+  const isFail = (c) => c.toLowerCase().includes("failed") || c.toLowerCase().includes("returned") || c.toLowerCase().includes("abandoned");
+
+  // Renders subAction text with "on-hold" or "released" bolded
+  const renderSubAction = (text) => {
+    const boldPatterns = [/\b(on-hold)\b/gi, /\b(released)\b/gi];
+    let parts = [text];
+    boldPatterns.forEach((pattern) => {
+      parts = parts.flatMap((part) => {
+        if (typeof part !== "string") return [part];
+        const result = [];
+        let lastIdx = 0;
+        let match;
+        const regex = new RegExp(pattern.source, pattern.flags);
+        while ((match = regex.exec(part)) !== null) {
+          if (match.index > lastIdx) result.push(part.slice(lastIdx, match.index));
+          result.push(<strong key={`${match.index}-${match[1]}`} className="font-bold text-gray-800">{match[1]}</strong>);
+          lastIdx = regex.lastIndex;
+        }
+        if (lastIdx < part.length) result.push(part.slice(lastIdx));
+        return result;
+      });
+    });
+    return parts;
+  };
+
   return (
     <div className="relative">
       {reversed.map((entry, i) => (
@@ -911,10 +935,16 @@ function AuditTimeline({ entries }) {
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2 flex-wrap">
+              {entry.code && <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">{entry.code}</span>}
               <span className={`text-sm font-semibold ${isFail(entry.change) ? "text-red-700" : "text-gray-800"}`}>{entry.change}</span>
               {entry.version && <span className="text-[10px] font-mono text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">v{entry.version}</span>}
               <span className="text-xs text-gray-400">{entry.ts}</span>
             </div>
+            {entry.subAction && (
+              <div className="mt-1 ml-1 pl-3 border-l-2 border-indigo-200">
+                <span className="text-sm text-gray-600">{renderSubAction(entry.subAction)}</span>
+              </div>
+            )}
             {entry.note && <div className="text-sm text-gray-500 mt-0.5 italic">{entry.note}</div>}
             <div className="text-xs text-gray-400 mt-0.5">by {entry.initiatedBy}</div>
           </div>
@@ -975,22 +1005,22 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
   const handleApprove = () => {
     addToast({ type: "success", title: "Payout approved", message: `${payout.id} is now ready for transfer.` });
-    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout approved", initiatedBy: userName });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout approved", code: "01", initiatedBy: userName });
     onStatusChange(payout.id, "Ready for Transfer");
   };
   const handleBeginTransfer = () => {
     addToast({ type: "success", title: "Transfer initiated", message: `Payout ${payout.id} is now transferring to the merchant's bank.` });
-    if (onAuditAppend) onAuditAppend(payout.id, { change: "Transfer initiated", initiatedBy: userName });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Transfer initiated", code: "04", initiatedBy: userName });
     onStatusChange(payout.id, "Transferring");
   };
   const handleResubmit = () => {
     addToast({ type: "success", title: "Payout resubmitted", message: `${payout.id} has been moved back to Ready for Transfer.` });
-    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout resubmitted", initiatedBy: userName });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout resubmitted", code: "08", initiatedBy: userName });
     onStatusChange(payout.id, "Ready for Transfer");
   };
   const handleAbandon = () => {
     addToast({ type: "error", title: "Payout abandoned", message: `${payout.id} has been abandoned. Transactions returned to ledger.` });
-    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout abandoned", initiatedBy: userName });
+    if (onAuditAppend) onAuditAppend(payout.id, { change: "Payout abandoned", code: "09", initiatedBy: userName });
     onStatusChange(payout.id, "Abandoned");
   };
 
@@ -1000,7 +1030,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       <BeginTransferDialog open={showTransfer} onClose={() => setShowTransfer(false)} payout={payout} onConfirm={handleBeginTransfer} />
       <ResubmitPayoutDialog open={showResubmit} onClose={() => setShowResubmit(false)} payout={payout} onConfirm={handleResubmit} />
       <AbandonPayoutDialog open={showAbandon} onClose={() => setShowAbandon(false)} payout={payout} onConfirm={handleAbandon} />
-      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={(holdRecord) => { onCreateHold(holdRecord); if (onAuditAppend && holdRecord.phase === "approval") onAuditAppend(payout.id, { change: `${holdRecord.trigger === "manual" ? "Manual" : "Auto"} progression hold placed`, initiatedBy: userName }); }} onReleaseHold={(holdId) => { onReleaseHold(holdId); if (onAuditAppend) { const h = holdRecords.find(r => r.id === holdId); if (h && h.phase === "approval") onAuditAppend(payout.id, { change: `${h.trigger === "manual" ? "Manual" : "Auto"} progression hold released`, initiatedBy: userName }); } }} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
+      <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="payout" entity={payout.id} entityLabel={`Payout ${payout.id}`} mid={payout.mid} holdRecords={holdRecords} onCreateHold={(holdRecord) => { onCreateHold(holdRecord); if (onAuditAppend && holdRecord.phase === "approval") onAuditAppend(payout.id, { change: "Payout updated", code: "11", initiatedBy: userName, subAction: `${holdRecord.trigger === "manual" ? "Manual" : "Automated"} progression on-hold` }); }} onReleaseHold={(holdId) => { onReleaseHold(holdId); if (onAuditAppend) { const h = holdRecords.find(r => r.id === holdId); if (h && h.phase === "approval") onAuditAppend(payout.id, { change: "Payout updated", code: "11", initiatedBy: userName, subAction: `${h.trigger === "manual" ? "Manual" : "Automated"} progression released` }); } }} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
@@ -1051,9 +1081,13 @@ const mockUnassignedMLEs = [
   { id: "DTE-20260224-12345", date: "2026-02-24", merchant: "Joe's Coffee - Sydney CBD", mid: "POSPAY00012345", amount: 1064.05, txnCount: 18 },
   { id: "DTE-20260224-12348", date: "2026-02-24", merchant: "Bella's Boutique - Melbourne", mid: "POSPAY00012348", amount: 674.75, txnCount: 7 },
   { id: "DTE-20260224-12349", date: "2026-02-24", merchant: "Coastal Surf Shop - Gold Coast", mid: "POSPAY00012349", amount: 342.90, txnCount: 4 },
+  // 25 Feb — newly onboarded merchant with no activity (Scenario 1: no entries)
+  { id: "DTE-20260225-12350", date: "2026-02-25", merchant: "Urban Bites - Surry Hills", mid: "POSPAY00012350", amount: 0, txnCount: 0 },
   // 23 Feb — older unprepared DTE files (accumulated)
   { id: "DTE-20260223-12347", date: "2026-02-23", merchant: "Fresh Mart - Brisbane", mid: "POSPAY00012347", amount: 445.10, txnCount: 5 },
   { id: "DTE-20260223-12346", date: "2026-02-23", merchant: "Mike's Electronics", mid: "POSPAY00012346", amount: 2150.00, txnCount: 6 },
+  // 23 Feb — merchant with only negative adjustments/debt rollovers (Scenario 2: non-payable entries only)
+  { id: "DTE-20260223-12351", date: "2026-02-23", merchant: "Metro Pharmacy - Parramatta", mid: "POSPAY00012351", amount: 0, txnCount: 0 },
 ];
 
 // Mock unsettled chargebacks — pending chargebacks that will be included in payout calculation
@@ -1088,7 +1122,33 @@ const mockMidBreakdowns = {
     { source: "CHARGEBACKS", amount: 0, count: 0 },
     { source: "ADJUSTMENTS", amount: 75.00, count: 1 },  // manual adj: terminal fee refund
   ],
+  // Scenario 1: No merchant entries at all (newly onboarded, no activity)
+  "POSPAY00012350": [
+    { source: "TRANSACTIONS", amount: 0, count: 0 },
+    { source: "CHARGEBACKS", amount: 0, count: 0 },
+    { source: "ADJUSTMENTS", amount: 0, count: 0 },
+  ],
+  // Scenario 2: Only negative adjustments and debt rollovers (no positive merchant revenue)
+  "POSPAY00012351": [
+    { source: "TRANSACTIONS", amount: 0, count: 0 },
+    { source: "CHARGEBACKS", amount: 0, count: 0 },
+    { source: "ADJUSTMENTS", amount: -340.00, count: 2 },  // debt deferral (-$540) + debt rollover (+$200) = net -$340
+  ],
 };
+
+const PAYOUT_PREPARATION_ERROR = "Payout cannot be created. This payout preparation either has no merchant entries or contains only negative adjustments and debt rollovers.";
+
+function isPayoutPreparationInvalid(breakdown) {
+  if (!breakdown) return true;
+  const { total_count, breakdown: items } = breakdown;
+  // Scenario 1: No entries at all
+  if (total_count === 0) return true;
+  // Scenario 2: Only negative adjustments / debt rollovers (no transactions, no chargebacks)
+  const txn = items.find(b => b.source === "TRANSACTIONS") || { count: 0 };
+  const cb = items.find(b => b.source === "CHARGEBACKS") || { count: 0 };
+  if (txn.count === 0 && cb.count === 0) return true;
+  return false;
+}
 
 function getPayoutBreakdown(mid) {
   const breakdown = mockMidBreakdowns[mid] || [
@@ -1182,7 +1242,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   const selectedGroups = allGroups.filter((g) => selectedMids.has(g.mid));
 
   useEffect(() => {
-    if (hasDate) setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+    if (hasDate) setSelectedMids(new Set(allGroups.filter(g => !isPayoutPreparationInvalid(g.breakdown)).map((g) => g.mid)));
     else setSelectedMids(new Set());
   }, [settlementDate, filteredDTEs.length]);
 
@@ -1191,15 +1251,19 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
   }, [open]);
 
   const toggleMid = (mid) => { setSelectedMids((prev) => { const next = new Set(prev); if (next.has(mid)) next.delete(mid); else next.add(mid); return next; }); };
-  const selectAll = () => setSelectedMids(new Set(allGroups.map((g) => g.mid)));
+  const selectAll = () => setSelectedMids(new Set(allGroups.filter(g => !invalidMids.has(g.mid)).map((g) => g.mid)));
   const deselectAll = () => setSelectedMids(new Set());
 
   const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
+  // Identify merchants with invalid preparations
+  const invalidMids = new Set(allGroups.filter(g => isPayoutPreparationInvalid(g.breakdown)).map(g => g.mid));
+  const validSelectedGroups = selectedGroups.filter(g => !invalidMids.has(g.mid));
+
   const handleCreate = () => {
     const errs = {};
     if (!hasDate) errs.date = "Settlement date is required.";
-    if (hasDate && selectedGroups.length === 0) errs.merchants = "Select at least one merchant.";
+    if (hasDate && validSelectedGroups.length === 0) errs.merchants = selectedGroups.length > 0 && validSelectedGroups.length === 0 ? PAYOUT_PREPARATION_ERROR : "Select at least one merchant.";
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setCreating(true);
@@ -1208,7 +1272,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
       const dateStr = today.toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" });
       const timeStr = today.toLocaleTimeString("en-AU", { hour: "2-digit", minute: "2-digit", hour12: true }).toUpperCase();
       const createdAt = `${dateStr}, ${timeStr}`;
-      const newPayouts = selectedGroups.map((g, i) => ({
+      const newPayouts = validSelectedGroups.map((g, i) => ({
         id: `PO-2026-0225-${String(i + 1).padStart(3, "0")}`,
         date: dateStr,
         createdAt,
@@ -1253,17 +1317,21 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
               </div>
               {allGroups.length > 0 ? (
                 <div className="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-[400px] overflow-y-auto">
-                  {allGroups.map((g) => (
+                  {allGroups.map((g) => {
+                    const isInvalid = invalidMids.has(g.mid);
+                    return (
                     <div key={g.mid}>
-                      <div className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-50 transition-colors ${selectedMids.has(g.mid) ? "bg-indigo-50/50" : ""}`}>
-                        <input type="checkbox" checked={selectedMids.has(g.mid)} onChange={() => toggleMid(g.mid)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
+                      <div className={`flex items-center gap-3 px-3 py-2.5 transition-colors ${isInvalid ? "bg-red-50/50 opacity-60" : selectedMids.has(g.mid) ? "bg-indigo-50/50 cursor-pointer hover:bg-gray-50" : "cursor-pointer hover:bg-gray-50"}`}>
+                        <input type="checkbox" checked={selectedMids.has(g.mid) && !isInvalid} onChange={() => !isInvalid && toggleMid(g.mid)} disabled={isInvalid} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-200" />
                         <div className="flex-1 min-w-0" onClick={() => setExpandedMid(expandedMid === g.mid ? null : g.mid)}>
-                          <div className="text-sm font-medium text-gray-800 truncate">{g.merchant}</div>
+                          <div className={`text-sm font-medium truncate ${isInvalid ? "text-gray-400" : "text-gray-800"}`}>{g.merchant}</div>
                           <div className="text-xs text-gray-400 font-mono">{g.mid} · {g.breakdown.total_count} items</div>
+                          {isInvalid && <div className="text-xs text-red-500 mt-0.5">No payable entries</div>}
                         </div>
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          {g.payoutTotal <= 0 && <Badge colorScheme="warning" size="sm">Zero-bal</Badge>}
-                          <span className={`text-sm font-semibold ${g.payoutTotal <= 0 ? "text-amber-700" : "text-gray-900"}`}>{fmt(g.payoutTotal)}</span>
+                          {isInvalid && <Badge colorScheme="error" size="sm">Ineligible</Badge>}
+                          {!isInvalid && g.payoutTotal <= 0 && <Badge colorScheme="warning" size="sm">Zero-bal</Badge>}
+                          <span className={`text-sm font-semibold ${isInvalid ? "text-gray-400" : g.payoutTotal <= 0 ? "text-amber-700" : "text-gray-900"}`}>{fmt(g.payoutTotal)}</span>
                           <button onClick={() => setExpandedMid(expandedMid === g.mid ? null : g.mid)} className={`text-gray-400 hover:text-gray-600 transition-transform ${expandedMid === g.mid ? "rotate-180" : ""}`}><Icons.ChevronDown /></button>
                         </div>
                       </div>
@@ -1273,7 +1341,8 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
                         </div>
                       )}
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="border border-gray-200 rounded-lg px-3 py-4 text-center text-sm text-gray-400">No merchants with ledger entries for the selected date.</div>
@@ -1281,14 +1350,14 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
             </div>
 
             {/* Fleet-level summary */}
-            {selectedGroups.length > 0 && (
+            {validSelectedGroups.length > 0 && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-gray-700">Fleet total ({selectedGroups.length} merchant{selectedGroups.length !== 1 ? "s" : ""})</span>
-                  <span className="text-base font-bold text-gray-900">{fmt(selectedGroups.reduce((s, g) => s + g.payoutTotal, 0))}</span>
+                  <span className="text-sm font-semibold text-gray-700">Fleet total ({validSelectedGroups.length} merchant{validSelectedGroups.length !== 1 ? "s" : ""})</span>
+                  <span className="text-base font-bold text-gray-900">{fmt(validSelectedGroups.reduce((s, g) => s + g.payoutTotal, 0))}</span>
                 </div>
-                {selectedGroups.some(g => g.payoutTotal <= 0) && (
-                  <div className="text-xs text-amber-600 mt-1">{selectedGroups.filter(g => g.payoutTotal <= 0).length} merchant{selectedGroups.filter(g => g.payoutTotal <= 0).length !== 1 ? "s" : ""} with zero/negative balance — will auto-complete</div>
+                {validSelectedGroups.some(g => g.payoutTotal <= 0) && (
+                  <div className="text-xs text-amber-600 mt-1">{validSelectedGroups.filter(g => g.payoutTotal <= 0).length} merchant{validSelectedGroups.filter(g => g.payoutTotal <= 0).length !== 1 ? "s" : ""} with zero/negative balance — will auto-complete</div>
                 )}
               </div>
             )}
@@ -1299,7 +1368,7 @@ function PreparePayoutDialog({ open, onClose, onCreatePayouts, unassignedMLEs: m
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
           <Button variant="outline" colorScheme="neutral" size="md" onClick={onClose}>Cancel</Button>
           <Button variant="solid" colorScheme="brand" size="md" disabled={creating} onClick={handleCreate}>
-            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : `Create payout (${selectedMids.size})`}
+            {creating ? (<span className="flex items-center gap-2"><svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.37 0 0 5.37 0 12h4z" /></svg>Creating...</span>) : `Create payout (${validSelectedGroups.length})`}
           </Button>
         </div>
       </div>
@@ -1323,6 +1392,7 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
   const breakdown = hasDate ? getPayoutBreakdown(mid) : null;
   const payoutTotal = breakdown ? breakdown.total_amount : 0;
   const hasEntries = breakdown && breakdown.total_count > 0;
+  const preparationInvalid = breakdown && isPayoutPreparationInvalid(breakdown);
 
   const fmt = (v) => { const sign = v < 0 ? "-" : ""; return `${sign}$${Math.abs(v).toLocaleString("en-AU", { minimumFractionDigits: 2 })}`; };
 
@@ -1332,6 +1402,7 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
     const errs = {};
     if (!hasDate) errs.date = "Settlement date is required.";
     if (hasDate && !hasEntries) errs.entries = "No ledger entries found for this date.";
+    if (hasDate && hasEntries && preparationInvalid) errs.entries = PAYOUT_PREPARATION_ERROR;
     if (Object.keys(errs).length > 0) { setErrors(errs); return; }
     setErrors({});
     setCreating(true);
@@ -1375,11 +1446,18 @@ function MerchantPreparePayoutDialog({ open, onClose, onCreatePayouts, unassigne
         )}
 
         {hasDate && !hasEntries && (
-          <div className={`border rounded-lg px-4 py-8 text-center ${errors.entries ? "border-red-200 bg-red-50" : "border-gray-200"}`}><p className={`text-sm ${errors.entries ? "text-red-600" : "text-gray-400"}`}>No ledger entries found for this date.</p></div>
+          <div className={`border rounded-lg px-4 py-8 text-center ${errors.entries ? "border-red-200 bg-red-50" : "border-gray-200"}`}><p className={`text-sm ${errors.entries ? "text-red-600" : "text-gray-400"}`}>{errors.entries || "No ledger entries found for this date."}</p></div>
         )}
 
         {hasDate && hasEntries && (
-          <PayoutPreviewBreakdown breakdown={breakdown} />
+          <>
+            <PayoutPreviewBreakdown breakdown={breakdown} />
+            {preparationInvalid && (
+              <div className={`border rounded-lg px-4 py-3 ${errors.entries ? "border-red-200 bg-red-50" : "border-amber-200 bg-amber-50"}`}>
+                <p className={`text-sm ${errors.entries ? "text-red-600" : "text-amber-700"}`}>{PAYOUT_PREPARATION_ERROR}</p>
+              </div>
+            )}
+          </>
         )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
@@ -3338,7 +3416,7 @@ export default function MSPSupportDashboard() {
       // If it's a new payout (not found in existing list), add it
       if (extra && !prev.find((p) => p.id === payoutId) && extra.id) {
         // New payout — create initial audit log entry
-        handleAuditAppend(payoutId, { change: "Payout prepared", initiatedBy: "System" });
+        handleAuditAppend(payoutId, { change: "Payout prepared", code: "00", initiatedBy: "System" });
         return [extra, ...prev];
       }
       return prev.map((p) => {
