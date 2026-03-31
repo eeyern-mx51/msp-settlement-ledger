@@ -50,6 +50,7 @@ const Icons = {
   X: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>),
   Lock: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>),
   Eye: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>),
+  Calendar: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
   AlertTriangle: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>),
   FileText: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" /><path d="M14 2v6h6" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>),
   Settings: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
@@ -1455,13 +1456,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 font-medium">Settlement</span>
-          <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-          <span className="text-xs text-gray-400">–</span>
-          <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-        </div>
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} />
       </div>
 
       <Card>
@@ -1576,6 +1571,213 @@ const dateInRange = (dateStr, from, to) => {
 };
 
 // ═══════════════════════════════════════════════════════════
+// SETTLEMENT DATE RANGE PICKER
+// ═══════════════════════════════════════════════════════════
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const SHORT_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const DAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+
+function getCalendarDays(year, month) {
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month + 1, 0);
+  let startDay = first.getDay() - 1; // Monday = 0
+  if (startDay < 0) startDay = 6;
+  const days = [];
+  // previous month fill
+  for (let i = startDay - 1; i >= 0; i--) {
+    const d = new Date(year, month, -i);
+    days.push({ date: d, outside: true });
+  }
+  // current month
+  for (let i = 1; i <= last.getDate(); i++) {
+    days.push({ date: new Date(year, month, i), outside: false });
+  }
+  // next month fill to complete grid
+  const remaining = 7 - (days.length % 7);
+  if (remaining < 7) {
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ date: new Date(year, month + 1, i), outside: true });
+    }
+  }
+  return days;
+}
+
+function toYMD(date) {
+  if (!date) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function formatDisplay(dateStr) {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-");
+  return `${SHORT_MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
+}
+
+function isSameDay(a, b) {
+  return a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+}
+
+function isBetween(date, from, to) {
+  if (!from || !to) return false;
+  const t = date.getTime();
+  return t > from.getTime() && t < to.getTime();
+}
+
+function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  const today = new Date();
+  const initialMonth = from ? new Date(from + "T00:00:00") : today;
+  const [leftYear, setLeftYear] = useState(initialMonth.getFullYear());
+  const [leftMonth, setLeftMonth] = useState(initialMonth.getMonth());
+  const [selecting, setSelecting] = useState(null); // null | "from" - means we're picking `to` next
+  const [hovered, setHovered] = useState(null);
+
+  const fromDate = from ? new Date(from + "T00:00:00") : null;
+  const toDate = to ? new Date(to + "T00:00:00") : null;
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  // Reset calendar view when opening
+  useEffect(() => {
+    if (open) {
+      const base = fromDate || today;
+      setLeftYear(base.getFullYear());
+      setLeftMonth(base.getMonth());
+      setSelecting(null);
+      setHovered(null);
+    }
+  }, [open]);
+
+  const rightYear = leftMonth === 11 ? leftYear + 1 : leftYear;
+  const rightMonth = leftMonth === 11 ? 0 : leftMonth + 1;
+
+  const prevMonth = () => {
+    if (leftMonth === 0) { setLeftYear(y => y - 1); setLeftMonth(11); }
+    else setLeftMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (leftMonth === 11) { setLeftYear(y => y + 1); setLeftMonth(0); }
+    else setLeftMonth(m => m + 1);
+  };
+
+  const handleDayClick = (date) => {
+    if (selecting === null) {
+      // First click: set from
+      onChangeFrom(toYMD(date));
+      onChangeTo("");
+      setSelecting("from");
+    } else {
+      // Second click: set to (ensure from < to)
+      const f = fromDate || date;
+      if (date < f) {
+        onChangeFrom(toYMD(date));
+        onChangeTo(toYMD(f));
+      } else {
+        onChangeTo(toYMD(date));
+      }
+      setSelecting(null);
+      setOpen(false);
+    }
+  };
+
+  const renderCalendarMonth = (year, month) => {
+    const days = getCalendarDays(year, month);
+    return (
+      <div className="w-[260px]">
+        <div className="text-sm font-semibold text-gray-800 text-center mb-2">{MONTH_NAMES[month]} {year}</div>
+        <div className="grid grid-cols-7 mb-1">
+          {DAY_LABELS.map(d => <div key={d} className="text-center text-xs font-medium text-gray-400 py-1">{d}</div>)}
+        </div>
+        <div className="grid grid-cols-7">
+          {days.map(({ date, outside }, i) => {
+            const isFrom = fromDate && isSameDay(date, fromDate);
+            const isTo = toDate && isSameDay(date, toDate);
+            const effectiveTo = selecting === "from" && hovered ? hovered : toDate;
+            const effectiveFrom = fromDate;
+            const inRange = effectiveFrom && effectiveTo
+              ? (effectiveTo >= effectiveFrom ? isBetween(date, effectiveFrom, effectiveTo) : isBetween(date, effectiveTo, effectiveFrom))
+              : false;
+            const isHoveredDay = hovered && isSameDay(date, hovered) && selecting === "from";
+            const isSelected = isFrom || isTo;
+            const isRangeStart = isFrom && effectiveTo && effectiveTo >= effectiveFrom;
+            const isRangeEnd = (isTo || (isHoveredDay && selecting === "from")) && effectiveFrom;
+
+            let bgClass = "";
+            if (isSelected) bgClass = "bg-indigo-600 text-white";
+            else if (isHoveredDay && selecting === "from") bgClass = "bg-indigo-600 text-white";
+            else if (inRange) bgClass = "bg-indigo-50 text-indigo-700";
+            else if (outside) bgClass = "text-gray-300";
+            else bgClass = "text-gray-700 hover:bg-gray-100";
+
+            let roundClass = "";
+            if (isRangeStart) roundClass = "rounded-l-full";
+            if (isRangeEnd) roundClass = "rounded-r-full";
+            if (isSelected && !inRange && !(effectiveFrom && effectiveTo)) roundClass = "rounded-full";
+            if (isFrom && isTo) roundClass = "rounded-full";
+
+            return (
+              <div key={i}
+                className={`relative flex items-center justify-center h-8 text-sm cursor-pointer transition-colors ${inRange && !isSelected ? "bg-indigo-50" : ""} ${isRangeStart ? "rounded-l-full" : ""} ${isRangeEnd ? "rounded-r-full" : ""}`}
+                onClick={() => !outside && handleDayClick(date)}
+                onMouseEnter={() => !outside && setHovered(date)}
+                onMouseLeave={() => setHovered(null)}
+              >
+                <span className={`flex items-center justify-center w-8 h-8 rounded-full text-sm transition-colors ${isSelected || isHoveredDay ? "bg-indigo-600 text-white font-medium" : ""} ${!isSelected && !isHoveredDay && !outside ? "hover:bg-gray-100" : ""} ${outside ? "text-gray-300" : ""}`}>
+                  {date.getDate()}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const hasValue = from || to;
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+      >
+        <Icons.Calendar />
+        {from ? (
+          to ? <span>{formatDisplay(from)} – {formatDisplay(to)}</span> : <span>{formatDisplay(from)}</span>
+        ) : (
+          <span>Settlement date</span>
+        )}
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4" style={{ left: 0, top: "100%" }}>
+          <div className="flex items-center justify-between mb-3">
+            <button onClick={prevMonth} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icons.ChevronLeft /></button>
+            <div className="flex-1" />
+            <button onClick={nextMonth} className="p-1 rounded hover:bg-gray-100 text-gray-500"><Icons.ChevronRight /></button>
+          </div>
+          <div className="flex gap-6">
+            {renderCalendarMonth(leftYear, leftMonth)}
+            {renderCalendarMonth(rightYear, rightMonth)}
+          </div>
+          {hasValue && (
+            <div className="flex justify-end mt-3 pt-2 border-t border-gray-100">
+              <button onClick={() => { onClear(); setOpen(false); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear dates</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
@@ -1630,13 +1832,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <div className="flex items-center gap-3 flex-wrap">
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID…" className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 font-medium">Settlement</span>
-          <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-          <span className="text-xs text-gray-400">–</span>
-          <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-        </div>
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={clearAll} />
+        {hasActiveFilters && <button onClick={() => { setSearch(""); setSettlementFrom(""); setSettlementTo(""); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear all</button>}
       </div>
 
       <Card>
@@ -1722,13 +1919,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="flex items-center gap-1.5">
-          <span className="text-xs text-gray-500 font-medium">Settlement</span>
-          <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-          <span className="text-xs text-gray-400">–</span>
-          <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-        </div>
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} />
       </div>
 
       <Card>
