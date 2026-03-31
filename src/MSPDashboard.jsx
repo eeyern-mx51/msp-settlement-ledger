@@ -1958,12 +1958,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <Icons.Calendar />
-        {from ? (
-          to ? <span>{formatDisplay(from)} – {formatDisplay(to)}</span> : <span>{formatDisplay(from)}</span>
-        ) : (
-          <span>All</span>
-        )}
+        <span>Select {label.toLowerCase()}</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4" style={{ left: 0, top: "100%" }}>
@@ -2019,8 +2014,7 @@ function StatusFilterDropdown({ selected, onChange }) {
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <Icons.Filter />
-        {hasValue ? <span>{selected.size} selected</span> : <span>All</span>}
+        <span>Select status</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2058,13 +2052,6 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
 
   const hasValue = min !== "" || max !== "";
 
-  const formatLabel = () => {
-    if (min && max) return `$${min} – $${max}`;
-    if (min) return `$${min}+`;
-    if (max) return `Up to $${max}`;
-    return "All";
-  };
-
   return (
     <div className="relative" ref={ref}>
       <span className="block text-[11px] font-medium text-gray-500 mb-1">Amount</span>
@@ -2072,8 +2059,7 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <span className="text-base font-medium leading-none">$</span>
-        <span>{formatLabel()}</span>
+        <span>Select amount range</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-[240px]" style={{ left: 0, top: "100%" }}>
@@ -2129,8 +2115,7 @@ function AdjustmentTypeFilterDropdown({ selected, onChange }) {
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <Icons.Filter />
-        {hasValue ? <span>{selected.size} selected</span> : <span>All</span>}
+        <span>Select type</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
