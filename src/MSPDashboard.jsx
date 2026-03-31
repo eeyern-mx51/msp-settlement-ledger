@@ -1003,7 +1003,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
 
       <button onClick={onBack} className="flex items-center gap-1 text-sm font-medium text-indigo-600 hover:underline"><Icons.ChevronLeft /> Back to payouts</button>
 
-      <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} automationConfig={automationConfig} />
+      {!isTerminal && <ActiveHoldBanners holdRecords={holdRecords} level="payout" entity={payout.id} mid={payout.mid} merchantName={merchantName || payout.merchantName} automationConfig={automationConfig} />}
 
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
@@ -1911,7 +1911,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Filter
   let filtered = payouts;
-  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q) || (p.merchantName || "").toLowerCase().includes(q) || (p.mid || "").toLowerCase().includes(q)); }
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q) || (p.merchantName || "").toLowerCase().includes(q) || (p.mid || "").toLowerCase().includes(q) || (p.amount || "").toLowerCase().includes(q)); }
   if (settlementFrom || settlementTo) filtered = filtered.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
 
   // Sort
@@ -1927,7 +1927,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
       <div className="flex items-center gap-3 flex-wrap">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID…" className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID, amount…" className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={clearAll} />
         {hasActiveFilters && <button onClick={() => { setSearch(""); setSettlementFrom(""); setSettlementTo(""); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear all</button>}
       </div>
