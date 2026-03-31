@@ -1665,7 +1665,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
       </div>
 
       <Card>
@@ -1819,7 +1819,7 @@ function toYMD(date) {
 function formatDisplay(dateStr) {
   if (!dateStr) return "";
   const [y, m, d] = dateStr.split("-");
-  return `${SHORT_MONTHS[parseInt(m, 10) - 1]} ${parseInt(d, 10)}, ${y}`;
+  return `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
 }
 
 function isSameDay(a, b) {
@@ -2227,7 +2227,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={setAmountMin} onChangeMax={setAmountMax} onClear={() => { setAmountMin(""); setAmountMax(""); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={setCreatedFrom} onChangeTo={setCreatedTo} onClear={() => { setCreatedFrom(""); setCreatedTo(""); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={() => { setSettlementFrom(""); setSettlementTo(""); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
       </div>
 
       <Card>
@@ -2335,7 +2335,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
       </div>
 
       <Card>
