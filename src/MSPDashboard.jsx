@@ -1454,18 +1454,19 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-medium">Settlement</span>
+          <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+          <span className="text-xs text-gray-400">–</span>
+          <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+        </div>
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3 flex-1">
-            <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
-            <div className="flex items-center gap-1.5 ml-4">
-              <span className="text-xs text-gray-500 font-medium">Settlement</span>
-              <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-              <span className="text-xs text-gray-400">–</span>
-              <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-            </div>
-            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
-          </div>
+          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1627,19 +1628,20 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
+      <div className="flex items-center gap-3 flex-wrap">
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID…" className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-medium">Settlement</span>
+          <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+          <span className="text-xs text-gray-400">–</span>
+          <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+        </div>
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3 flex-1">
-            <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID…" className="ml-4 text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs text-gray-500 font-medium">Settlement</span>
-              <input type="date" value={settlementFrom} onChange={(e) => setSettlementFrom(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-              <span className="text-xs text-gray-400">–</span>
-              <input type="date" value={settlementTo} onChange={(e) => setSettlementTo(e.target.value)} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-            </div>
-            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
-          </div>
+          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
           {canWrite && (
             <div className="flex items-center gap-2">
               <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
@@ -1719,18 +1721,19 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500 font-medium">Settlement</span>
+          <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+          <span className="text-xs text-gray-400">–</span>
+          <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
+        </div>
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3 flex-1">
-            <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
-            <div className="flex items-center gap-1.5 ml-4">
-              <span className="text-xs text-gray-500 font-medium">Settlement</span>
-              <input type="date" value={settlementFrom} onChange={(e) => { setSettlementFrom(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-              <span className="text-xs text-gray-400">–</span>
-              <input type="date" value={settlementTo} onChange={(e) => { setSettlementTo(e.target.value); setCurrentPage(1); }} className="text-sm border border-gray-300 rounded-lg px-2 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[130px]" />
-            </div>
-            {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>}
-          </div>
+          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
             {canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
