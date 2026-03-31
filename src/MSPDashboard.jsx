@@ -699,6 +699,14 @@ const auditLogs = {
     { ts: "22 Feb 2026, 1:45 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
   ],
 
+  // ── Completed — full lifecycle (Bella's Boutique) ──
+  "PO-2026-0222-003": [
+    { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "22 Feb 2026, 9:25 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "22 Feb 2026, 10:10 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "22 Feb 2026, 2:15 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
   // ── Completed — approved with zero amount (auto-completed) ──
   "PO-2026-0222-002": [
     { ts: "22 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
@@ -709,6 +717,94 @@ const auditLogs = {
   "PO-2026-0221-001": [
     { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
     { ts: "21 Feb 2026, 10:15 AM", change: "Payout approved (debt deferral)", initiatedBy: "Sarah Chen", version: 2, note: "Negative balance — debt deferred to next cycle." },
+  ],
+
+  // ── Completed — full lifecycle (Joe's Coffee, 21 Feb) ──
+  "PO-2026-0221-002": [
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 8:50 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "21 Feb 2026, 9:30 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "21 Feb 2026, 12:20 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Coastal Surf Shop, 21 Feb) ──
+  "PO-2026-0221-003": [
+    { ts: "21 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "21 Feb 2026, 9:10 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2, note: "Amounts verified against DTE totals." },
+    { ts: "21 Feb 2026, 10:00 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "21 Feb 2026, 1:40 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Coastal Surf Shop, 19 Feb) ──
+  "PO-2026-0219-002": [
+    { ts: "19 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "19 Feb 2026, 8:40 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "19 Feb 2026, 9:15 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "19 Feb 2026, 11:50 AM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Joe's Coffee, 18 Feb) ──
+  "PO-2026-0218-002": [
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:20 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "18 Feb 2026, 9:10 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 12:30 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Fresh Mart, 18 Feb) ──
+  "PO-2026-0218-003": [
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:35 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2, note: "Large settlement — double-checked transaction breakdown." },
+    { ts: "18 Feb 2026, 9:20 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "18 Feb 2026, 1:10 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Coastal Surf Shop, 18 Feb) ──
+  "PO-2026-0218-004": [
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 8:45 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "18 Feb 2026, 9:30 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "18 Feb 2026, 12:45 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Bella's Boutique, 18 Feb) ──
+  "PO-2026-0218-005": [
+    { ts: "18 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "18 Feb 2026, 9:00 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "18 Feb 2026, 9:45 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "18 Feb 2026, 1:20 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Mike's Electronics, 17 Feb) ──
+  "PO-2026-0217-002": [
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 8:30 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2, note: "High-value payout — verified against daily limits." },
+    { ts: "17 Feb 2026, 9:15 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "17 Feb 2026, 12:50 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Coastal Surf Shop, 17 Feb) ──
+  "PO-2026-0217-003": [
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 9:05 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "17 Feb 2026, 9:50 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "17 Feb 2026, 1:30 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Fresh Mart, 17 Feb) ──
+  "PO-2026-0217-004": [
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 8:55 AM", change: "Payout approved", initiatedBy: "Sarah Chen", version: 2 },
+    { ts: "17 Feb 2026, 9:40 AM", change: "Transfer initiated", initiatedBy: "Sarah Chen", version: 3 },
+    { ts: "17 Feb 2026, 12:15 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
+  ],
+
+  // ── Completed — full lifecycle (Joe's Coffee, 17 Feb) ──
+  "PO-2026-0217-005": [
+    { ts: "17 Feb 2026, 6:00 AM", change: "Payout prepared", initiatedBy: "System", version: 1 },
+    { ts: "17 Feb 2026, 9:20 AM", change: "Payout approved", initiatedBy: "Tom Wright", version: 2 },
+    { ts: "17 Feb 2026, 10:05 AM", change: "Transfer initiated", initiatedBy: "Tom Wright", version: 3 },
+    { ts: "17 Feb 2026, 1:55 PM", change: "Transfer completed", initiatedBy: "System", version: 4 },
   ],
 
   // ── Failed — retryable then non-retryable ──
