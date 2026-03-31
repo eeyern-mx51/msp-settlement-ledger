@@ -1627,7 +1627,6 @@ function MerchantAdjustmentsTab({ role, mid }) {
   if (search) {
     const q = search.toLowerCase();
     filtered = filtered.filter(a =>
-      a.id.toLowerCase().includes(q) ||
       (a.initiatedBy || "").toLowerCase().includes(q) ||
       (a.payoutId || "").toLowerCase().includes(q)
     );
@@ -1654,10 +1653,13 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search ID, initiated by, payout…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[250px]" />
+      <div className="flex items-end gap-2.5 flex-wrap">
+        <div>
+          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Initiated by, payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[250px]" />
+          </div>
         </div>
         <AdjustmentTypeFilterDropdown selected={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }} />
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
@@ -1668,7 +1670,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Adjustments<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Adjustments</span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.Plus />} onClick={() => setShowCreate(true)} disabled={!canWrite}>Create adjustment</Button>
           </div>
@@ -1692,7 +1694,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
           </tbody></table></div>
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-100">
-              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages} ({filtered.length} results, {PAGE_SIZE} per page)</span>
+              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages}</span>
               <div className="flex gap-2">
                 <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
                 <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
@@ -1951,6 +1953,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
 
   return (
     <div className="relative" ref={ref}>
+      <span className="block text-[11px] font-medium text-gray-500 mb-1">{label}</span>
       <button
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
@@ -1959,7 +1962,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
         {from ? (
           to ? <span>{formatDisplay(from)} – {formatDisplay(to)}</span> : <span>{formatDisplay(from)}</span>
         ) : (
-          <span>{label}</span>
+          <span>All</span>
         )}
       </button>
       {open && (
@@ -2011,12 +2014,13 @@ function StatusFilterDropdown({ selected, onChange }) {
 
   return (
     <div className="relative" ref={ref}>
+      <span className="block text-[11px] font-medium text-gray-500 mb-1">Status</span>
       <button
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
         <Icons.Filter />
-        {hasValue ? <span>Status ({selected.size})</span> : <span>Status</span>}
+        {hasValue ? <span>{selected.size} selected</span> : <span>All</span>}
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2058,11 +2062,12 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
     if (min && max) return `$${min} – $${max}`;
     if (min) return `$${min}+`;
     if (max) return `Up to $${max}`;
-    return "Amount";
+    return "All";
   };
 
   return (
     <div className="relative" ref={ref}>
+      <span className="block text-[11px] font-medium text-gray-500 mb-1">Amount</span>
       <button
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
@@ -2119,12 +2124,13 @@ function AdjustmentTypeFilterDropdown({ selected, onChange }) {
 
   return (
     <div className="relative" ref={ref}>
+      <span className="block text-[11px] font-medium text-gray-500 mb-1">Type</span>
       <button
         onClick={() => setOpen(!open)}
         className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
         <Icons.Filter />
-        {hasValue ? <span>Type ({selected.size})</span> : <span>Type</span>}
+        {hasValue ? <span>{selected.size} selected</span> : <span>All</span>}
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2213,10 +2219,13 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+      <div className="flex items-end gap-2.5 flex-wrap">
+        <div>
+          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+          </div>
         </div>
         <StatusFilterDropdown selected={statusFilter} onChange={setStatusFilter} />
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={setAmountMin} onChangeMax={setAmountMax} onClear={() => { setAmountMin(""); setAmountMax(""); }} />
@@ -2227,7 +2236,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filteredPayouts.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Payouts</span>
           {canWrite && (
             <div className="flex items-center gap-2">
               <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>
@@ -2318,10 +2327,13 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
-      <div className="flex items-center gap-2.5 flex-wrap">
-        <div className="relative">
-          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-          <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+      <div className="flex items-end gap-2.5 flex-wrap">
+        <div>
+          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+          <div className="relative">
+            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+          </div>
         </div>
         <StatusFilterDropdown selected={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} />
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
@@ -2332,7 +2344,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <Card>
         <CardHeader>
-          <span className="text-lg font-semibold text-gray-800">Payouts<span className="ml-2 text-sm font-normal text-gray-400">{filtered.length} results</span></span>
+          <span className="text-lg font-semibold text-gray-800">Payouts</span>
           <div className="flex items-center gap-2">
             <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
             {canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
@@ -2352,7 +2364,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
-              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages} ({filtered.length} results, {PAGE_SIZE} per page)</span>
+              <span className="text-xs text-gray-400">Page {currentPage} of {totalPages}</span>
               <div className="flex gap-2">
                 <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</Button>
                 <Button variant="outline" colorScheme="neutral" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</Button>
