@@ -384,7 +384,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
       // Preparation
       if (draft.manualPrep !== liveManualPrep) {
         if (draft.manualPrep) {
-          const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase: "preparation", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true };
+          const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase: "preparation", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: nowTimestamp(), active: true };
           onCreateHold(record);
         } else {
           currentHolds.filter(h => h.phase === "preparation").forEach(h => onReleaseHold(h.id));
@@ -394,7 +394,7 @@ function HoldsDialog({ open, onClose, level, entity, entityLabel, mid, holdRecor
       if (draft.manualProg !== liveManualProg) {
         if (draft.manualProg) {
           ["approval", "begin_transfer"].forEach(phase => {
-            const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: nowTimestamp(), active: true };
+            const record = { id: generateHoldId(), level, entity: level === "fleet" ? null : entity, phase, trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: nowTimestamp(), active: true };
             onCreateHold(record);
           });
         } else {
@@ -545,7 +545,7 @@ function PayoutStatusBadge({ status, hold, amount, holdRecords, payoutId, mid, a
 }
 
 // ─── Global role context (simulated) ───
-const ROLES = { FINOPS_T1: "FinOps Administrator", FINOPS_T2: "FinOps View only" };
+const ROLES = { FINANCE_ADMIN: "Finance Administrator", FINANCE_VIEWER: "Finance Viewer" };
 const STATUS_PROGRESSION_ORDER = { "Ready for Review": 0, "Ready for Transfer": 1, "Transferring": 2, "Failed": 3, "Completed": 4, "Abandoned": 5 };
 const getStatusOrder = (payout) => (STATUS_PROGRESSION_ORDER[payout.status] ?? 99);
 
@@ -598,8 +598,8 @@ function getEffectiveHolds(holdRecords, payoutId, mid) {
 
 // ─── INITIAL HOLD RECORDS ───
 const initialHoldRecords = [
-  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
-  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (FinOps Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
+  { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -929,13 +929,13 @@ function AuditTimeline({ entries }) {
 // ═══════════════════════════════════════════════════════════
 function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, onCreateHold, onReleaseHold, merchantName, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
   const { addToast } = useToast();
-  const canWrite = role === ROLES.FINOPS_T1;
+  const canWrite = role === ROLES.FINANCE_ADMIN;
   const isFailed = payout.status === "Failed";
   const isCompleted = payout.status === "Completed";
   const isAbandoned = payout.status === "Abandoned";
   const isTerminal = isCompleted || isAbandoned;
   const auditLog = (auditLogState && auditLogState[payout.id]) || auditLogs[payout.id] || defaultAuditLog(payout);
-  const userName = role === ROLES.FINOPS_T1 ? "Sarah Chen" : "View User";
+  const userName = role === ROLES.FINANCE_ADMIN ? "Sarah Chen" : "Alex Taylor";
 
   // Check if progression is blocked by holds (for holdable statuses)
   const isProgBlocked = !isTerminal && holdRecords && isProgressionBlocked(holdRecords, payout.id, payout.mid, payout.status);
@@ -1009,7 +1009,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
       {isFailed && (<Alert type="error" title="Payout failed">This payout has failed. Check the audit log for more information.</Alert>)}
       {isAbandoned && (<Alert type="warning" title="Payout abandoned">This payout has been permanently abandoned. All transactions have been returned to the ledger and will be allocated to the next payout preparation.</Alert>)}
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a FinOps Administrator user to perform actions.</span></div>)}
+      {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>You have read-only access. Contact a Finance Administrator to perform actions.</span></div>)}
 
       <Card>
         <CardHeader>
@@ -1524,7 +1524,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const [selectedAdj, setSelectedAdj] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const canWrite = role === ROLES.FINOPS_T1;
+  const canWrite = role === ROLES.FINANCE_ADMIN;
   const PAGE_SIZE = 20;
 
   const [settlementFrom, setSettlementFrom] = useState("");
@@ -1550,7 +1550,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
     <div className="p-6 space-y-5">
       <CreateAdjustmentDialog open={showCreate} onClose={() => setShowCreate(false)} onCreateAdjustment={handleCreate} mid={mid} />
 
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
+      {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
       <div className="flex items-center gap-3 flex-wrap">
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} />
@@ -1997,7 +1997,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const [showHolds, setShowHolds] = useState(false);
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
-  const canWrite = role === ROLES.FINOPS_T1;
+  const canWrite = role === ROLES.FINANCE_ADMIN;
   const { addToast } = useToast();
 
   // Search & filter state
@@ -2044,7 +2044,7 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   return (
     <div className="p-6 space-y-5">
-      {role === ROLES.FINOPS_T2 && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
+      {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view payouts but cannot perform actions.</span></div>)}
 
       <HoldsDialog open={showHolds} onClose={() => setShowHolds(false)} level="fleet" entity={null} entityLabel="Fleet" mid={null} holdRecords={holdRecords} onCreateHold={onCreateHold} onReleaseHold={onReleaseHold} automationConfig={automationConfig} onUpdateAutomationConfig={onUpdateAutomationConfig} canWrite={canWrite} />
 
@@ -2110,7 +2110,7 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const [sortCol, setSortCol] = useState("Status");
   const [sortDir, setSortDir] = useState("asc");
   const PAGE_SIZE = 20;
-  const canWrite = role === ROLES.FINOPS_T1;
+  const canWrite = role === ROLES.FINANCE_ADMIN;
   const { addToast } = useToast();
 
   // Search & filter state
@@ -2380,7 +2380,7 @@ const uxArtefactsList = [
   { id: "lifecycle", title: "Payout Lifecycle State Machine", description: "Clickable SVG state diagram — 8 states with transitions, entry conditions, and exit actions", type: "React Component", icon: "state", component: PayoutLifecycle },
   { id: "e2e", title: "E2E Merchant → Payout Journey", description: "8-step expandable timeline from Cuscal DTE ingestion to NPP transfer, filterable by phase", type: "React Component", icon: "journey", component: E2EPayoutJourney },
   { id: "actions", title: "FinOps Action Flows", description: "Step-by-step interaction flows for Approve, Hold, Abandon, Begin Transfer, and Release Hold with edge cases", type: "React Component", icon: "actions", component: FinOpsActionFlows },
-  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for FinOps Administrator and FinOps View only across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
+  { id: "permissions", title: "Permissions & Roles Matrix", description: "Interactive role/permission grid for Finance Administrator and Finance Viewer across 20+ actions", type: "React Component", icon: "roles", component: PermissionsMatrix },
   { id: "dte-wireframes", title: "DTE → Payout Wireframes", description: "Lo-fi wireframes for the full DTE-to-payout pipeline — 7 steps from file generation through NPP transfer, with screen mockups", type: "React Component", icon: "wireframe", component: DTEtoPayoutWireframes },
   { id: "data-dictionary", title: "Payout Data Dictionary", description: "Comprehensive terminology reference — statuses, flags, actions, and roles with use cases, audit log examples, and UX justification", type: "React Component", icon: "docs", component: PayoutDataDictionary },
   { id: "progression-controls", title: "Payout Progression Controls", description: "Framework for Hold/Release Hold model — scope levels (fleet/merchant/payout), automation switches, failure controls, and resolved decisions", type: "React Component", icon: "controls", component: PayoutProgressionControls },
@@ -3282,8 +3282,8 @@ function Header({ icon, heading, onToggleSidebar, role, onRoleChange, featureEna
         <div className="flex items-center gap-1.5 text-xs text-gray-400">
           <span>Role:</span>
           <select value={role} onChange={(e) => onRoleChange(e.target.value)} className="text-xs bg-white border border-gray-200 rounded px-1.5 py-1 text-gray-700 focus:outline-none focus:ring-1 focus:ring-indigo-300">
-            <option value={ROLES.FINOPS_T1}>FinOps Administrator</option>
-            <option value={ROLES.FINOPS_T2}>FinOps View only</option>
+            <option value={ROLES.FINANCE_ADMIN}>Finance Administrator</option>
+            <option value={ROLES.FINANCE_VIEWER}>Finance Viewer</option>
           </select>
         </div>
       </div>
@@ -3313,7 +3313,7 @@ export default function MSPSupportDashboard() {
   const [merchantDetailView, setMerchantDetailView] = useState(initial.detail);
   const [initialMerchantTab] = useState(initial.tab);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [role, setRole] = useState(ROLES.FINOPS_T1);
+  const [role, setRole] = useState(ROLES.FINANCE_ADMIN);
   const [featureEnabled, setFeatureEnabled] = useState(true);
   const [payouts, setPayouts] = useState(mockPayouts);
   const [unassignedMLEs, setUnassignedMLEs] = useState([...mockUnassignedMLEs]);
