@@ -1604,16 +1604,41 @@ function MerchantAdjustmentsTab({ role, mid }) {
   const canWrite = role === ROLES.FINANCE_ADMIN;
   const PAGE_SIZE = 20;
 
+  // Search & filter state
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState(new Set());
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [settlementFrom, setSettlementFrom] = useState("");
   const [settlementTo, setSettlementTo] = useState("");
 
-  const hasActiveFilters = settlementFrom || settlementTo;
-  const clearAll = () => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
+  const hasActiveFilters = search || typeFilter.size > 0 || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
+  const clearAll = () => { setSearch(""); setTypeFilter(new Set()); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
 
   const handleCreate = (newAdj) => { setAdjustments((prev) => [newAdj, ...prev]); setCurrentPage(1); };
 
+  // Resolve display type for filtering
+  const getAdjType = (a) => a.entryType || "Generic";
+
   // Filter
   let filtered = adjustments;
+  if (search) {
+    const q = search.toLowerCase();
+    filtered = filtered.filter(a =>
+      a.id.toLowerCase().includes(q) ||
+      (a.initiatedBy || "").toLowerCase().includes(q) ||
+      (a.payoutId || "").toLowerCase().includes(q)
+    );
+  }
+  if (typeFilter.size > 0) filtered = filtered.filter(a => typeFilter.has(getAdjType(a)));
+  if (amountMin || amountMax) {
+    const lo = amountMin ? parseFloat(amountMin) : -Infinity;
+    const hi = amountMax ? parseFloat(amountMax) : Infinity;
+    filtered = filtered.filter(a => { const v = parseAmount(a.amount); return v >= lo && v <= hi; });
+  }
+  if (createdFrom || createdTo) filtered = filtered.filter(a => dateInRange(a.date, createdFrom, createdTo));
   if (settlementFrom || settlementTo) filtered = filtered.filter(a => dateInRange(a.requestedSettlementDate, settlementFrom, settlementTo));
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -1629,8 +1654,16 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} />
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search ID, initiated by, payout…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[250px]" />
+        </div>
+        <AdjustmentTypeFilterDropdown selected={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }} />
+        <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
+        <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
       </div>
 
       <Card>
@@ -2052,6 +2085,59 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
           {hasValue && (
             <div className="flex justify-end mt-3 pt-2 border-t border-gray-100">
               <button onClick={() => { onClear(); setOpen(false); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// ADJUSTMENT TYPE FILTER DROPDOWN
+// ═══════════════════════════════════════════════════════════
+const ALL_ADJUSTMENT_TYPES = ["Generic", "Debt deferral", "Debt rollover"];
+function AdjustmentTypeFilterDropdown({ selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggle = (type) => {
+    const next = new Set(selected);
+    if (next.has(type)) next.delete(type); else next.add(type);
+    onChange(next);
+  };
+
+  const hasValue = selected.size > 0;
+  const typeColors = { "Generic": "bg-indigo-500", "Debt deferral": "bg-red-500", "Debt rollover": "bg-emerald-500" };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+      >
+        <Icons.Filter />
+        {hasValue ? <span>Type ({selected.size})</span> : <span>Type</span>}
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
+          {ALL_ADJUSTMENT_TYPES.map(t => (
+            <label key={t} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <input type="checkbox" checked={selected.has(t)} onChange={() => toggle(t)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+              <span className={`w-2 h-2 rounded-full ${typeColors[t]}`} />
+              <span className="text-sm text-gray-700">{t}</span>
+            </label>
+          ))}
+          {hasValue && (
+            <div className="flex justify-end mt-1 pt-1.5 border-t border-gray-100">
+              <button onClick={() => { onChange(new Set()); setOpen(false); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2">Clear</button>
             </div>
           )}
         </div>
