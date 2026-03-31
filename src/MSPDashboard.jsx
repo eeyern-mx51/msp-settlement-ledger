@@ -51,6 +51,7 @@ const Icons = {
   Lock: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0110 0v4" /></svg>),
   Eye: () => (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>),
   Calendar: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>),
+  Filter: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46" /></svg>),
   AlertTriangle: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>),
   FileText: () => (<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" /><path d="M14 2v6h6" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>),
   Settings: () => (<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" /></svg>),
@@ -1719,7 +1720,7 @@ function isBetween(date, from, to) {
   return t > from.getTime() && t < to.getTime();
 }
 
-function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear }) {
+function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear, label = "Settlement date" }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
   const today = new Date();
@@ -1848,7 +1849,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
         {from ? (
           to ? <span>{formatDisplay(from)} – {formatDisplay(to)}</span> : <span>{formatDisplay(from)}</span>
         ) : (
-          <span>Settlement date</span>
+          <span>{label}</span>
         )}
       </button>
       {open && (
@@ -1874,6 +1875,120 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
 }
 
 // ═══════════════════════════════════════════════════════════
+// STATUS FILTER DROPDOWN
+// ═══════════════════════════════════════════════════════════
+const ALL_PAYOUT_STATUSES = ["Ready for Review", "Ready for Transfer", "Transferring", "Completed", "Failed", "Abandoned"];
+
+function StatusFilterDropdown({ selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const toggle = (status) => {
+    const next = new Set(selected);
+    if (next.has(status)) next.delete(status); else next.add(status);
+    onChange(next);
+  };
+
+  const hasValue = selected.size > 0;
+  const statusColors = { "Ready for Review": "bg-blue-500", "Ready for Transfer": "bg-indigo-500", "Transferring": "bg-purple-500", "Completed": "bg-emerald-500", "Failed": "bg-red-500", "Abandoned": "bg-gray-400" };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+      >
+        <Icons.Filter />
+        {hasValue ? <span>Status ({selected.size})</span> : <span>Status</span>}
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
+          {ALL_PAYOUT_STATUSES.map(s => (
+            <label key={s} className="flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+              <input type="checkbox" checked={selected.has(s)} onChange={() => toggle(s)} className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5" />
+              <span className={`w-2 h-2 rounded-full ${statusColors[s]}`} />
+              <span className="text-sm text-gray-700">{s}</span>
+            </label>
+          ))}
+          {hasValue && (
+            <div className="flex justify-end mt-1 pt-1.5 border-t border-gray-100">
+              <button onClick={() => { onChange(new Set()); setOpen(false); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium px-2">Clear</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// AMOUNT RANGE FILTER
+// ═══════════════════════════════════════════════════════════
+function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const hasValue = min !== "" || max !== "";
+
+  const formatLabel = () => {
+    if (min && max) return `$${min} – $${max}`;
+    if (min) return `$${min}+`;
+    if (max) return `Up to $${max}`;
+    return "Amount";
+  };
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+      >
+        <span className="text-base font-medium leading-none">$</span>
+        <span>{formatLabel()}</span>
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-[240px]" style={{ left: 0, top: "100%" }}>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Minimum ($)</label>
+              <input type="number" value={min} onChange={(e) => onChangeMin(e.target.value)} placeholder="0" min="0" step="any" className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Maximum ($)</label>
+              <input type="number" value={max} onChange={(e) => onChangeMax(e.target.value)} placeholder="No limit" min="0" step="any" className="w-full text-sm border border-gray-300 rounded-lg px-2.5 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400" />
+            </div>
+          </div>
+          {hasValue && (
+            <div className="flex justify-end mt-3 pt-2 border-t border-gray-100">
+              <button onClick={() => { onClear(); setOpen(false); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// AMOUNT PARSING HELPER
+// ═══════════════════════════════════════════════════════════
+const parseAmount = (amountStr) => parseFloat((amountStr || "").replace(/[^0-9.-]/g, "")) || 0;
+
+// ═══════════════════════════════════════════════════════════
 // FLEET PAYOUTS PAGE
 // ═══════════════════════════════════════════════════════════
 function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange, unassignedMLEs, holdRecords, onCreateHold, onReleaseHold, automationConfig, onUpdateAutomationConfig, auditLogState, onAuditAppend }) {
@@ -1885,7 +2000,13 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
 
+  // Search & filter state
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState(new Set());
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [settlementFrom, setSettlementFrom] = useState("");
   const [settlementTo, setSettlementTo] = useState("");
 
@@ -1894,8 +2015,8 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
     else { setSortCol(col); setSortDir("asc"); }
   };
 
-  const hasActiveFilters = search || settlementFrom || settlementTo;
-  const clearAll = () => { setSearch(""); setSettlementFrom(""); setSettlementTo(""); };
+  const hasActiveFilters = search || statusFilter.size > 0 || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
+  const clearAll = () => { setSearch(""); setStatusFilter(new Set()); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); };
 
   if (!featureEnabled) return (
     <div className="p-6"><Card><CardBody className="py-16 text-center space-y-3">
@@ -1911,11 +2032,14 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
   // Filter
   let filtered = payouts;
-  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q) || (p.merchantName || "").toLowerCase().includes(q) || (p.mid || "").toLowerCase().includes(q) || (p.amount || "").toLowerCase().includes(q)); }
+  if (search) { const q = search.toLowerCase(); filtered = filtered.filter(p => p.id.toLowerCase().includes(q)); }
+  if (statusFilter.size > 0) filtered = filtered.filter(p => statusFilter.has(p.status));
+  if (amountMin || amountMax) { const lo = amountMin ? parseFloat(amountMin) : -Infinity; const hi = amountMax ? parseFloat(amountMax) : Infinity; filtered = filtered.filter(p => { const a = parseAmount(p.amount); return a >= lo && a <= hi; }); }
+  if (createdFrom || createdTo) filtered = filtered.filter(p => dateInRange(p.createdAt || p.date, createdFrom, createdTo));
   if (settlementFrom || settlementTo) filtered = filtered.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
 
   // Sort
-  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Merchant": p => p.merchantName, "Amount": p => parseAmount(p.amount), "Status": p => getStatusOrder(p) };
   const filteredPayouts = sortCol && sortKeyMap[sortCol] ? [...filtered].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : filtered;
 
   return (
@@ -1926,10 +2050,16 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID, merchant, MID, amount…" className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[260px]" />
-        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={clearAll} />
-        {hasActiveFilters && <button onClick={() => { setSearch(""); setSettlementFrom(""); setSettlementTo(""); }} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">Clear all</button>}
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+        </div>
+        <StatusFilterDropdown selected={statusFilter} onChange={setStatusFilter} />
+        <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={setAmountMin} onChangeMax={setAmountMax} onClear={() => { setAmountMin(""); setAmountMax(""); }} />
+        <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={setCreatedFrom} onChangeTo={setCreatedTo} onClear={() => { setCreatedFrom(""); setCreatedTo(""); }} label="Created date" />
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={() => { setSettlementFrom(""); setSettlementTo(""); }} label="Settlement date" />
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
       </div>
 
       <Card>
@@ -1983,21 +2113,32 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
   const canWrite = role === ROLES.FINOPS_T1;
   const { addToast } = useToast();
 
+  // Search & filter state
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState(new Set());
+  const [amountMin, setAmountMin] = useState("");
+  const [amountMax, setAmountMax] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
   const [settlementFrom, setSettlementFrom] = useState("");
   const [settlementTo, setSettlementTo] = useState("");
 
   const handleSort = (col) => { if (sortCol === col) { setSortDir(d => d === "asc" ? "desc" : "asc"); } else { setSortCol(col); setSortDir("asc"); } };
   const merchantPayouts = payouts.filter((p) => p.mid === (mid || "POSPAY00012345"));
 
-  const hasActiveFilters = settlementFrom || settlementTo;
-  const clearAll = () => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
+  const hasActiveFilters = search || statusFilter.size > 0 || amountMin || amountMax || createdFrom || createdTo || settlementFrom || settlementTo;
+  const clearAll = () => { setSearch(""); setStatusFilter(new Set()); setAmountMin(""); setAmountMax(""); setCreatedFrom(""); setCreatedTo(""); setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); };
 
   // Filter
   let afterFilter = merchantPayouts;
+  if (search) { const q = search.toLowerCase(); afterFilter = afterFilter.filter(p => p.id.toLowerCase().includes(q)); }
+  if (statusFilter.size > 0) afterFilter = afterFilter.filter(p => statusFilter.has(p.status));
+  if (amountMin || amountMax) { const lo = amountMin ? parseFloat(amountMin) : -Infinity; const hi = amountMax ? parseFloat(amountMax) : Infinity; afterFilter = afterFilter.filter(p => { const a = parseAmount(p.amount); return a >= lo && a <= hi; }); }
+  if (createdFrom || createdTo) afterFilter = afterFilter.filter(p => dateInRange(p.createdAt || p.date, createdFrom, createdTo));
   if (settlementFrom || settlementTo) afterFilter = afterFilter.filter(p => dateInRange(p.settlementDate || p.date, settlementFrom, settlementTo));
 
   // Sort
-  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseFloat((p.amount || "").replace(/[^0-9.-]/g, "")) || 0, "Status": p => getStatusOrder(p) };
+  const sortKeyMap = { "Created": p => p.createdAt || p.date, "Settlement date": p => p.settlementDate || p.date, "Payout ID": p => p.id, "Amount": p => parseAmount(p.amount), "Status": p => getStatusOrder(p) };
   const filtered = sortCol && sortKeyMap[sortCol] ? [...afterFilter].sort((a, b) => { const av = sortKeyMap[sortCol](a), bv = sortKeyMap[sortCol](b); const cmp = typeof av === "number" ? av - bv : String(av).localeCompare(String(bv)); return sortDir === "asc" ? cmp : -cmp; }) : afterFilter;
 
   // Pagination
@@ -2014,8 +2155,16 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} />
+      <div className="flex items-center gap-2.5 flex-wrap">
+        <div className="relative">
+          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+          <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Search payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+        </div>
+        <StatusFilterDropdown selected={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} />
+        <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
+        <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
+        <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1">Clear all</button>}
       </div>
 
       <Card>
