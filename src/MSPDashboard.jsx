@@ -1956,9 +1956,13 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
       <span className="block text-[11px] font-medium text-gray-500 mb-1">{label}</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[200px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <span>Select {label.toLowerCase()}</span>
+        {from ? (
+          to ? <span className="truncate">{formatDisplay(from)} – {formatDisplay(to)}</span> : <span className="truncate">{formatDisplay(from)}</span>
+        ) : (
+          <span className="truncate">Select {label.toLowerCase()}</span>
+        )}
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4" style={{ left: 0, top: "100%" }}>
@@ -2012,9 +2016,9 @@ function StatusFilterDropdown({ selected, onChange }) {
       <span className="block text-[11px] font-medium text-gray-500 mb-1">Status</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[160px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <span>Select status</span>
+        <span className="truncate">{hasValue ? `${selected.size} selected` : "Select status"}</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2052,14 +2056,21 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
 
   const hasValue = min !== "" || max !== "";
 
+  const formatLabel = () => {
+    if (min && max) return `$${min} – $${max}`;
+    if (min) return `$${min}+`;
+    if (max) return `Up to $${max}`;
+    return "Select amount range";
+  };
+
   return (
     <div className="relative" ref={ref}>
       <span className="block text-[11px] font-medium text-gray-500 mb-1">Amount</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[180px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <span>Select amount range</span>
+        <span className="truncate">{formatLabel()}</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-[240px]" style={{ left: 0, top: "100%" }}>
@@ -2113,9 +2124,9 @@ function AdjustmentTypeFilterDropdown({ selected, onChange }) {
       <span className="block text-[11px] font-medium text-gray-500 mb-1">Type</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[160px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
-        <span>Select type</span>
+        <span className="truncate">{hasValue ? `${selected.size} selected` : "Select type"}</span>
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
