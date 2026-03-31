@@ -1956,7 +1956,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
       <span className="block text-[11px] font-medium text-gray-500 mb-1">{label}</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[200px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[240px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
       >
         {from ? (
           to ? <span className="truncate">{formatDisplay(from)} – {formatDisplay(to)}</span> : <span className="truncate">{formatDisplay(from)}</span>
