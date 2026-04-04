@@ -598,6 +598,13 @@ function getEffectiveHolds(holdRecords, payoutId, mid) {
 
 // ─── INITIAL HOLD RECORDS ───
 const initialHoldRecords = [
+  // Fleet-level manual progression hold
+  { id: "hold-f01", level: "fleet", entity: null, phase: "approval", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 8:00 AM", active: true },
+  { id: "hold-f02", level: "fleet", entity: null, phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 8:00 AM", active: true },
+  // Merchant-level manual progression hold (Mike's Electronics)
+  { id: "hold-m01", level: "merchant", entity: "POSPAY00012346", phase: "approval", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:00 AM", active: true },
+  { id: "hold-m02", level: "merchant", entity: "POSPAY00012346", phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:00 AM", active: true },
+  // Payout-level manual progression hold (PO-2026-0220-002 — Mike's Electronics)
   { id: "hold-001", level: "payout", entity: "PO-2026-0220-002", phase: "approval", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
   { id: "hold-002", level: "payout", entity: "PO-2026-0220-002", phase: "begin_transfer", trigger: "manual", createdBy: "Sarah Chen (Finance Administrator)", createdAt: "20 Feb 2026, 9:45 AM", active: true },
 ];
