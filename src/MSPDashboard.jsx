@@ -1665,7 +1665,7 @@ function MerchantAdjustmentsTab({ role, mid }) {
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium self-end mb-2.5">Clear all</button>}
       </div>
 
       <Card>
@@ -2325,19 +2325,19 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
 
       <ActiveHoldBanners holdRecords={holdRecords} level="merchant" entity={mid} mid={mid} merchantName={merchantName} automationConfig={automationConfig} />
 
-      <div className="flex items-end gap-2.5 flex-wrap">
-        <div>
-          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <span className="block text-xs font-medium text-gray-500 mb-1">Search</span>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Payout ID…" className="w-full text-sm border border-gray-300 rounded-lg pl-9 pr-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors" />
           </div>
         </div>
         <StatusFilterDropdown selected={statusFilter} onChange={(v) => { setStatusFilter(v); setCurrentPage(1); }} />
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={(v) => { setAmountMin(v); setCurrentPage(1); }} onChangeMax={(v) => { setAmountMax(v); setCurrentPage(1); }} onClear={() => { setAmountMin(""); setAmountMax(""); setCurrentPage(1); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={(v) => { setCreatedFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setCreatedTo(v); setCurrentPage(1); }} onClear={() => { setCreatedFrom(""); setCreatedTo(""); setCurrentPage(1); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={(v) => { setSettlementFrom(v); setCurrentPage(1); }} onChangeTo={(v) => { setSettlementTo(v); setCurrentPage(1); }} onClear={() => { setSettlementFrom(""); setSettlementTo(""); setCurrentPage(1); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium self-end mb-2.5">Clear all</button>}
       </div>
 
       <Card>
