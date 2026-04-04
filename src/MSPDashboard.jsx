@@ -1044,9 +1044,9 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
         <CardHeader>
           <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold} amount={payout.amount} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} automationConfig={automationConfig} /></div>
           <div className="flex items-center gap-2">
-            {canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
-            {!canWrite && currentActions.length > 0 && currentActions.map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
             {HOLDABLE_STATUSES.has(payout.status) && canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
+            {canWrite && currentActions.length > 0 && [...currentActions].reverse().map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
+            {!canWrite && currentActions.length > 0 && [...currentActions].reverse().map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
           </div>
         </CardHeader>
         <Divider />
@@ -1961,7 +1961,7 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
         {from ? (
           to ? <span className="truncate">{formatDisplay(from)} – {formatDisplay(to)}</span> : <span className="truncate">{formatDisplay(from)}</span>
         ) : (
-          <span className="truncate">Select {label.toLowerCase()}</span>
+          <span className="truncate">Select date or range</span>
         )}
       </button>
       {open && (
@@ -2342,8 +2342,8 @@ function MerchantPayoutsTab({ role, payouts, onPayoutStatusChange, unassignedMLE
         <CardHeader>
           <span className="text-lg font-semibold text-gray-800">Payouts</span>
           <div className="flex items-center gap-2">
-            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
             {canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
+            <Button variant="solid" colorScheme="brand" size="sm" leftIcon={<Icons.DollarSign />} onClick={() => setShowPrepare(true)} disabled={!canWrite || isPreparationBlocked(holdRecords || [], mid)}>Prepare payout</Button>
           </div>
         </CardHeader>
         <Divider />
