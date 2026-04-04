@@ -1653,12 +1653,12 @@ function MerchantAdjustmentsTab({ role, mid }) {
 
       {role === ROLES.FINANCE_VIEWER && (<div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-gray-100 border border-gray-200 text-xs text-gray-500"><Icons.Eye /> <span>Read-only access. You can view adjustments but cannot create them.</span></div>)}
 
-      <div className="flex items-end gap-2.5 flex-wrap">
-        <div>
-          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <span className="block text-xs font-medium text-gray-500 mb-1">Search</span>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Initiated by, payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[250px]" />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} placeholder="Initiated by, payout ID…" className="w-full text-sm border border-gray-300 rounded-lg pl-9 pr-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors" />
           </div>
         </div>
         <AdjustmentTypeFilterDropdown selected={typeFilter} onChange={(v) => { setTypeFilter(v); setCurrentPage(1); }} />
@@ -1952,17 +1952,16 @@ function SettlementDateRangePicker({ from, to, onChangeFrom, onChangeTo, onClear
   const hasValue = from || to;
 
   return (
-    <div className="relative" ref={ref}>
-      <span className="block text-[11px] font-medium text-gray-500 mb-1">{label}</span>
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <span className="block text-xs font-medium text-gray-500 mb-1">{label}</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[240px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className="flex items-center justify-between w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
       >
-        {from ? (
-          to ? <span className="truncate">{formatDisplay(from)} – {formatDisplay(to)}</span> : <span className="truncate">{formatDisplay(from)}</span>
-        ) : (
-          <span className="truncate">Select date or range</span>
-        )}
+        <span className={`truncate ${hasValue ? "text-gray-800" : "text-gray-400"}`}>
+          {from ? (to ? `${formatDisplay(from)} – ${formatDisplay(to)}` : formatDisplay(from)) : "Select date or range"}
+        </span>
+        <Icons.Calendar />
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4" style={{ left: 0, top: "100%" }}>
@@ -2012,13 +2011,14 @@ function StatusFilterDropdown({ selected, onChange }) {
   const statusColors = { "Ready for Review": "bg-blue-500", "Ready for Transfer": "bg-indigo-500", "Transferring": "bg-purple-500", "Completed": "bg-emerald-500", "Failed": "bg-red-500", "Abandoned": "bg-gray-400" };
 
   return (
-    <div className="relative" ref={ref}>
-      <span className="block text-[11px] font-medium text-gray-500 mb-1">Status</span>
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <span className="block text-xs font-medium text-gray-500 mb-1">Status</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[160px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className="flex items-center justify-between w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
       >
-        <span className="truncate">{hasValue ? `${selected.size} selected` : "Select status"}</span>
+        <span className={`truncate ${hasValue ? "text-gray-800" : "text-gray-400"}`}>{hasValue ? `${selected.size} selected` : "Select status"}</span>
+        <Icons.ChevronDown />
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2064,13 +2064,14 @@ function AmountRangeFilter({ min, max, onChangeMin, onChangeMax, onClear }) {
   };
 
   return (
-    <div className="relative" ref={ref}>
-      <span className="block text-[11px] font-medium text-gray-500 mb-1">Amount</span>
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <span className="block text-xs font-medium text-gray-500 mb-1">Amount</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[180px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className="flex items-center justify-between w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
       >
-        <span className="truncate">{formatLabel()}</span>
+        <span className={`truncate ${hasValue ? "text-gray-800" : "text-gray-400"}`}>{formatLabel()}</span>
+        <Icons.ChevronDown />
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-4 w-[240px]" style={{ left: 0, top: "100%" }}>
@@ -2120,13 +2121,14 @@ function AdjustmentTypeFilterDropdown({ selected, onChange }) {
   const typeColors = { "Generic": "bg-indigo-500", "Debt deferral": "bg-red-500", "Debt rollover": "bg-emerald-500" };
 
   return (
-    <div className="relative" ref={ref}>
-      <span className="block text-[11px] font-medium text-gray-500 mb-1">Type</span>
+    <div className="relative flex-1 min-w-0" ref={ref}>
+      <span className="block text-xs font-medium text-gray-500 mb-1">Type</span>
       <button
         onClick={() => setOpen(!open)}
-        className={`inline-flex items-center gap-2 text-sm border rounded-lg px-3 py-1.5 w-[160px] transition-colors ${hasValue ? "border-indigo-300 bg-indigo-50 text-indigo-700" : "border-gray-300 bg-white text-gray-500"} hover:border-indigo-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400`}
+        className="flex items-center justify-between w-full text-sm border border-gray-300 rounded-lg px-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors"
       >
-        <span className="truncate">{hasValue ? `${selected.size} selected` : "Select type"}</span>
+        <span className={`truncate ${hasValue ? "text-gray-800" : "text-gray-400"}`}>{hasValue ? `${selected.size} selected` : "Select type"}</span>
+        <Icons.ChevronDown />
       </button>
       {open && (
         <div className="absolute z-50 mt-1.5 bg-white border border-gray-200 rounded-xl shadow-lg p-2 w-[220px]" style={{ left: 0, top: "100%" }}>
@@ -2215,19 +2217,19 @@ function FleetPayoutsPage({ role, featureEnabled, payouts, onPayoutStatusChange,
 
       <ActiveHoldBanners holdRecords={holdRecords} level="fleet" entity={null} mid={null} merchantName="Fleet" automationConfig={automationConfig} />
 
-      <div className="flex items-end gap-2.5 flex-wrap">
-        <div>
-          <span className="block text-[11px] font-medium text-gray-500 mb-1">Search</span>
+      <div className="flex items-end gap-3">
+        <div className="flex-1 min-w-0">
+          <span className="block text-xs font-medium text-gray-500 mb-1">Search</span>
           <div className="relative">
-            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Payout ID…" className="text-sm border border-gray-300 rounded-lg pl-8 pr-3 py-1.5 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 w-[200px]" />
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"><Icons.Search /></span>
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Payout ID…" className="w-full text-sm border border-gray-300 rounded-lg pl-9 pr-3 py-2 bg-white hover:border-gray-400 focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 transition-colors" />
           </div>
         </div>
         <StatusFilterDropdown selected={statusFilter} onChange={setStatusFilter} />
         <AmountRangeFilter min={amountMin} max={amountMax} onChangeMin={setAmountMin} onChangeMax={setAmountMax} onClear={() => { setAmountMin(""); setAmountMax(""); }} />
         <SettlementDateRangePicker from={createdFrom} to={createdTo} onChangeFrom={setCreatedFrom} onChangeTo={setCreatedTo} onClear={() => { setCreatedFrom(""); setCreatedTo(""); }} label="Created date" />
         <SettlementDateRangePicker from={settlementFrom} to={settlementTo} onChangeFrom={setSettlementFrom} onChangeTo={setSettlementTo} onClear={() => { setSettlementFrom(""); setSettlementTo(""); }} label="Settlement date" />
-        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium ml-1 self-end mb-1.5">Clear all</button>}
+        {hasActiveFilters && <button onClick={clearAll} className="text-xs text-indigo-600 hover:text-indigo-800 font-medium self-end mb-2.5">Clear all</button>}
       </div>
 
       <Card>
