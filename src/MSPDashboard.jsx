@@ -985,24 +985,19 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
   const [showResubmit, setShowResubmit] = useState(false);
   const [showHolds, setShowHolds] = useState(false);
 
-  // Build actions based on status and holds
+  // Build actions based on status — holds disable rather than remove
   const buildActions = () => {
-    // Terminal states have no actions
     if (isTerminal) return [];
-    // If progression is blocked by holds, no status change actions (abandon only available at Ready for Review)
-    if (isProgBlocked) return payout.status === "Ready for Review"
-      ? [{ label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) }]
-      : [];
     const map = {
       "Ready for Review": [
-        { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true) },
-        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true) },
+        { label: "Approve", icon: Icons.Check, variant: "solid", colorScheme: "brand", action: () => setShowApprove(true), blocked: isProgBlocked },
+        { label: "Abandon", icon: Icons.Ban, variant: "outline", colorScheme: "error", action: () => setShowAbandon(true), blocked: false },
       ],
       "Ready for Transfer": [
-        { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => setShowTransfer(true) },
+        { label: "Begin transfer", icon: Icons.Play, variant: "solid", colorScheme: "brand", action: () => setShowTransfer(true), blocked: isProgBlocked },
       ],
       "Failed": [
-        ...(!isResubmitBlocked ? [{ label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => setShowResubmit(true) }] : []),
+        { label: "Resubmit", icon: Icons.Refresh, variant: "solid", colorScheme: "brand", action: () => setShowResubmit(true), blocked: isResubmitBlocked },
       ],
     };
     return map[payout.status] || [];
@@ -1052,8 +1047,7 @@ function PayoutDetailView({ payout, onBack, role, onStatusChange, holdRecords, o
           <div className="flex items-center gap-3"><span className="text-lg font-semibold text-gray-800">Payout {payout.id}</span><PayoutStatusBadge status={payout.status} hold={payout.hold} amount={payout.amount} holdRecords={holdRecords} payoutId={payout.id} mid={payout.mid} automationConfig={automationConfig} /></div>
           <div className="flex items-center gap-2">
             {HOLDABLE_STATUSES.has(payout.status) && canWrite && <Button variant="outline" colorScheme="neutral" size="sm" leftIcon={<Icons.Shield />} onClick={() => setShowHolds(true)}>Holds</Button>}
-            {canWrite && currentActions.length > 0 && [...currentActions].reverse().map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action}>{a.label}</Button>))}
-            {!canWrite && currentActions.length > 0 && [...currentActions].reverse().map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} disabled>{a.label}</Button>))}
+            {currentActions.length > 0 && [...currentActions].reverse().map((a) => (<Button key={a.label} variant={a.variant} colorScheme={a.colorScheme} size="sm" leftIcon={<a.icon />} onClick={a.action} disabled={!canWrite || a.blocked}>{a.label}</Button>))}
           </div>
         </CardHeader>
         <Divider />
